@@ -36,9 +36,10 @@ public class AnthropicProvider : ILLMProvider
         "You are a legal intake quality reviewer. Compare the provided document summaries and " +
         "supporting quotes, and report any contradictions, including conflicting dates, " +
         "diagnoses, providers, or causal statements. A single document can contradict itself. " +
-        "Every quote must be an exact, verbatim substring of the provided text. Respond with " +
-        "JSON only, using this exact shape: " +
-        "{\"contradictions\":[{\"summary\":\"<description>\",\"quotes\":[\"<exact quote>\"]}]}. " +
+        "Each supporting quote is labeled with an ID such as [Q3]; reference the quotes that " +
+        "show each contradiction by ID only, never by restating their text. Respond with JSON " +
+        "only, using this exact shape: " +
+        "{\"contradictions\":[{\"summary\":\"<description>\",\"quoteIds\":[\"Q1\",\"Q2\"]}]}. " +
         "If there are no contradictions, return {\"contradictions\":[]}.";
 
     private readonly AnthropicClient m_client;
@@ -139,7 +140,7 @@ public class AnthropicProvider : ILLMProvider
      * lines up; otherwise (e.g. index units differ for non-BMP characters) the text is searched for.
      * Returns null if the cited text cannot be found, so the citation is dropped rather than misplaced.
      */
-    private static int? LocateCitedText(string text, string citedText, int startIndex)
+    internal static int? LocateCitedText(string text, string citedText, int startIndex)
     {
         if (string.IsNullOrWhiteSpace(citedText))
         {
@@ -177,6 +178,7 @@ public class AnthropicProvider : ILLMProvider
     {
         string user = BuildCaseContext(piCase);
         string response = await Complete(VerificationSystemPrompt, user);
+        List<Citation> quotes = NumberQuotes(piCase);
 
         VerificationResultDto? dto = Deserialize<VerificationResultDto>(response);
 
@@ -190,24 +192,10 @@ public class AnthropicProvider : ILLMProvider
                     continue;
                 }
 
-                List<Citation> citations = [];
-                if (contradiction.Quotes is not null)
-                {
-                    foreach (string quote in contradiction.Quotes)
-                    {
-                        if (string.IsNullOrWhiteSpace(quote))
-                        {
-                            continue;
-                        }
-
-                        citations.AddRange(FindMatchingCitations(piCase, quote));
-                    }
-                }
-
                 contradictions.Add(new Contradiction()
                 {
                     Summary = contradiction.Summary,
-                    Citations = citations.ToArray(),
+                    Citations = ResolveQuoteIds(quotes, contradiction.QuoteIds ?? []),
                 });
             }
         }
@@ -255,9 +243,14 @@ public class AnthropicProvider : ILLMProvider
         return JsonSerializer.Deserialize<T>(response.Substring(start, end - start + 1), JsonOptions);
     }
 
-    private static string BuildCaseContext(PICase piCase)
+    /**
+     * Renders the case for the model. Each quote gets an ID (Q1, Q2, ...) matching its position in
+     * NumberQuotes, and its text is JSON-escaped so multi-line quotes stay on a single line.
+     */
+    internal static string BuildCaseContext(PICase piCase)
     {
         StringBuilder builder = new StringBuilder();
+        int quoteNumber = 0;
 
         for (int i = 0; i < piCase.DocumentSummaries.Length; i++)
         {
@@ -271,7 +264,8 @@ public class AnthropicProvider : ILLMProvider
                 builder.AppendLine("Supporting quotes:");
                 foreach (Citation citation in summary.Citations)
                 {
-                    builder.Append("- ").AppendLine(citation.CitedText);
+                    quoteNumber++;
+                    builder.Append("[Q").Append(quoteNumber).Append("] ").AppendLine(JsonSerializer.Serialize(citation.CitedText));
                 }
             }
 
@@ -281,22 +275,32 @@ public class AnthropicProvider : ILLMProvider
         return builder.ToString();
     }
 
-    private static List<Citation> FindMatchingCitations(PICase piCase, string quote)
+    /**
+     * Every citation in the case, in the order BuildCaseContext numbers them: quote ID Qn is element n - 1.
+     */
+    internal static List<Citation> NumberQuotes(PICase piCase)
     {
-        List<Citation> matches = [];
+        return piCase.DocumentSummaries.SelectMany(summary => summary.Citations).ToList();
+    }
 
-        foreach (DocumentSummary summary in piCase.DocumentSummaries)
+    /**
+     * Maps quote IDs returned by the model (e.g. "Q3") back to citations. Unknown or malformed IDs are dropped.
+     */
+    internal static Citation[] ResolveQuoteIds(IReadOnlyList<Citation> quotes, IEnumerable<string> quoteIds)
+    {
+        List<Citation> citations = [];
+        HashSet<int> seen = [];
+
+        foreach (string quoteId in quoteIds)
         {
-            foreach (Citation citation in summary.Citations)
+            string number = quoteId.Trim().TrimStart('[').TrimEnd(']').TrimStart('Q', 'q');
+            if (int.TryParse(number, out int index) && index >= 1 && index <= quotes.Count && seen.Add(index))
             {
-                if (citation.CitedText == quote)
-                {
-                    matches.Add(citation);
-                }
+                citations.Add(quotes[index - 1]);
             }
         }
 
-        return matches;
+        return citations.ToArray();
     }
 
     private sealed class CaseSummaryDto
@@ -312,6 +316,6 @@ public class AnthropicProvider : ILLMProvider
     private sealed class ContradictionDto
     {
         public string? Summary { get; set; }
-        public List<string>? Quotes { get; set; }
+        public List<string>? QuoteIds { get; set; }
     }
 }

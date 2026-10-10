@@ -12,4 +12,8 @@
       <PackageReference Include="AWSSDK.Textract" Version="4.0.100.16" />
     </ItemGroup>
 
+    <ItemGroup>
+      <InternalsVisibleTo Include="MedicalRecordAnalysis.Tests" />
+    </ItemGroup>
+
 </Project>

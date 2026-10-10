@@ -1,0 +1,25 @@
+RIVERSIDE GENERAL HOSPITAL - EMERGENCY DEPARTMENT
+Patient: Jordan Avery    DOB: 06/22/1988    MRN: 00482913
+Date of Service: 03/14/2026    Attending: Dr. Priya Raman, MD
+
+CHIEF COMPLAINT: Neck pain and headache following motor vehicle collision.
+
+HISTORY OF PRESENT ILLNESS:
+Patient is a 37-year-old who presents by ambulance approximately one hour after a motor vehicle collision. Patient was the restrained driver of a sedan that was stopped at a red light when it was struck from behind by a pickup truck. Airbags did not deploy. Patient reports immediate onset of neck pain, rated 7/10, radiating to the right shoulder. Also reports a frontal headache. Denies loss of consciousness. Denies numbness or tingling in the extremities.
+
+PHYSICAL EXAM:
+Cervical spine: tenderness to palpation over the paraspinal muscles C3-C6, worse on the right. Range of motion limited by pain in rotation and flexion. No midline step-off.
+Neurological: strength 5/5 in all extremities, sensation intact.
+Right shoulder: mild tenderness over the trapezius, full range of motion.
+
+IMAGING:
+CT cervical spine without contrast: no acute fracture or malalignment.
+
+ASSESSMENT:
+1. Acute cervical strain (whiplash), S13.4XXA, secondary to the motor vehicle collision.
+2. Post-traumatic headache.
+
+PLAN:
+Cyclobenzaprine 5 mg at bedtime as needed for muscle spasm. Ibuprofen 600 mg every 8 hours as needed for pain. Soft cervical collar for comfort for up to 3 days. Referred to physical therapy, 2-3 sessions per week for 6 weeks. Follow up with primary care within one week. Return to the ED for worsening symptoms, numbness, or weakness.
+
+Electronically signed: Priya Raman, MD    03/14/2026 18:42

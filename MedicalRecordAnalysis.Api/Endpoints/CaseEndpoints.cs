@@ -129,10 +129,17 @@ public static class CaseEndpoints
             return Error(StatusCodes.Status404NotFound, "Record not found.");
         }
 
-        // Records are untrusted uploads: never let the browser sniff or run them as active content.
+        // Records are untrusted uploads: never let the browser sniff them into active content. Only PDF, text, and
+        // image types are served as such (anything else downloads). Chrome will not show PDFs in a sandboxed page,
+        // so the sandbox policy applies to every other type.
+        string contentType = ContentType(file);
         context.Response.Headers.XContentTypeOptions = "nosniff";
-        context.Response.Headers.ContentSecurityPolicy = "sandbox";
-        return Results.File(file.FullName, ContentType(file), enableRangeProcessing: true);
+        if (contentType != "application/pdf")
+        {
+            context.Response.Headers.ContentSecurityPolicy = "sandbox";
+        }
+
+        return Results.File(file.FullName, contentType, enableRangeProcessing: true);
     }
 
     private static async Task<IResult> DeleteRecord(string caseId, string fileName, ICaseStore store, CancellationToken cancellationToken)

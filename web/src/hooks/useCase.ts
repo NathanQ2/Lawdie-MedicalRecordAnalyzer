@@ -1,0 +1,64 @@
+import { notifications } from '@mantine/notifications'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
+import { api } from '../api/client'
+import type { CaseDetail, JobStatus } from '../api/types'
+import { isJobActive } from '../lib/format'
+
+const POLL_INTERVAL_MS = 1500
+
+export const caseKeys = {
+  all: ['cases'] as const,
+  detail: (caseId: string) => ['cases', caseId] as const,
+}
+
+export function useCases() {
+  return useQuery({
+    queryKey: caseKeys.all,
+    queryFn: api.listCases,
+    refetchInterval: (query) => (query.state.data?.some((item) => isJobActive(item.job)) ? POLL_INTERVAL_MS : false),
+  })
+}
+
+/**
+ * Loads a case, polling while its job is queued or running, and announces the job's outcome when it ends.
+ */
+export function useCase(caseId: string) {
+  const queryClient = useQueryClient()
+  const query = useQuery({
+    queryKey: caseKeys.detail(caseId),
+    queryFn: () => api.getCase(caseId),
+    refetchInterval: (current) => (isJobActive(current.state.data?.job) ? POLL_INTERVAL_MS : false),
+  })
+
+  const previousJob = useRef<JobStatus | null | undefined>(undefined)
+  const job = query.data?.job
+  useEffect(() => {
+    const previous = previousJob.current
+    previousJob.current = job
+    if (previous && isJobActive(previous) && job && job.id === previous.id && !isJobActive(job)) {
+      announceFinishedJob(job)
+      void queryClient.invalidateQueries({ queryKey: caseKeys.all })
+    }
+  }, [job, queryClient])
+
+  return query
+}
+
+/**
+ * Puts a freshly started job into the cached case so the UI shows it (and starts polling) immediately.
+ */
+export function setCaseJob(queryClient: ReturnType<typeof useQueryClient>, caseId: string, job: JobStatus) {
+  queryClient.setQueryData<CaseDetail>(caseKeys.detail(caseId), (current) => (current ? { ...current, job } : current))
+}
+
+function announceFinishedJob(job: JobStatus) {
+  const name = job.kind === 'Ingest' ? 'Ingest' : 'Draft'
+  if (job.state === 'Succeeded') {
+    notifications.show({ color: 'green', title: `${name} finished`, message: job.kind === 'Ingest' ? 'The records were analyzed.' : 'The demand letter draft is ready.' })
+  } else if (job.state === 'Failed') {
+    notifications.show({ color: 'red', title: `${name} failed`, message: job.error ?? 'The job failed.', autoClose: false })
+  } else if (job.state === 'Cancelled') {
+    notifications.show({ color: 'orange', title: `${name} cancelled`, message: job.error ?? 'The job was cancelled.' })
+  }
+}

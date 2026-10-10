@@ -42,7 +42,7 @@ The UI checks the status of a running job every couple of seconds. Live updates 
 2. ✅ **API**
    - The case store, file uploads, serving original files, the job worker, and the endpoints listed below.
    - Integration tests use the dummy providers, so they cost nothing to run.
-3. **Frontend setup**
+3. ✅ **Frontend setup**
    - A Vite + React + Mantine app with the Cases, Records and Run screens.
    - At this point the whole pipeline runs from the browser.
 4. **Analysis screen and source viewer**

@@ -177,6 +177,8 @@ public sealed class ApiTests : IDisposable
 
         HttpResponseMessage served = await client.GetAsync($"/api/cases/{created.Id}/records/record.pdf");
         Assert.Equal("application/pdf", served.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("nosniff", served.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.False(served.Headers.Contains("Content-Security-Policy"), "Chrome will not display PDFs in a sandboxed page.");
         Assert.Equal(pdf, await served.Content.ReadAsByteArrayAsync());
 
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/cases/{created.Id}/records/note.txt")).StatusCode);

@@ -70,6 +70,37 @@ public class AnthropicProviderLiveTests
     }
 
     [LiveFact(ApiKeyVariable)]
+    public async Task DraftDemandCitesQuotesAndUsesPlaceholders()
+    {
+        string[] fileNames = ["ER_Visit_2026-03-14.txt", "PT_Intake_2026-03-20.txt"];
+        AnthropicProvider provider = new AnthropicProvider();
+
+        PICase piCase = new PICase(fileNames.Length);
+        Dictionary<string, string> sources = [];
+        for (int i = 0; i < fileNames.Length; i++)
+        {
+            FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", fileNames[i]));
+            sources[file.FullName] = await File.ReadAllTextAsync(file.FullName);
+            piCase.DocumentSummaries[i] = await provider.SummarizeDocument(file, sources[file.FullName]);
+        }
+
+        piCase.Contradictions = (await provider.Verify(piCase)).Contradictions;
+        DemandDraft draft = await provider.DraftDemand(piCase);
+
+        m_output.WriteLine(DemandLetterRenderer.Render(draft, piCase, DraftFormat.Markdown));
+
+        Citation[] citations = draft.Segments.SelectMany(segment => segment.Citations).ToArray();
+        Assert.NotEmpty(citations);
+        foreach (Citation citation in citations)
+        {
+            Assert.Equal(citation.CitedText, sources[citation.FilePath].Substring(citation.StartPosition, citation.CitationLength));
+        }
+
+        // The records contain no claim or insurer details, so the draft should leave placeholders.
+        Assert.Matches(@"\[[A-Z][A-Z0-9 &/'.,-]*\]", draft.Narrative);
+    }
+
+    [LiveFact(ApiKeyVariable)]
     public async Task SummarizeCaseCitesQuotesAndPresentsDisputedFacts()
     {
         // The records disagree on the collision date (ER implies 03/14/2026, PT intake says 03/12/2026).

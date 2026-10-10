@@ -19,6 +19,18 @@ public class DummyLLMProvider : ILLMProvider
         };
     }
 
+    public async Task<DemandDraft> DraftDemand(PICase piCase)
+    {
+        return new DemandDraft()
+        {
+            Segments =
+            [
+                new DraftSegment() { Text = "TestDraftNarrative", Citations = piCase.DocumentSummaries.SelectMany(summary => summary.Citations).Take(1).ToArray() },
+                new DraftSegment() { Text = ". Claim [CLAIM NUMBER]." },
+            ],
+        };
+    }
+
     public async Task<VerificationResult> Verify(PICase piCase)
     {
         return new VerificationResult()

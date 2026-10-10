@@ -17,4 +17,10 @@ public interface ILLMProvider
      * document. Any contradiction will be saved. Runs before SummarizeCase.
      */
     public Task<VerificationResult> Verify(PICase piCase);
+    /**
+     * Prompts the LLM to draft the narrative section of a demand letter from the case's cited quotes. Every
+     * factual statement should cite those quotes, disputed facts are attributed to each record, and facts the
+     * records do not contain are left as bracketed placeholders.
+     */
+    public Task<DemandDraft> DraftDemand(PICase piCase);
 }

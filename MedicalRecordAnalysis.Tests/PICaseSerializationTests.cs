@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MedicalRecordAnalysis.LLM;
 using MedicalRecordAnalysis.LLM.Providers;
 
 namespace MedicalRecordAnalysis.Tests;
@@ -19,5 +20,27 @@ public class PICaseSerializationTests
         string json = JsonSerializer.Serialize(piCase);
 
         Assert.Contains(JsonSerializer.Serialize(file.FullName), json);
+    }
+
+    [Fact]
+    public void ExportedCaseReadsBackWithAllFields()
+    {
+        Citation quote = new Citation() { FilePath = "/er.txt", CitedText = "Denies loss of consciousness.", StartPosition = 657, Claim = "denied LOC" };
+        PICase original = new PICase(1);
+        original.DocumentSummaries[0] = new DocumentSummary() { Summary = "ER visit.", Citations = [quote] };
+        original.Summary = new CaseSummary() { Summary = "Case.", Citations = [quote], UnsupportedStatements = ["Uncited."] };
+        original.Contradictions = [new Contradiction() { Summary = "LOC differs.", Citations = [quote] }];
+
+        PICase? copy = JsonSerializer.Deserialize<PICase>(JsonSerializer.Serialize(original));
+
+        Assert.NotNull(copy);
+        DocumentSummary document = Assert.Single(copy.DocumentSummaries);
+        Assert.Equal("ER visit.", document.Summary);
+        Citation citation = Assert.Single(document.Citations);
+        Assert.Equal(("/er.txt", "Denies loss of consciousness.", 657, "denied LOC"), (citation.FilePath, citation.CitedText, citation.StartPosition, citation.Claim));
+        Assert.Equal("Case.", copy.Summary!.Summary);
+        Assert.Equal(["Uncited."], copy.Summary.UnsupportedStatements);
+        Assert.Single(copy.Summary.Citations);
+        Assert.Equal("LOC differs.", Assert.Single(copy.Contradictions).Summary);
     }
 }

@@ -61,8 +61,21 @@ public class MedicalRecordAnalyzer
         await JsonSerializer.SerializeAsync(stream, piCase, JsonSerializerOptions);
     }
 
-    public Task Draft(FileInfo file, FileInfo output)
+    public async Task Draft(FileInfo file, FileInfo output)
     {
-        return Task.CompletedTask;
+        // 1. Read the exported case
+        PICase piCase;
+        await using (FileStream input = file.OpenRead())
+        {
+            piCase = await JsonSerializer.DeserializeAsync<PICase>(input, JsonSerializerOptions)
+                ?? throw new InvalidDataException($"'{file.Name}' does not contain a case.");
+        }
+
+        // 2. Draft the narrative from the case's cited quotes
+        DemandDraft draft = await m_llmProvider.DraftDemand(piCase);
+
+        // 3. Export with source notes and an attorney review section
+        string letter = DemandLetterRenderer.Render(draft, piCase, DemandLetterRenderer.FormatFor(output));
+        await File.WriteAllTextAsync(output.FullName, letter);
     }
 }

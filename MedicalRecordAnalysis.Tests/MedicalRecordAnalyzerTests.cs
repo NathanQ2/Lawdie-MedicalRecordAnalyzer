@@ -31,6 +31,34 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
     }
 
     [Fact]
+    public async Task DraftReadsTheIngestedCaseAndWritesALetterWithSources()
+    {
+        FileInfo note = m_files.WriteText("note.txt", "Patient reports neck pain after collision.");
+        DirectoryInfo outputDirectory = m_files.Directory.CreateSubdirectory("out");
+        FileInfo caseFile = new FileInfo(Path.Combine(outputDirectory.FullName, "case.json"));
+        FileInfo letterFile = new FileInfo(Path.Combine(outputDirectory.FullName, "Draft.md"));
+        MedicalRecordAnalyzer analyzer = new MedicalRecordAnalyzer(new DummyLLMProvider());
+
+        await analyzer.Ingest(m_files.Directory, caseFile);
+        await analyzer.Draft(caseFile, letterFile);
+
+        string letter = await File.ReadAllTextAsync(letterFile.FullName);
+        Assert.Contains("TestDraftNarrative[^1]", letter);
+        Assert.Contains($"[^1]: {note.Name}, character 0: \"TestCitation\"", letter);
+        Assert.Contains("## Attorney Review - Remove Before Sending", letter);
+        Assert.Contains("- [CLAIM NUMBER]", letter);
+    }
+
+    [Fact]
+    public async Task DraftRejectsAFileWithoutACase()
+    {
+        FileInfo caseFile = m_files.WriteText("case.json", "null");
+        FileInfo letterFile = new FileInfo(Path.Combine(m_files.Directory.FullName, "Draft.md"));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => new MedicalRecordAnalyzer(new DummyLLMProvider()).Draft(caseFile, letterFile));
+    }
+
+    [Fact]
     public async Task IngestFindsContradictionsBeforeSummarizingTheCase()
     {
         m_files.WriteText("note.txt", "Patient reports neck pain after collision.");
@@ -60,6 +88,12 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
             Calls.Add(nameof(SummarizeCase));
             ContradictionsSeenBySummarizeCase = piCase.Contradictions.Length;
             return Task.FromResult(new CaseSummary() { Summary = "case" });
+        }
+
+        public Task<DemandDraft> DraftDemand(PICase piCase)
+        {
+            Calls.Add(nameof(DraftDemand));
+            return Task.FromResult(new DemandDraft() { Segments = [] });
         }
 
         public Task<VerificationResult> Verify(PICase piCase)

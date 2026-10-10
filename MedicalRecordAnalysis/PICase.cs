@@ -1,11 +1,13 @@
+using System.Text.Json.Serialization;
 using MedicalRecordAnalysis.LLM;
 
 namespace MedicalRecordAnalysis;
 
 public class PICase
 {
+    [JsonInclude]
     public DocumentSummary[] DocumentSummaries { get; private init; }
-    
+
     public CaseSummary? Summary { get; set; }
 
     public Contradiction[] Contradictions { get; set; } = [];
@@ -13,5 +15,11 @@ public class PICase
     public PICase(int numDocuments)
     {
         DocumentSummaries = new DocumentSummary[numDocuments];
+    }
+
+    [JsonConstructor]
+    private PICase()
+    {
+        DocumentSummaries = [];
     }
 }

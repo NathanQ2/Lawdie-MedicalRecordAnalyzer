@@ -13,6 +13,8 @@ public class AnthropicProvider : ILLMProvider
     };
 
     private const int MaxTokens = 4096;
+    // Case summaries and demand drafts are long, cited, and preceded by thinking.
+    private const int GroundedMaxTokens = 16000;
     private const string DefaultModel = "claude-haiku-5-5";
 
     private const string DocumentSummarizationSystemPrompt =
@@ -33,6 +35,20 @@ public class AnthropicProvider : ILLMProvider
         "every fact; never add facts that are not present. Where the records disagree, present each " +
         "record's version with its citation and do not choose between them. Respond with plain " +
         "prose only: no preamble, headings, or JSON.";
+
+    private const string DemandDraftSystemPrompt =
+        "You are a drafting assistant for a personal injury law firm. Write the narrative section " +
+        "of a demand letter to an insurance adjuster, describing the client's incident, injuries, " +
+        "treatment chronology, providers, diagnoses, the causal connection to the incident, and the " +
+        "pain, suffering, and limits on daily life that the records document. Each provided document " +
+        "contains verbatim quotes from one of the client's medical records. The tone may be " +
+        "persuasive, but state only facts supported by these quotes and cite them for every fact; " +
+        "never invent, infer, or exaggerate injuries, dates, symptoms, or causation. Where the " +
+        "records disagree, attribute each version to its record with its citation rather than " +
+        "choosing one. For information a demand letter needs that the records do not contain, such " +
+        "as the claim number, the insured's name, lost wages, or the amount demanded, write a " +
+        "bracketed placeholder in capitals, such as [CLAIM NUMBER], and never guess. Write the " +
+        "narrative section only: no letterhead, salutation, signature, headings, or JSON.";
 
     private const string VerificationSystemPrompt =
         "You are a legal intake quality reviewer. Compare the provided document summaries and " +
@@ -161,8 +177,36 @@ public class AnthropicProvider : ILLMProvider
 
     public async Task<CaseSummary> SummarizeCase(PICase piCase)
     {
-        // Each record's extracted quotes become a citable custom-content document with one block per quote,
-        // so every statement in the case summary traces back to verbatim quotes from the source records.
+        List<DraftSegment> segments = await GenerateGrounded(CaseSummarizationSystemPrompt,
+            BuildGroundedInstruction(piCase, "Write the case summary, citing the quotes for every fact."), piCase);
+
+        return new CaseSummary()
+        {
+            Summary = string.Concat(segments.Select(segment => segment.Text)).Trim(),
+            Citations = segments.SelectMany(segment => segment.Citations).ToArray(),
+            UnsupportedStatements = FindUnsupportedSentences(segments),
+        };
+    }
+
+    public async Task<DemandDraft> DraftDemand(PICase piCase)
+    {
+        List<DraftSegment> segments = await GenerateGrounded(DemandDraftSystemPrompt,
+            BuildGroundedInstruction(piCase, "Write the demand letter narrative section, citing the quotes for every fact."), piCase);
+
+        return new DemandDraft()
+        {
+            Segments = segments.ToArray(),
+            UnsupportedStatements = FindUnsupportedSentences(segments),
+        };
+    }
+
+    /**
+     * Generates text grounded in the case's extracted quotes. Each record's quotes become a citable
+     * custom-content document with one block per quote, so every statement traces back to verbatim quotes
+     * from the source records. Returned citations are mapped back to those quotes.
+     */
+    private async Task<List<DraftSegment>> GenerateGrounded(string system, string instruction, PICase piCase)
+    {
         List<IReadOnlyList<Citation>> documentQuotes = [];
         List<ContentBlockParam> content = [];
         foreach (IGrouping<string, Citation> record in NumberQuotes(piCase).GroupBy(citation => citation.FilePath))
@@ -182,23 +226,26 @@ public class AnthropicProvider : ILLMProvider
 
         if (documentQuotes.Count == 0)
         {
-            throw new InvalidOperationException("No quotes were extracted from the records, so a grounded case summary cannot be written.");
+            throw new InvalidOperationException("No quotes were extracted from the records, so grounded text cannot be written.");
         }
 
-        content.Add(new TextBlockParam() { Text = BuildCaseSummaryInstruction(piCase) });
+        content.Add(new TextBlockParam() { Text = instruction });
 
         MessageCreateParams parameters = new MessageCreateParams()
         {
-            MaxTokens = MaxTokens,
-            System = CaseSummarizationSystemPrompt,
+            MaxTokens = GroundedMaxTokens,
+            System = system,
             Messages = [new MessageParam() { Role = Role.User, Content = content }],
             Model = m_model,
         };
 
         Message message = await m_client.Messages.Create(parameters);
+        if (message.StopReason == StopReason.MaxTokens)
+        {
+            throw new InvalidOperationException("The response reached the token limit and was cut off.");
+        }
 
-        List<GeneratedSegment> segments = [];
-        List<Citation> citations = [];
+        List<DraftSegment> segments = [];
         foreach (ContentBlock block in message.Content)
         {
             if (!block.TryPickText(out TextBlock? text))
@@ -206,38 +253,34 @@ public class AnthropicProvider : ILLMProvider
                 continue;
             }
 
-            bool isCited = false;
+            List<Citation> citations = [];
             foreach (TextCitation textCitation in text.Citations ?? [])
             {
-                if (!textCitation.TryPickCitationContentBlockLocation(out CitationContentBlockLocation? location))
+                if (textCitation.TryPickCitationContentBlockLocation(out CitationContentBlockLocation? location))
                 {
-                    continue;
+                    citations.AddRange(ResolveContentBlockCitation(documentQuotes, (int)location.DocumentIndex,
+                        (int)location.StartBlockIndex, (int)location.EndBlockIndex, text.Text.Trim()));
                 }
-
-                Citation[] supporting = ResolveContentBlockCitation(documentQuotes, (int)location.DocumentIndex,
-                    (int)location.StartBlockIndex, (int)location.EndBlockIndex, text.Text.Trim());
-                citations.AddRange(supporting);
-                isCited |= supporting.Length > 0;
             }
 
-            segments.Add(new GeneratedSegment(text.Text, isCited));
+            segments.Add(new DraftSegment() { Text = text.Text, Citations = citations.ToArray() });
         }
 
-        string summary = string.Concat(segments.Select(segment => segment.Text)).Trim();
-        if (summary.Length == 0)
+        if (segments.All(segment => string.IsNullOrWhiteSpace(segment.Text)))
         {
-            throw new InvalidOperationException("The model returned an empty case summary.");
+            throw new InvalidOperationException("The model returned an empty response.");
         }
 
-        return new CaseSummary()
-        {
-            Summary = summary,
-            Citations = citations.ToArray(),
-            UnsupportedStatements = GroundingCheck.FindUnsupportedSentences(segments),
-        };
+        return segments;
     }
 
-    private static string BuildCaseSummaryInstruction(PICase piCase)
+    private static string[] FindUnsupportedSentences(IEnumerable<DraftSegment> segments)
+    {
+        return GroundingCheck.FindUnsupportedSentences(
+            segments.Select(segment => new GeneratedSegment(segment.Text, segment.Citations.Length > 0)).ToList());
+    }
+
+    private static string BuildGroundedInstruction(PICase piCase, string task)
     {
         StringBuilder builder = new StringBuilder();
 
@@ -255,7 +298,7 @@ public class AnthropicProvider : ILLMProvider
         }
 
         builder.AppendLine();
-        builder.Append("Write the case summary, citing the quotes for every fact.");
+        builder.Append(task);
         return builder.ToString();
     }
 

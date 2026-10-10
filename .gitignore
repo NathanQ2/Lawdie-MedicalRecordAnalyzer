@@ -14,3 +14,6 @@ riderModule.iml
 
 PICaseData.json
 Draft.md
+
+# Case data (may contain patient records)
+/cases/

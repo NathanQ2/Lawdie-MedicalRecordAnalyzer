@@ -10,7 +10,7 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
     public void Dispose() => m_files.Dispose();
 
     [Fact]
-    public void IngestSummarizesReadableFilesAndSkipsTheRest()
+    public async Task IngestSummarizesReadableFilesAndSkipsTheRest()
     {
         FileInfo note = m_files.WriteText("note.txt", "Patient reports neck pain after collision.");
         FileInfo record = m_files.WritePdf("record.pdf", "Acute cervical strain diagnosed at the emergency department.");
@@ -19,7 +19,7 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
         FileInfo output = new FileInfo(Path.Combine(m_files.Directory.FullName, "out", "case.json"));
         output.Directory!.Create();
 
-        new MedicalRecordAnalyzer(new DummyLLMProvider()).Ingest(m_files.Directory, output);
+        await new MedicalRecordAnalyzer(new DummyLLMProvider()).Ingest(m_files.Directory, output);
 
         using JsonDocument json = JsonDocument.Parse(File.ReadAllText(output.FullName));
         string[] citedFiles = json.RootElement.GetProperty("DocumentSummaries").EnumerateArray()

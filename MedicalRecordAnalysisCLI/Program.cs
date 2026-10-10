@@ -23,18 +23,18 @@ public static class Program
 
     private static MedicalRecordAnalyzer s_analyzer = new MedicalRecordAnalyzer();
     
-    public static int Main(String[] args)
+    public static async Task<int> Main(String[] args)
     {
         IngestCmd.Arguments.Add(DirectoryArgument);
         IngestCmd.Options.Add(IngestOutputFileOption);
-        IngestCmd.SetAction(result => s_analyzer.Ingest(result.GetValue(DirectoryArgument)!, result.GetValue(IngestOutputFileOption)!));
+        IngestCmd.SetAction((result, _) => s_analyzer.Ingest(result.GetValue(DirectoryArgument)!, result.GetValue(IngestOutputFileOption)!));
         RootCmd.Subcommands.Add(IngestCmd);
         
         DraftCmd.Arguments.Add(PathArgument);
         DraftCmd.Options.Add(DraftOutputFileOption);
-        DraftCmd.SetAction(result => s_analyzer.Draft(result.GetValue(PathArgument)!, result.GetValue(DraftOutputFileOption)!));
+        DraftCmd.SetAction((result, _) => s_analyzer.Draft(result.GetValue(PathArgument)!, result.GetValue(DraftOutputFileOption)!));
         RootCmd.Subcommands.Add(DraftCmd);
 
-        return RootCmd.Parse(args).Invoke();
+        return await RootCmd.Parse(args).InvokeAsync();
     }
 }

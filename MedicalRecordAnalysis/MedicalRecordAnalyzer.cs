@@ -20,7 +20,7 @@ public class MedicalRecordAnalyzer
         m_ocrProvider = ocrProvider ?? new ChainedOCRProvider([new DirectTextProvider()]);
     }
     
-    public void Ingest(DirectoryInfo directory, FileInfo output)
+    public async Task Ingest(DirectoryInfo directory, FileInfo output)
     {
         Console.WriteLine($"DIR: {directory.FullName}");
         
@@ -34,8 +34,7 @@ public class MedicalRecordAnalyzer
             OCRResult result;
             try
             {
-                // TODO: Add proper async/await. GetResult() rethrows the original exception, unlike Wait().
-                result = m_ocrProvider.DetectTextFromFile(file).GetAwaiter().GetResult();
+                result = await m_ocrProvider.DetectTextFromFile(file);
             }
             catch (NotSupportedException exception)
             {
@@ -44,33 +43,26 @@ public class MedicalRecordAnalyzer
             }
 
             // 2. Summarize 
-            Task<DocumentSummary> summarizeTask = m_llmProvider.SummarizeDocument(result.File, result.Text);
-            summarizeTask.Wait();
-            documentSummaries.Add(summarizeTask.Result);
+            documentSummaries.Add(await m_llmProvider.SummarizeDocument(result.File, result.Text));
         }
 
         PICase piCase = new PICase(documentSummaries.Count);
         documentSummaries.CopyTo(piCase.DocumentSummaries);
         
         // 3. Summarize Case
-        Task<CaseSummary> caseSummarizeTask = m_llmProvider.SummarizeCase(piCase);
-        caseSummarizeTask.Wait();
-        piCase.Summary = caseSummarizeTask.Result;
+        piCase.Summary = await m_llmProvider.SummarizeCase(piCase);
         
         // 4. Verify facts
-        Task<VerificationResult> verificationTask = m_llmProvider.Verify(piCase);
-        verificationTask.Wait();
-        piCase.Contradictions = verificationTask.Result.Contradictions;
+        VerificationResult verification = await m_llmProvider.Verify(piCase);
+        piCase.Contradictions = verification.Contradictions;
         
         // 5. Export
-        using StreamWriter sw = output.CreateText();
-        string jsonString = JsonSerializer.Serialize(piCase, JsonSerializerOptions);
-        sw.Write(jsonString);
-        sw.Flush();
+        await using FileStream stream = output.Create();
+        await JsonSerializer.SerializeAsync(stream, piCase, JsonSerializerOptions);
     }
 
-    public void Draft(FileInfo file, FileInfo output)
+    public Task Draft(FileInfo file, FileInfo output)
     {
-        
+        return Task.CompletedTask;
     }
 }

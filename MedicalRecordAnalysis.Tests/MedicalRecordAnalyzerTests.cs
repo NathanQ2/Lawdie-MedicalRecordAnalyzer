@@ -97,27 +97,27 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
         public int ContradictionsSeenBySummarizeCase { get; private set; } = -1;
         public IReadOnlyList<RetrievedPassage> PassagesSeenByDraftDemand { get; private set; } = [];
 
-        public Task<DocumentSummary> SummarizeDocument(FileInfo file, string text)
+        public Task<DocumentSummary> SummarizeDocument(FileInfo file, string text, CancellationToken cancellationToken = default)
         {
             Calls.Add(nameof(SummarizeDocument));
             return Task.FromResult(new DocumentSummary() { Summary = "summary" });
         }
 
-        public Task<CaseSummary> SummarizeCase(PICase piCase)
+        public Task<CaseSummary> SummarizeCase(PICase piCase, CancellationToken cancellationToken = default)
         {
             Calls.Add(nameof(SummarizeCase));
             ContradictionsSeenBySummarizeCase = piCase.Contradictions.Length;
             return Task.FromResult(new CaseSummary() { Summary = "case" });
         }
 
-        public Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages)
+        public Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages, CancellationToken cancellationToken = default)
         {
             Calls.Add(nameof(DraftDemand));
             PassagesSeenByDraftDemand = passages;
             return Task.FromResult(new DemandDraft() { Segments = [] });
         }
 
-        public Task<VerificationResult> Verify(PICase piCase)
+        public Task<VerificationResult> Verify(PICase piCase, CancellationToken cancellationToken = default)
         {
             Calls.Add(nameof(Verify));
             return Task.FromResult(new VerificationResult() { Contradictions = [new Contradiction() { Summary = "dates differ", Citations = [] }] });

@@ -38,7 +38,7 @@ public class TextractProvider : IOCRProvider
         m_bucketName = bucketName ?? Environment.GetEnvironmentVariable(BucketEnvironmentVariable);
     }
 
-    public async Task<OCRResult> DetectTextFromFile(FileInfo file)
+    public async Task<OCRResult> DetectTextFromFile(FileInfo file, CancellationToken cancellationToken = default)
     {
         if (!file.Exists)
         {
@@ -57,11 +57,11 @@ public class TextractProvider : IOCRProvider
         List<Block> blocks;
         if (isMultipage && m_bucketName is not null)
         {
-            blocks = await DetectMultipageText(file, m_bucketName);
+            blocks = await DetectMultipageText(file, m_bucketName, cancellationToken);
         }
         else
         {
-            blocks = await DetectSinglePageText(file);
+            blocks = await DetectSinglePageText(file, cancellationToken);
         }
 
         (string text, int[] pageStarts) = BuildText(blocks);
@@ -73,9 +73,9 @@ public class TextractProvider : IOCRProvider
         };
     }
 
-    private async Task<List<Block>> DetectSinglePageText(FileInfo file)
+    private async Task<List<Block>> DetectSinglePageText(FileInfo file, CancellationToken cancellationToken)
     {
-        byte[] bytes = await File.ReadAllBytesAsync(file.FullName);
+        byte[] bytes = await File.ReadAllBytesAsync(file.FullName, cancellationToken);
         DetectDocumentTextRequest request = new DetectDocumentTextRequest()
         {
             Document = new Document()
@@ -86,7 +86,7 @@ public class TextractProvider : IOCRProvider
 
         try
         {
-            DetectDocumentTextResponse response = await m_textractClient.DetectDocumentTextAsync(request);
+            DetectDocumentTextResponse response = await m_textractClient.DetectDocumentTextAsync(request, cancellationToken);
             return response.Blocks;
         }
         catch (AmazonTextractException exception)
@@ -95,15 +95,15 @@ public class TextractProvider : IOCRProvider
         }
     }
 
-    private async Task<List<Block>> DetectMultipageText(FileInfo file, string bucketName)
+    private async Task<List<Block>> DetectMultipageText(FileInfo file, string bucketName, CancellationToken cancellationToken)
     {
         string key = $"{Guid.NewGuid():N}{file.Extension}";
 
-        await UploadToBucket(file, bucketName, key);
+        await UploadToBucket(file, bucketName, key, cancellationToken);
         try
         {
-            string jobId = await StartTextDetectionJob(bucketName, key);
-            return await WaitForTextDetectionJob(jobId);
+            string jobId = await StartTextDetectionJob(bucketName, key, cancellationToken);
+            return await WaitForTextDetectionJob(jobId, cancellationToken);
         }
         finally
         {
@@ -111,7 +111,7 @@ public class TextractProvider : IOCRProvider
         }
     }
 
-    private async Task UploadToBucket(FileInfo file, string bucketName, string key)
+    private async Task UploadToBucket(FileInfo file, string bucketName, string key, CancellationToken cancellationToken)
     {
         using FileStream stream = file.OpenRead();
         PutObjectRequest request = new PutObjectRequest()
@@ -124,7 +124,7 @@ public class TextractProvider : IOCRProvider
 
         try
         {
-            await m_s3Client.PutObjectAsync(request);
+            await m_s3Client.PutObjectAsync(request, cancellationToken);
         }
         catch (AmazonS3Exception exception)
         {
@@ -132,7 +132,7 @@ public class TextractProvider : IOCRProvider
         }
     }
 
-    private async Task<string> StartTextDetectionJob(string bucketName, string key)
+    private async Task<string> StartTextDetectionJob(string bucketName, string key, CancellationToken cancellationToken)
     {
         StartDocumentTextDetectionRequest request = new StartDocumentTextDetectionRequest()
         {
@@ -148,7 +148,7 @@ public class TextractProvider : IOCRProvider
 
         try
         {
-            StartDocumentTextDetectionResponse response = await m_textractClient.StartDocumentTextDetectionAsync(request);
+            StartDocumentTextDetectionResponse response = await m_textractClient.StartDocumentTextDetectionAsync(request, cancellationToken);
             return response.JobId;
         }
         catch (AmazonTextractException exception)
@@ -157,7 +157,7 @@ public class TextractProvider : IOCRProvider
         }
     }
 
-    private async Task<List<Block>> WaitForTextDetectionJob(string jobId)
+    private async Task<List<Block>> WaitForTextDetectionJob(string jobId, CancellationToken cancellationToken)
     {
         List<Block> blocks = [];
         string? nextToken = null;
@@ -174,7 +174,7 @@ public class TextractProvider : IOCRProvider
             GetDocumentTextDetectionResponse response;
             try
             {
-                response = await m_textractClient.GetDocumentTextDetectionAsync(request);
+                response = await m_textractClient.GetDocumentTextDetectionAsync(request, cancellationToken);
             }
             catch (AmazonTextractException exception)
             {
@@ -194,7 +194,7 @@ public class TextractProvider : IOCRProvider
                     throw new TimeoutException($"Textract text detection job '{jobId}' did not complete in time.");
                 }
 
-                await Task.Delay(PollInterval);
+                await Task.Delay(PollInterval, cancellationToken);
                 continue;
             }
 

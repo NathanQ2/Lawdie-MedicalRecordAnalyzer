@@ -26,7 +26,7 @@ public class DirectTextProvider : IOCRProvider
 
     private const string PageSeparator = "\n\n";
 
-    public async Task<OCRResult> DetectTextFromFile(FileInfo file)
+    public async Task<OCRResult> DetectTextFromFile(FileInfo file, CancellationToken cancellationToken = default)
     {
         if (!file.Exists)
         {
@@ -38,13 +38,13 @@ public class DirectTextProvider : IOCRProvider
             return new OCRResult()
             {
                 File = file,
-                Text = await File.ReadAllTextAsync(file.FullName),
+                Text = await File.ReadAllTextAsync(file.FullName, cancellationToken),
             };
         }
 
         if (string.Equals(file.Extension, ".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            (string text, int[] pageStarts) = ExtractPdfText(file);
+            (string text, int[] pageStarts) = ExtractPdfText(file, cancellationToken);
             return new OCRResult()
             {
                 File = file,
@@ -56,13 +56,14 @@ public class DirectTextProvider : IOCRProvider
         throw new NotSupportedException($"'{file.Extension}' files have no embedded text to read.");
     }
 
-    private static (string Text, int[] PageStartPositions) ExtractPdfText(FileInfo file)
+    private static (string Text, int[] PageStartPositions) ExtractPdfText(FileInfo file, CancellationToken cancellationToken)
     {
         using PdfDocument document = PdfDocument.Open(file.FullName);
 
         List<string> pages = [];
         foreach (Page page in document.GetPages())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string pageText = ContentOrderTextExtractor.GetText(page);
             if (pageText.Count(c => !char.IsWhiteSpace(c)) < MinimumCharactersPerPage)
             {

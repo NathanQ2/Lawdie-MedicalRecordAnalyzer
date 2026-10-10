@@ -18,6 +18,11 @@ public class PICase
      */
     public SourceDocument[] Sources { get; set; } = [];
 
+    /**
+     * Records that could not be read, so they can be shown to the user rather than silently left out.
+     */
+    public SkippedFile[] SkippedFiles { get; set; } = [];
+
     public PICase(int numDocuments)
     {
         DocumentSummaries = new DocumentSummary[numDocuments];

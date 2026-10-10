@@ -1,0 +1,20 @@
+NORTHGATE PHARMACY - PATIENT MEDICATION HISTORY
+Patient: Morgan Ellis    DOB: 04/11/1985    Printed: 06/20/2026
+Period: 01/01/2026 to 06/20/2026
+
+FILL DATE    MEDICATION                          QTY   PRESCRIBER
+01/09/2026   Cyclobenzaprine 10 mg tablet         15    Kevin Osei, MD
+01/09/2026   Naproxen 500 mg tablet               20    Kevin Osei, MD
+01/13/2026   Naproxen 500 mg tablet               60    Alan Brooks, MD
+01/13/2026   Cyclobenzaprine 10 mg tablet         30    Alan Brooks, MD
+02/24/2026   Gabapentin 300 mg capsule            30    Sofia Ramirez, MD
+02/27/2026   Trazodone 50 mg tablet               30    Alan Brooks, MD
+03/26/2026   Gabapentin 300 mg capsule            90    Sofia Ramirez, MD
+03/29/2026   Trazodone 50 mg tablet               30    Alan Brooks, MD
+04/07/2026   Gabapentin 300 mg capsule            90    Daniel Weiss, MD
+05/06/2026   Gabapentin 300 mg capsule            90    Daniel Weiss, MD
+05/08/2026   Trazodone 50 mg tablet               30    Alan Brooks, MD
+06/05/2026   Gabapentin 300 mg capsule            90    Daniel Weiss, MD
+06/16/2026   Trazodone 50 mg tablet               30    Alan Brooks, MD
+
+Total out-of-pocket for listed fills: $412.65

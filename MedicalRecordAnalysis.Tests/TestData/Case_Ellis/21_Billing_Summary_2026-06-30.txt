@@ -1,0 +1,17 @@
+MEDICAL BILLING SUMMARY - PREPARED FROM PROVIDER ITEMIZED STATEMENTS
+Patient: Morgan Ellis    DOB: 04/11/1985    Date of Injury: 01/09/2026
+Statements through: 06/30/2026
+
+PROVIDER                              DATES OF SERVICE            CHARGES
+Metro Fire & Rescue (ambulance)       01/09/2026                  $1,845.00
+Mercy General Hospital ED             01/09/2026                  $6,912.40
+Mercy General Radiology (CT x2)       01/09/2026                  $3,280.00
+Northgate Family Medicine             01/13/2026 - 06/16/2026     $1,140.00
+Valley Rehab & Physical Therapy       01/20/2026 - 06/02/2026     $9,860.00
+Summit Imaging Center (MRI x2)        02/10/2026                  $4,150.00
+Cascade Orthopedic & Spine            02/24/2026 - 05/12/2026     $1,265.00
+Riverbend Pain Specialists            03/10/2026 - 04/07/2026     $4,725.00
+Clearwater Behavioral Health          04/21/2026 - 06/30/2026     $1,800.00
+Northgate Pharmacy                    01/09/2026 - 06/16/2026     $412.65
+
+TOTAL MEDICAL CHARGES                                             $35,390.05

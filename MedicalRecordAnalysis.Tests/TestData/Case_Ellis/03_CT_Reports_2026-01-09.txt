@@ -1,0 +1,21 @@
+MERCY GENERAL HOSPITAL - DEPARTMENT OF RADIOLOGY
+Patient: Morgan Ellis    DOB: 04/11/1985    MRN: MG-2210934
+Ordering Physician: Kevin Osei, MD    Reading Radiologist: Lena Park, MD
+
+EXAM: CT HEAD WITHOUT CONTRAST    Date: 01/09/2026 09:02
+INDICATION: Motor vehicle collision, headache.
+FINDINGS: No acute intracranial hemorrhage, mass effect, or midline shift. Gray-white differentiation
+is preserved. Ventricles are normal in size. No skull fracture.
+IMPRESSION: No acute intracranial abnormality.
+
+EXAM: CT CERVICAL SPINE WITHOUT CONTRAST    Date: 01/09/2026 09:04
+INDICATION: Rear-end motor vehicle collision, midline cervical tenderness.
+FINDINGS: No acute fracture or traumatic malalignment. Straightening of the normal cervical lordosis,
+which may be positional or related to muscle spasm. Mild disc space narrowing at C5-C6. Prevertebral
+soft tissues are normal.
+IMPRESSION:
+1. No acute fracture or malalignment of the cervical spine.
+2. Straightening of the cervical lordosis, which can be seen with muscle spasm.
+3. Mild degenerative disc space narrowing at C5-C6.
+
+Electronically signed: Lena Park, MD    01/09/2026 09:31

@@ -1,0 +1,19 @@
+SUMMIT IMAGING CENTER
+Patient: Morgan Ellis    DOB: 04/11/1985
+Exam: MRI LUMBAR SPINE WITHOUT CONTRAST    Date of Exam: 02/10/2026
+Referring Physician: Alan Brooks, MD    Radiologist: Robert Kim, MD
+
+CLINICAL HISTORY: Low back pain since motor vehicle collision 01/09/2026.
+
+FINDINGS:
+Alignment and vertebral body heights are normal. Conus terminates normally at L1.
+L1-L2 through L3-L4: Normal.
+L4-L5: Mild broad-based disc bulge without canal or foraminal stenosis. No nerve root impingement.
+L5-S1: Normal.
+Paraspinal muscles: Normal.
+
+IMPRESSION:
+1. Mild L4-L5 disc bulge without stenosis or nerve root impingement.
+2. Otherwise normal MRI of the lumbar spine.
+
+Electronically signed: Robert Kim, MD    02/11/2026

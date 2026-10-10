@@ -13,9 +13,8 @@ public class AnthropicProvider : ILLMProvider
         PropertyNameCaseInsensitive = true,
     };
 
-    private const int MaxTokens = 4096;
-    // Case summaries and demand drafts are long, cited, and preceded by thinking.
-    private const int GroundedMaxTokens = 16000;
+    // Responses are preceded by thinking, which counts against this limit; large cases need the room.
+    private const int MaxTokens = 16000;
     private const string DefaultModel = "claude-haiku-5-5";
 
     private const string DocumentSummarizationSystemPrompt =
@@ -103,7 +102,7 @@ public class AnthropicProvider : ILLMProvider
             Model = m_model,
         };
 
-        Message message = await m_client.Messages.Create(parameters);
+        Message message = await CreateMessage(parameters);
 
         StringBuilder summary = new StringBuilder();
         List<Citation> citations = [];
@@ -312,17 +311,13 @@ public class AnthropicProvider : ILLMProvider
 
         MessageCreateParams parameters = new MessageCreateParams()
         {
-            MaxTokens = GroundedMaxTokens,
+            MaxTokens = MaxTokens,
             System = system,
             Messages = [new MessageParam() { Role = Role.User, Content = content }],
             Model = m_model,
         };
 
-        Message message = await m_client.Messages.Create(parameters);
-        if (message.StopReason == StopReason.MaxTokens)
-        {
-            throw new InvalidOperationException("The response reached the token limit and was cut off.");
-        }
+        Message message = await CreateMessage(parameters);
 
         List<DraftSegment> segments = [];
         foreach (ContentBlock block in message.Content)
@@ -437,6 +432,20 @@ public class AnthropicProvider : ILLMProvider
         };
     }
 
+    /**
+     * Sends the request and rejects responses cut off by the token limit, so truncated text is never used.
+     */
+    private async Task<Message> CreateMessage(MessageCreateParams parameters)
+    {
+        Message message = await m_client.Messages.Create(parameters);
+        if (message.StopReason == StopReason.MaxTokens)
+        {
+            throw new InvalidOperationException("The response reached the token limit and was cut off.");
+        }
+
+        return message;
+    }
+
     private async Task<string> Complete(string system, string user)
     {
         MessageCreateParams parameters = new MessageCreateParams()
@@ -447,7 +456,7 @@ public class AnthropicProvider : ILLMProvider
             Model = m_model,
         };
 
-        Message message = await m_client.Messages.Create(parameters);
+        Message message = await CreateMessage(parameters);
 
         StringBuilder builder = new StringBuilder();
         foreach (ContentBlock content in message.Content)

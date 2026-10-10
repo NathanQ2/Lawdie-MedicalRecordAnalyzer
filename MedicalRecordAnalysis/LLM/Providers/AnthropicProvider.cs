@@ -73,15 +73,13 @@ public class AnthropicProvider : ILLMProvider
 
     public async Task<DocumentSummary> SummarizeDocument(FileInfo file, string text)
     {
-        // The record is sent as a plain-text document with citations enabled, so the API returns
-        // char_location citations that point into the exact text we sent.
-        DocumentBlockParam document = new DocumentBlockParam()
+        // The record is sent as a citable document of small chunks (lines, split into sentences), so each
+        // citation maps to an exact, tight span of the text we sent.
+        ChunkedText record = new ChunkedText(file.FullName, text, 0);
+        if (record.Chunks.Count == 0)
         {
-            Source = new PlainTextSource() { Data = text },
-            Title = file.Name,
-            Context = $"File type: {file.Extension}",
-            Citations = new CitationsConfigParam() { Enabled = true },
-        };
+            throw new InvalidOperationException($"'{file.Name}' has no text to summarize.");
+        }
 
         MessageCreateParams parameters = new MessageCreateParams()
         {
@@ -94,7 +92,7 @@ public class AnthropicProvider : ILLMProvider
                     Role = Role.User,
                     Content = new List<ContentBlockParam>()
                     {
-                        document,
+                        record.ToDocument(file.Name, $"File type: {file.Extension}"),
                         new TextBlockParam() { Text = DocumentSummarizationInstruction },
                     },
                 },
@@ -115,31 +113,16 @@ public class AnthropicProvider : ILLMProvider
 
             summary.Append(block.Text);
 
-            if (block.Citations is null)
+            foreach (TextCitation textCitation in block.Citations ?? [])
             {
-                continue;
-            }
-
-            foreach (TextCitation textCitation in block.Citations)
-            {
-                if (!textCitation.TryPickCitationCharLocation(out CitationCharLocation? location))
+                if (textCitation.TryPickCitationContentBlockLocation(out CitationContentBlockLocation? location))
                 {
-                    continue;
+                    Citation? citation = record.Resolve((int)location.StartBlockIndex, (int)location.EndBlockIndex, location.CitedText, block.Text.Trim());
+                    if (citation is not null)
+                    {
+                        citations.Add(citation);
+                    }
                 }
-
-                int? start = LocateCitedText(text, location.CitedText, (int)location.StartCharIndex);
-                if (start is null)
-                {
-                    continue;
-                }
-
-                citations.Add(new Citation()
-                {
-                    FilePath = file.FullName,
-                    CitedText = location.CitedText,
-                    StartPosition = start.Value,
-                    Claim = block.Text.Trim(),
-                });
             }
         }
 
@@ -153,28 +136,6 @@ public class AnthropicProvider : ILLMProvider
             Summary = summary.ToString().Trim(),
             Citations = citations.ToArray(),
         };
-    }
-
-    /**
-     * Confirms the cited text really occurs in the source. The API's character index is trusted when it
-     * lines up; otherwise (e.g. index units differ for non-BMP characters) the text is searched for.
-     * Returns null if the cited text cannot be found, so the citation is dropped rather than misplaced.
-     */
-    internal static int? LocateCitedText(string text, string citedText, int startIndex)
-    {
-        if (string.IsNullOrWhiteSpace(citedText))
-        {
-            return null;
-        }
-
-        if (startIndex >= 0 && startIndex + citedText.Length <= text.Length &&
-            string.CompareOrdinal(text, startIndex, citedText, 0, citedText.Length) == 0)
-        {
-            return startIndex;
-        }
-
-        int index = text.IndexOf(citedText, StringComparison.Ordinal);
-        return index >= 0 ? index : null;
     }
 
     public async Task<CaseSummary> SummarizeCase(PICase piCase)
@@ -241,57 +202,30 @@ public class AnthropicProvider : ILLMProvider
     }
 
     /**
-     * Each passage becomes a citable plain-text document, so the API cites individual sentences with
-     * char_location citations that are offset back into the source file's extracted text.
+     * Each passage becomes a citable document of small chunks, so citations map to exact spans that are
+     * offset back into the source file's extracted text.
      */
     private static (List<DocumentBlockParam> Documents, CitationResolver Resolve) BuildPassageDocuments(IReadOnlyList<RetrievedPassage> passages)
     {
-        List<DocumentBlockParam> documents = passages.Select(passage => new DocumentBlockParam()
-        {
-            Source = new PlainTextSource() { Data = passage.Text },
-            Title = Path.GetFileName(passage.FilePath),
-            Context = $"Excerpt from {Path.GetFileName(passage.FilePath)} starting at character {passage.StartPosition}.",
-            Citations = new CitationsConfigParam() { Enabled = true },
-        }).ToList();
+        List<ChunkedText> excerpts = passages
+            .Select(passage => new ChunkedText(passage.FilePath, passage.Text, passage.StartPosition))
+            .Where(excerpt => excerpt.Chunks.Count > 0)
+            .ToList();
+
+        List<DocumentBlockParam> documents = excerpts.Select(excerpt => excerpt.ToDocument(Path.GetFileName(excerpt.FilePath),
+            $"Excerpt from {Path.GetFileName(excerpt.FilePath)} starting at character {excerpt.BaseOffset}.")).ToList();
 
         return (documents, (citation, claim) =>
         {
-            if (!citation.TryPickCitationCharLocation(out CitationCharLocation? location))
+            if (!citation.TryPickCitationContentBlockLocation(out CitationContentBlockLocation? location) ||
+                location.DocumentIndex < 0 || location.DocumentIndex >= excerpts.Count)
             {
                 return [];
             }
 
-            Citation? resolved = ResolvePassageCitation(passages, (int)location.DocumentIndex, location.CitedText, (int)location.StartCharIndex, claim);
+            Citation? resolved = excerpts[(int)location.DocumentIndex].Resolve((int)location.StartBlockIndex, (int)location.EndBlockIndex, location.CitedText, claim);
             return resolved is null ? [] : [resolved];
         });
-    }
-
-    /**
-     * Maps a char_location citation within a passage document to the source file, verifying the cited text
-     * really occurs in the passage. Returns null for out-of-range documents or text not found in the passage.
-     */
-    internal static Citation? ResolvePassageCitation(IReadOnlyList<RetrievedPassage> passages, int documentIndex,
-        string citedText, int startCharIndex, string claim)
-    {
-        if (documentIndex < 0 || documentIndex >= passages.Count)
-        {
-            return null;
-        }
-
-        RetrievedPassage passage = passages[documentIndex];
-        int? start = LocateCitedText(passage.Text, citedText, startCharIndex);
-        if (start is null)
-        {
-            return null;
-        }
-
-        return new Citation()
-        {
-            FilePath = passage.FilePath,
-            CitedText = citedText,
-            StartPosition = passage.StartPosition + start.Value,
-            Claim = claim,
-        };
     }
 
     /**
@@ -552,5 +486,75 @@ public class AnthropicProvider : ILLMProvider
     {
         public string? Summary { get; set; }
         public List<string>? QuoteIds { get; set; }
+    }
+
+    /**
+     * Text split into citable chunks with TextChunker. BaseOffset is where the text starts within its source
+     * file's extracted text, so resolved citations point into the whole file.
+     */
+    internal sealed class ChunkedText
+    {
+        public ChunkedText(string filePath, string text, int baseOffset)
+        {
+            FilePath = filePath;
+            Text = text;
+            BaseOffset = baseOffset;
+            Chunks = TextChunker.Chunk(text);
+        }
+
+        public string FilePath { get; }
+        public string Text { get; }
+        public int BaseOffset { get; }
+        public List<(int Start, int End)> Chunks { get; }
+
+        public DocumentBlockParam ToDocument(string title, string context)
+        {
+            return new DocumentBlockParam()
+            {
+                Source = new ContentBlockSource()
+                {
+                    Content = Chunks.Select(chunk => (MessageContentBlockSourceContent)new TextBlockParam() { Text = Text[chunk.Start..chunk.End] }).ToList(),
+                },
+                Title = title,
+                Context = context,
+                Citations = new CitationsConfigParam() { Enabled = true },
+            };
+        }
+
+        /**
+         * Maps an end-exclusive chunk range to the exact source span from its first chunk to its last. The
+         * API's cited text must match the chunks we sent (ignoring whitespace), so a citation that does not
+         * line up with the source is dropped rather than misplaced.
+         */
+        public Citation? Resolve(int startBlockIndex, int endBlockIndex, string citedText, string claim)
+        {
+            int start = startBlockIndex;
+            int end = Math.Max(endBlockIndex, start + 1);
+            if (start < 0 || end > Chunks.Count)
+            {
+                return null;
+            }
+
+            string expected = string.Concat(Chunks.Skip(start).Take(end - start).Select(chunk => Text[chunk.Start..chunk.End]));
+            if (WithoutWhitespace(expected) != WithoutWhitespace(citedText))
+            {
+                return null;
+            }
+
+            int spanStart = Chunks[start].Start;
+            int spanEnd = Chunks[end - 1].End;
+            return new Citation()
+            {
+                FilePath = FilePath,
+                CitedText = Text[spanStart..spanEnd],
+                StartPosition = BaseOffset + spanStart,
+                Claim = claim,
+            };
+        }
+
+        private static string WithoutWhitespace(string text)
+        {
+            return string.Concat(text.Where(c => !char.IsWhiteSpace(c)));
+        }
     }
 }

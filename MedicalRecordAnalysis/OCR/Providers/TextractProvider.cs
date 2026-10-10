@@ -1,3 +1,4 @@
+using System.Text;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.Textract;
@@ -63,10 +64,12 @@ public class TextractProvider : IOCRProvider
             blocks = await DetectSinglePageText(file);
         }
 
+        (string text, int[] pageStarts) = BuildText(blocks);
         return new OCRResult()
         {
             File = file,
-            Text = BuildText(blocks),
+            Text = text,
+            PageStartPositions = pageStarts,
         };
     }
 
@@ -218,14 +221,33 @@ public class TextractProvider : IOCRProvider
         }
     }
 
-    private static string BuildText(List<Block> blocks)
+    /**
+     * Joins LINE blocks in reading order, one line per row and a blank line between pages, and records the
+     * offset where each page begins.
+     */
+    private static (string Text, int[] PageStartPositions) BuildText(List<Block> blocks)
     {
-        IEnumerable<Block> lines = blocks
+        IEnumerable<IGrouping<int, Block>> pages = blocks
             .Where(block => block.BlockType == BlockType.LINE && block.Text is not null)
-            .OrderBy(block => block.Page)
-            .ThenBy(block => block.Geometry?.BoundingBox?.Top ?? 0)
-            .ThenBy(block => block.Geometry?.BoundingBox?.Left ?? 0);
+            .GroupBy(block => block.Page ?? 1)
+            .OrderBy(page => page.Key);
 
-        return string.Join("\n", lines.Select(line => line.Text));
+        StringBuilder text = new StringBuilder();
+        List<int> pageStarts = [];
+        foreach (IGrouping<int, Block> page in pages)
+        {
+            if (text.Length > 0)
+            {
+                text.Append("\n\n");
+            }
+
+            pageStarts.Add(text.Length);
+            text.Append(string.Join("\n", page
+                .OrderBy(block => block.Geometry?.BoundingBox?.Top ?? 0)
+                .ThenBy(block => block.Geometry?.BoundingBox?.Left ?? 0)
+                .Select(line => line.Text)));
+        }
+
+        return (text.ToString(), pageStarts.ToArray());
     }
 }

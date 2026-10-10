@@ -34,6 +34,26 @@ public sealed class DirectTextProviderTests : IDisposable
     }
 
     [Fact]
+    public async Task RecordsWhereEachPdfPageStarts()
+    {
+        FileInfo file = m_files.WritePdf("record.pdf", "Page one: acute cervical strain diagnosed.", "Page two: referred to physical therapy.");
+
+        OCRResult result = await m_provider.DetectTextFromFile(file);
+
+        Assert.Equal(2, result.PageStartPositions.Length);
+        Assert.Equal(0, result.PageStartPositions[0]);
+        Assert.StartsWith("Page two", result.Text[result.PageStartPositions[1]..]);
+    }
+
+    [Fact]
+    public async Task PlainTextFilesHaveNoPageBreaks()
+    {
+        OCRResult result = await m_provider.DetectTextFromFile(m_files.WriteText("note.txt", "Neck pain."));
+
+        Assert.Empty(result.PageStartPositions);
+    }
+
+    [Fact]
     public async Task RejectsPdfWithAnyPageMissingText()
     {
         FileInfo file = m_files.WritePdf("partial-scan.pdf", "Page one: acute cervical strain diagnosed.", null);

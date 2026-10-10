@@ -33,28 +33,30 @@ public class DirectTextProvider : IOCRProvider
             throw new FileNotFoundException($"The source file does not exist: {file.FullName}", file.FullName);
         }
 
-        string text;
         if (PlainTextExtensions.Contains(file.Extension))
         {
-            text = await File.ReadAllTextAsync(file.FullName);
-        }
-        else if (string.Equals(file.Extension, ".pdf", StringComparison.OrdinalIgnoreCase))
-        {
-            text = ExtractPdfText(file);
-        }
-        else
-        {
-            throw new NotSupportedException($"'{file.Extension}' files have no embedded text to read.");
+            return new OCRResult()
+            {
+                File = file,
+                Text = await File.ReadAllTextAsync(file.FullName),
+            };
         }
 
-        return new OCRResult()
+        if (string.Equals(file.Extension, ".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            File = file,
-            Text = text,
-        };
+            (string text, int[] pageStarts) = ExtractPdfText(file);
+            return new OCRResult()
+            {
+                File = file,
+                Text = text,
+                PageStartPositions = pageStarts,
+            };
+        }
+
+        throw new NotSupportedException($"'{file.Extension}' files have no embedded text to read.");
     }
 
-    private static string ExtractPdfText(FileInfo file)
+    private static (string Text, int[] PageStartPositions) ExtractPdfText(FileInfo file)
     {
         using PdfDocument document = PdfDocument.Open(file.FullName);
 
@@ -75,6 +77,12 @@ public class DirectTextProvider : IOCRProvider
             throw new NotSupportedException("The PDF has no pages.");
         }
 
-        return string.Join(PageSeparator, pages);
+        int[] pageStarts = new int[pages.Count];
+        for (int i = 1; i < pages.Count; i++)
+        {
+            pageStarts[i] = pageStarts[i - 1] + pages[i - 1].Length + PageSeparator.Length;
+        }
+
+        return (string.Join(PageSeparator, pages), pageStarts);
     }
 }

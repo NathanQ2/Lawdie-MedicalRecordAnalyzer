@@ -77,6 +77,22 @@ public class DemandLetterRendererTests
         Assert.DoesNotContain("#", letter);
     }
 
+    [Fact]
+    public void SourceNotesShowPagesWhenKnown()
+    {
+        Citation onePage = new Citation() { FilePath = "/records/ed.pdf", CitedText = "Denies LOC.", StartPosition = 900, PageNumber = 2 };
+        Citation twoPages = new Citation() { FilePath = "/records/pt.pdf", CitedText = "NDI 44%.", StartPosition = 4000, PageNumber = 3, EndPageNumber = 4 };
+        DemandDraft draft = new DemandDraft()
+        {
+            Segments = [new DraftSegment() { Text = "Denied LOC", Citations = [onePage] }, new DraftSegment() { Text = " and NDI 44%", Citations = [twoPages] }],
+        };
+
+        string letter = DemandLetterRenderer.Render(draft, new PICase(0), DraftFormat.Markdown);
+
+        Assert.Contains("[^1]: ed.pdf, p. 2: \"Denies LOC.\"", letter);
+        Assert.Contains("[^2]: pt.pdf, pp. 3-4: \"NDI 44%.\"", letter);
+    }
+
     [Theory]
     [InlineData("Draft.txt", DraftFormat.PlainText)]
     [InlineData("Draft.TXT", DraftFormat.PlainText)]

@@ -122,6 +122,19 @@ public static partial class DemandLetterRenderer
     private static string DescribeSource(Citation citation)
     {
         string quote = WhitespacePattern().Replace(citation.CitedText, " ").Trim();
-        return $"{Path.GetFileName(citation.FilePath)}, character {citation.StartPosition}: \"{quote}\"";
+        return $"{Path.GetFileName(citation.FilePath)}, {DescribeLocation(citation)}: \"{quote}\"";
+    }
+
+    /**
+     * "p. 3" or "pp. 3-4"; citations without page numbers (older exports) fall back to the character offset.
+     */
+    private static string DescribeLocation(Citation citation)
+    {
+        if (citation.PageNumber is null)
+        {
+            return $"character {citation.StartPosition}";
+        }
+
+        return citation.EndPageNumber is int endPage ? $"pp. {citation.PageNumber}-{endPage}" : $"p. {citation.PageNumber}";
     }
 }

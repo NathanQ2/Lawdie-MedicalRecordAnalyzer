@@ -52,7 +52,8 @@ public class CaseEllisTests
         OCRResult result = await new DirectTextProvider().DetectTextFromFile(notes);
 
         Assert.Equal(33, result.Text.Split("DAILY NOTE - Visit").Length - 1);
-        Assert.Contains("Visit 33", result.Text);
+        Assert.Equal(17, result.PageStartPositions.Length);
+        Assert.Equal(17, PageLocator.PageAt(result.PageStartPositions, result.Text.IndexOf("Visit 33", StringComparison.Ordinal)));
     }
 
     // PDF text wraps lines, so phrases are compared with whitespace collapsed.

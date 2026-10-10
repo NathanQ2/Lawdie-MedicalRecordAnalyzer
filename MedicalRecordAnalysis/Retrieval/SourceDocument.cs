@@ -17,6 +17,10 @@ public class SourceDocument
 {
     public required string FilePath { get; init; }
     public Passage[] Passages { get; init; } = [];
+    /**
+     * The offset in the extracted text where each page begins; empty for unpaged sources (a single page).
+     */
+    public int[] PageStartPositions { get; init; } = [];
 }
 
 /**

@@ -10,12 +10,6 @@ public readonly record struct GeneratedSegment(string Text, bool IsCited);
  */
 public static class GroundingCheck
 {
-    // A period after one of these words does not end a sentence.
-    private static readonly HashSet<string> Abbreviations = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "dr", "mr", "mrs", "ms", "st", "vs", "no", "approx", "e.g", "i.e", "etc",
-    };
-
     /**
      * Returns the sentences of the generated text that no cited segment overlaps, so they can be
      * reviewed before anyone relies on them. Sentences end at '.', '!' or '?' followed by whitespace,
@@ -61,31 +55,6 @@ public static class GroundingCheck
 
     private static bool IsSentenceEnd(string text, int index)
     {
-        char c = text[index];
-        if (c == '\n')
-        {
-            return true;
-        }
-
-        if (c is not ('.' or '!' or '?') || (index + 1 < text.Length && !char.IsWhiteSpace(text[index + 1])))
-        {
-            return false;
-        }
-
-        if (c == '.')
-        {
-            int wordStart = index;
-            while (wordStart > 0 && !char.IsWhiteSpace(text[wordStart - 1]))
-            {
-                wordStart--;
-            }
-
-            if (Abbreviations.Contains(text[wordStart..index]))
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return text[index] == '\n' || TextChunker.IsSentenceEnd(text, index);
     }
 }

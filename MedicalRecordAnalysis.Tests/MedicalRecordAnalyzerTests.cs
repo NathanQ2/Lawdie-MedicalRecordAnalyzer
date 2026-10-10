@@ -45,7 +45,7 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
 
         string letter = await File.ReadAllTextAsync(letterFile.FullName);
         Assert.Contains("TestDraftNarrative[^1]", letter);
-        Assert.Contains($"[^1]: {note.Name}, character 0: \"TestCitation\"", letter);
+        Assert.Contains($"[^1]: {note.Name}, p. 1: \"TestCitation\"", letter);
         Assert.Contains("## Attorney Review - Remove Before Sending", letter);
         Assert.Contains("- [CLAIM NUMBER]", letter);
     }

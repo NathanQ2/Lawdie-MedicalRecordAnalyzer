@@ -34,12 +34,12 @@ Each case folder contains:
 The UI checks the status of a running job every couple of seconds. Live updates (server-sent events) can come later.
 
 ## Milestones
-1. **Library refactor** (the CLI's behavior is unchanged)
+1. ✅ **Library refactor** (the CLI's behavior is unchanged)
    - `Ingest` and `Draft` return a `PICase` and a `DemandDraft` instead of writing files, and support progress reporting and cancellation.
    - `ingest` saves each document's summary as it finishes. Unchanged files are reused, so a failure or newly added records only cost the new work.
    - Skipped files and the reason for each are part of the result.
    - The draft is also saved as structured JSON (segments with their citations).
-2. **API**
+2. ✅ **API**
    - The case store, file uploads, serving original files, the job worker, and the endpoints listed below.
    - Integration tests use the dummy providers, so they cost nothing to run.
 3. **Frontend setup**

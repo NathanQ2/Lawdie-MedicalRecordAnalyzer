@@ -58,10 +58,17 @@ public static partial class DemandLetterRenderer
         AppendSection(builder, markdown, "Contradictions between records", piCase.Contradictions.Select(contradiction =>
             contradiction.Summary + string.Concat(contradiction.Citations.Select(citation => $"\n    - {DescribeSource(citation)}"))));
         AppendSection(builder, markdown, "Statements without a cited source", draft.UnsupportedStatements);
-        AppendSection(builder, markdown, "Placeholders to fill in",
-            PlaceholderPattern().Matches(draft.Narrative).Select(match => match.Value).Distinct());
+        AppendSection(builder, markdown, "Placeholders to fill in", FindPlaceholders(draft.Narrative));
 
         return builder.ToString().TrimEnd() + Environment.NewLine;
+    }
+
+    /**
+     * The distinct bracketed placeholders in capitals (such as [CLAIM NUMBER]) in the text, in order.
+     */
+    public static IReadOnlyList<string> FindPlaceholders(string text)
+    {
+        return PlaceholderPattern().Matches(text).Select(match => match.Value).Distinct().ToList();
     }
 
     /**

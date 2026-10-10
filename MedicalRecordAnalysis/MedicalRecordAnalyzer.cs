@@ -10,7 +10,7 @@ public class MedicalRecordAnalyzer
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions() { WriteIndented = true };
     
-    private ILLMProvider m_llmProvider = new DummyLLMProvider();
+    private ILLMProvider m_llmProvider = new AnthropicProvider();
     private IOCRProvider m_ocrProvider = new DummyOCRProvider();
     
     public void Ingest(DirectoryInfo directory, FileInfo output)
@@ -45,7 +45,7 @@ public class MedicalRecordAnalyzer
         piCase.Contradictions = verificationTask.Result.Contradictions;
         
         // 5. Export
-        StreamWriter sw = output.CreateText();
+        using StreamWriter sw = output.CreateText();
         string jsonString = JsonSerializer.Serialize(piCase, JsonSerializerOptions);
         sw.Write(jsonString);
         sw.Flush();

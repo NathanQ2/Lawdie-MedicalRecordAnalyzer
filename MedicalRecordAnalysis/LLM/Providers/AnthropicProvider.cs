@@ -72,7 +72,7 @@ public class AnthropicProvider : ILLMProvider
                 int index = text.IndexOf(quote, StringComparison.Ordinal);
                 if (index >= 0)
                 {
-                    citations.Add(new Citation() { File = file, CitedText = quote, StartPosition = index });
+                    citations.Add(new Citation() { FilePath = file.FullName, CitedText = quote, StartPosition = index });
                 }
             }
         }

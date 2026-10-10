@@ -6,7 +6,7 @@ public class DummyLLMProvider : ILLMProvider
     {
         return new DocumentSummary()
         {
-            Citations = [new Citation() { File = file, CitedText = "TestCitation", StartPosition = 0 }],
+            Citations = [new Citation() { FilePath = file.FullName, CitedText = "TestCitation", StartPosition = 0 }],
             Summary = "TestDocumentSummary"
         };
     }

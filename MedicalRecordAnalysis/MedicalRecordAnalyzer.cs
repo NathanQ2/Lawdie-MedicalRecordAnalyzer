@@ -49,12 +49,12 @@ public class MedicalRecordAnalyzer
         PICase piCase = new PICase(documentSummaries.Count);
         documentSummaries.CopyTo(piCase.DocumentSummaries);
         
-        // 3. Summarize Case
-        piCase.Summary = await m_llmProvider.SummarizeCase(piCase);
-        
-        // 4. Verify facts
+        // 3. Find contradictions, so the case summary can present disputed facts as disputed
         VerificationResult verification = await m_llmProvider.Verify(piCase);
         piCase.Contradictions = verification.Contradictions;
+        
+        // 4. Summarize the case, grounded in the extracted quotes
+        piCase.Summary = await m_llmProvider.SummarizeCase(piCase);
         
         // 5. Export
         await using FileStream stream = output.Create();

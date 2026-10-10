@@ -68,4 +68,43 @@ public class AnthropicProviderLiveTests
         Assert.NotEmpty(result.Contradictions);
         Assert.All(result.Contradictions, contradiction => Assert.NotEmpty(contradiction.Citations));
     }
+
+    [LiveFact(ApiKeyVariable)]
+    public async Task SummarizeCaseCitesQuotesAndPresentsDisputedFacts()
+    {
+        // The records disagree on the collision date (ER implies 03/14/2026, PT intake says 03/12/2026).
+        string[] fileNames = ["ER_Visit_2026-03-14.txt", "PT_Intake_2026-03-20.txt"];
+        AnthropicProvider provider = new AnthropicProvider();
+
+        PICase piCase = new PICase(fileNames.Length);
+        Dictionary<string, string> sources = [];
+        for (int i = 0; i < fileNames.Length; i++)
+        {
+            FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", fileNames[i]));
+            sources[file.FullName] = await File.ReadAllTextAsync(file.FullName);
+            piCase.DocumentSummaries[i] = await provider.SummarizeDocument(file, sources[file.FullName]);
+        }
+
+        piCase.Contradictions = (await provider.Verify(piCase)).Contradictions;
+        CaseSummary summary = await provider.SummarizeCase(piCase);
+
+        m_output.WriteLine($"CASE SUMMARY:\n{summary.Summary}\n");
+        m_output.WriteLine($"CITATIONS: {summary.Citations.Length}");
+        m_output.WriteLine($"UNSUPPORTED STATEMENTS ({summary.UnsupportedStatements.Length}):");
+        foreach (string statement in summary.UnsupportedStatements)
+        {
+            m_output.WriteLine($"  - {statement}");
+        }
+
+        Assert.NotEmpty(summary.Citations);
+        foreach (Citation citation in summary.Citations)
+        {
+            Assert.Equal(citation.CitedText, sources[citation.FilePath].Substring(citation.StartPosition, citation.CitationLength));
+            Assert.False(string.IsNullOrWhiteSpace(citation.Claim));
+        }
+
+        // Both versions of the disputed date should appear rather than one being stated as fact.
+        Assert.Contains("03/12/2026", summary.Summary);
+        Assert.Contains("03/14/2026", summary.Summary);
+    }
 }

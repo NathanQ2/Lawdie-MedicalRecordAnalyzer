@@ -26,11 +26,13 @@ public class AnthropicProvider : ILLMProvider
         "Summarize the case-relevant facts in this medical record, citing the record for each fact.";
 
     private const string CaseSummarizationSystemPrompt =
-        "You are a legal intake assistant for a personal injury law firm. Summarize the case " +
-        "from the provided document summaries and supporting quotes, covering the injury, " +
-        "treatment timeline, providers, diagnoses, and any causal relationship to the incident. " +
-        "Use only the provided information; never add facts that are not present. Respond with " +
-        "JSON only, using this exact shape: {\"summary\":\"<case summary>\"}";
+        "You are a legal intake assistant for a personal injury law firm. Write a case summary " +
+        "covering the incident, injuries, treatment timeline, providers, diagnoses, and any causal " +
+        "relationship to the incident. Each provided document contains verbatim quotes from one of " +
+        "the client's medical records. State only facts supported by these quotes and cite them for " +
+        "every fact; never add facts that are not present. Where the records disagree, present each " +
+        "record's version with its citation and do not choose between them. Respond with plain " +
+        "prose only: no preamble, headings, or JSON.";
 
     private const string VerificationSystemPrompt =
         "You are a legal intake quality reviewer. Compare the provided document summaries and " +
@@ -159,19 +161,134 @@ public class AnthropicProvider : ILLMProvider
 
     public async Task<CaseSummary> SummarizeCase(PICase piCase)
     {
-        string user = BuildCaseContext(piCase);
-        string response = await Complete(CaseSummarizationSystemPrompt, user);
-
-        CaseSummaryDto? dto = Deserialize<CaseSummaryDto>(response);
-        if (dto is null || dto.Summary is null)
+        // Each record's extracted quotes become a citable custom-content document with one block per quote,
+        // so every statement in the case summary traces back to verbatim quotes from the source records.
+        List<IReadOnlyList<Citation>> documentQuotes = [];
+        List<ContentBlockParam> content = [];
+        foreach (IGrouping<string, Citation> record in NumberQuotes(piCase).GroupBy(citation => citation.FilePath))
         {
-            throw new InvalidOperationException("The model returned an invalid case summary.");
+            List<Citation> quotes = record.ToList();
+            documentQuotes.Add(quotes);
+            content.Add(new DocumentBlockParam()
+            {
+                Source = new ContentBlockSource()
+                {
+                    Content = quotes.Select(quote => (MessageContentBlockSourceContent)new TextBlockParam() { Text = quote.CitedText }).ToList(),
+                },
+                Title = Path.GetFileName(record.Key),
+                Citations = new CitationsConfigParam() { Enabled = true },
+            });
+        }
+
+        if (documentQuotes.Count == 0)
+        {
+            throw new InvalidOperationException("No quotes were extracted from the records, so a grounded case summary cannot be written.");
+        }
+
+        content.Add(new TextBlockParam() { Text = BuildCaseSummaryInstruction(piCase) });
+
+        MessageCreateParams parameters = new MessageCreateParams()
+        {
+            MaxTokens = MaxTokens,
+            System = CaseSummarizationSystemPrompt,
+            Messages = [new MessageParam() { Role = Role.User, Content = content }],
+            Model = m_model,
+        };
+
+        Message message = await m_client.Messages.Create(parameters);
+
+        List<GeneratedSegment> segments = [];
+        List<Citation> citations = [];
+        foreach (ContentBlock block in message.Content)
+        {
+            if (!block.TryPickText(out TextBlock? text))
+            {
+                continue;
+            }
+
+            bool isCited = false;
+            foreach (TextCitation textCitation in text.Citations ?? [])
+            {
+                if (!textCitation.TryPickCitationContentBlockLocation(out CitationContentBlockLocation? location))
+                {
+                    continue;
+                }
+
+                Citation[] supporting = ResolveContentBlockCitation(documentQuotes, (int)location.DocumentIndex,
+                    (int)location.StartBlockIndex, (int)location.EndBlockIndex, text.Text.Trim());
+                citations.AddRange(supporting);
+                isCited |= supporting.Length > 0;
+            }
+
+            segments.Add(new GeneratedSegment(text.Text, isCited));
+        }
+
+        string summary = string.Concat(segments.Select(segment => segment.Text)).Trim();
+        if (summary.Length == 0)
+        {
+            throw new InvalidOperationException("The model returned an empty case summary.");
         }
 
         return new CaseSummary()
         {
-            Summary = dto.Summary,
+            Summary = summary,
+            Citations = citations.ToArray(),
+            UnsupportedStatements = GroundingCheck.FindUnsupportedSentences(segments),
         };
+    }
+
+    private static string BuildCaseSummaryInstruction(PICase piCase)
+    {
+        StringBuilder builder = new StringBuilder();
+
+        if (piCase.Contradictions.Length > 0)
+        {
+            builder.AppendLine("A separate review found these contradictions between or within the records:");
+            foreach (Contradiction contradiction in piCase.Contradictions)
+            {
+                builder.Append("- ").AppendLine(contradiction.Summary);
+            }
+        }
+        else
+        {
+            builder.AppendLine("A separate review found no contradictions between the records.");
+        }
+
+        builder.AppendLine();
+        builder.Append("Write the case summary, citing the quotes for every fact.");
+        return builder.ToString();
+    }
+
+    /**
+     * Maps a content_block_location citation (document index plus an end-exclusive block range) back to the
+     * quotes those blocks were built from, with the summary text it supports as the Claim. Out-of-range
+     * locations resolve to nothing.
+     */
+    internal static Citation[] ResolveContentBlockCitation(IReadOnlyList<IReadOnlyList<Citation>> documentQuotes,
+        int documentIndex, int startBlockIndex, int endBlockIndex, string claim)
+    {
+        if (documentIndex < 0 || documentIndex >= documentQuotes.Count)
+        {
+            return [];
+        }
+
+        IReadOnlyList<Citation> quotes = documentQuotes[documentIndex];
+        int start = Math.Max(startBlockIndex, 0);
+        int end = Math.Min(Math.Max(endBlockIndex, start + 1), quotes.Count);
+
+        List<Citation> resolved = [];
+        for (int i = start; i < end; i++)
+        {
+            resolved.Add(new Citation()
+            {
+                FilePath = quotes[i].FilePath,
+                CitedText = quotes[i].CitedText,
+                StartPosition = quotes[i].StartPosition,
+                Claim = claim,
+            });
+        }
+
+        return resolved.ToArray();
     }
 
     public async Task<VerificationResult> Verify(PICase piCase)
@@ -301,11 +418,6 @@ public class AnthropicProvider : ILLMProvider
         }
 
         return citations.ToArray();
-    }
-
-    private sealed class CaseSummaryDto
-    {
-        public string? Summary { get; set; }
     }
 
     private sealed class VerificationResultDto

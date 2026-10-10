@@ -13,15 +13,17 @@ public class AnthropicProvider : ILLMProvider
     };
 
     private const int MaxTokens = 4096;
-    private const string DefaultModel = "claude-sonnet-4-5";
+    private const string DefaultModel = "claude-haiku-5-5";
 
     private const string DocumentSummarizationSystemPrompt =
         "You are a legal intake assistant for a personal injury law firm. Extract from the " +
-        "medical record only facts that are explicitly supported by the text, including " +
-        "injuries, diagnoses, treatment dates, providers, and causal statements. Never infer, " +
-        "assume, or invent information. Every quote must be an exact, verbatim substring of " +
-        "the provided text. Respond with JSON only, using this exact shape: " +
-        "{\"summary\":\"<case-relevant summary>\",\"quotes\":[\"<exact quote>\"]}";
+        "provided medical record only facts that are explicitly supported by the document, " +
+        "including injuries, diagnoses, treatment dates, providers, and causal statements. " +
+        "Never infer, assume, or invent information. Cite the document for every fact you " +
+        "state. Respond with a plain-prose summary only: no preamble, headings, or JSON.";
+
+    private const string DocumentSummarizationInstruction =
+        "Summarize the case-relevant facts in this medical record, citing the record for each fact.";
 
     private const string CaseSummarizationSystemPrompt =
         "You are a legal intake assistant for a personal injury law firm. Summarize the case " +
@@ -50,38 +52,108 @@ public class AnthropicProvider : ILLMProvider
 
     public async Task<DocumentSummary> SummarizeDocument(FileInfo file, string text)
     {
-        string user = $"Source file: {file.Name}\nFile type: {file.Extension}\n\n\n{text}";
-        string response = await Complete(DocumentSummarizationSystemPrompt, user);
-
-        DocumentSummaryDto? dto = Deserialize<DocumentSummaryDto>(response);
-        if (dto is null || dto.Summary is null)
+        // The record is sent as a plain-text document with citations enabled, so the API returns
+        // char_location citations that point into the exact text we sent.
+        DocumentBlockParam document = new DocumentBlockParam()
         {
-            throw new InvalidOperationException($"The model returned an invalid document summary for '{file.Name}'.");
-        }
+            Source = new PlainTextSource() { Data = text },
+            Title = file.Name,
+            Context = $"File type: {file.Extension}",
+            Citations = new CitationsConfigParam() { Enabled = true },
+        };
 
+        MessageCreateParams parameters = new MessageCreateParams()
+        {
+            MaxTokens = MaxTokens,
+            System = DocumentSummarizationSystemPrompt,
+            Messages =
+            [
+                new MessageParam()
+                {
+                    Role = Role.User,
+                    Content = new List<ContentBlockParam>()
+                    {
+                        document,
+                        new TextBlockParam() { Text = DocumentSummarizationInstruction },
+                    },
+                },
+            ],
+            Model = m_model,
+        };
+
+        Message message = await m_client.Messages.Create(parameters);
+
+        StringBuilder summary = new StringBuilder();
         List<Citation> citations = [];
-        if (dto.Quotes is not null)
+        foreach (ContentBlock content in message.Content)
         {
-            foreach (string quote in dto.Quotes)
+            if (!content.TryPickText(out TextBlock? block))
             {
-                if (string.IsNullOrWhiteSpace(quote))
+                continue;
+            }
+
+            summary.Append(block.Text);
+
+            if (block.Citations is null)
+            {
+                continue;
+            }
+
+            foreach (TextCitation textCitation in block.Citations)
+            {
+                if (!textCitation.TryPickCitationCharLocation(out CitationCharLocation? location))
                 {
                     continue;
                 }
 
-                int index = text.IndexOf(quote, StringComparison.Ordinal);
-                if (index >= 0)
+                int? start = LocateCitedText(text, location.CitedText, (int)location.StartCharIndex);
+                if (start is null)
                 {
-                    citations.Add(new Citation() { FilePath = file.FullName, CitedText = quote, StartPosition = index });
+                    continue;
                 }
+
+                citations.Add(new Citation()
+                {
+                    FilePath = file.FullName,
+                    CitedText = location.CitedText,
+                    StartPosition = start.Value,
+                    Claim = block.Text.Trim(),
+                });
             }
+        }
+
+        if (summary.Length == 0)
+        {
+            throw new InvalidOperationException($"The model returned an empty document summary for '{file.Name}'.");
         }
 
         return new DocumentSummary()
         {
-            Summary = dto.Summary,
+            Summary = summary.ToString().Trim(),
             Citations = citations.ToArray(),
         };
+    }
+
+    /**
+     * Confirms the cited text really occurs in the source. The API's character index is trusted when it
+     * lines up; otherwise (e.g. index units differ for non-BMP characters) the text is searched for.
+     * Returns null if the cited text cannot be found, so the citation is dropped rather than misplaced.
+     */
+    private static int? LocateCitedText(string text, string citedText, int startIndex)
+    {
+        if (string.IsNullOrWhiteSpace(citedText))
+        {
+            return null;
+        }
+
+        if (startIndex >= 0 && startIndex + citedText.Length <= text.Length &&
+            string.CompareOrdinal(text, startIndex, citedText, 0, citedText.Length) == 0)
+        {
+            return startIndex;
+        }
+
+        int index = text.IndexOf(citedText, StringComparison.Ordinal);
+        return index >= 0 ? index : null;
     }
 
     public async Task<CaseSummary> SummarizeCase(PICase piCase)
@@ -225,12 +297,6 @@ public class AnthropicProvider : ILLMProvider
         }
 
         return matches;
-    }
-
-    private sealed class DocumentSummaryDto
-    {
-        public string? Summary { get; set; }
-        public List<string>? Quotes { get; set; }
     }
 
     private sealed class CaseSummaryDto

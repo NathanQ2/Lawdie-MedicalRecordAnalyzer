@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Anthropic;
 using Anthropic.Models.Messages;
+using MedicalRecordAnalysis.Retrieval;
 
 namespace MedicalRecordAnalysis.LLM.Providers;
 
@@ -38,17 +39,19 @@ public class AnthropicProvider : ILLMProvider
 
     private const string DemandDraftSystemPrompt =
         "You are a drafting assistant for a personal injury law firm. Write the narrative section " +
-        "of a demand letter to an insurance adjuster, describing the client's incident, injuries, " +
-        "treatment chronology, providers, diagnoses, the causal connection to the incident, and the " +
-        "pain, suffering, and limits on daily life that the records document. Each provided document " +
-        "contains verbatim quotes from one of the client's medical records. The tone may be " +
-        "persuasive, but state only facts supported by these quotes and cite them for every fact; " +
-        "never invent, infer, or exaggerate injuries, dates, symptoms, or causation. Where the " +
-        "records disagree, attribute each version to its record with its citation rather than " +
-        "choosing one. For information a demand letter needs that the records do not contain, such " +
-        "as the claim number, the insured's name, lost wages, or the amount demanded, write a " +
-        "bracketed placeholder in capitals, such as [CLAIM NUMBER], and never guess. Write the " +
-        "narrative section only: no letterhead, salutation, signature, headings, or JSON.";
+        "of a demand letter to an insurance adjuster. Make the client's pain and suffering the center " +
+        "of the narrative: the incident, the injuries and diagnoses, the course of treatment, and " +
+        "above all how the injuries have affected the client's daily life, as documented in the " +
+        "records. Each provided document is verbatim text from one of the client's medical records. " +
+        "Write in your own words as a persuasive, readable narrative rather than pasting record text, " +
+        "but state only facts supported by the documents and cite them for every fact; never invent, " +
+        "infer, or exaggerate injuries, dates, symptoms, or causation. Where the records disagree, " +
+        "attribute each version to its record with its citation rather than choosing one. For " +
+        "information a demand letter needs that the records do not contain, such as the claim number, " +
+        "the insured's name, lost wages, or the amount demanded, write a bracketed placeholder in " +
+        "capitals, such as [CLAIM NUMBER], and never guess. The narrative goes to the adjuster as " +
+        "written, so do not include notes to the attorney. Write the narrative section only: no " +
+        "letterhead, salutation, signature, headings, or JSON.";
 
     private const string VerificationSystemPrompt =
         "You are a legal intake quality reviewer. Compare the provided document summaries and " +
@@ -177,8 +180,9 @@ public class AnthropicProvider : ILLMProvider
 
     public async Task<CaseSummary> SummarizeCase(PICase piCase)
     {
+        (List<DocumentBlockParam> documents, CitationResolver resolve) = BuildQuoteDocuments(piCase);
         List<DraftSegment> segments = await GenerateGrounded(CaseSummarizationSystemPrompt,
-            BuildGroundedInstruction(piCase, "Write the case summary, citing the quotes for every fact."), piCase);
+            BuildGroundedInstruction(piCase, "Write the case summary, citing the quotes for every fact."), documents, resolve);
 
         return new CaseSummary()
         {
@@ -188,10 +192,14 @@ public class AnthropicProvider : ILLMProvider
         };
     }
 
-    public async Task<DemandDraft> DraftDemand(PICase piCase)
+    public async Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages)
     {
+        // Older exports have no stored passages; fall back to the quotes extracted during ingest.
+        (List<DocumentBlockParam> documents, CitationResolver resolve) = passages.Count > 0
+            ? BuildPassageDocuments(passages)
+            : BuildQuoteDocuments(piCase);
         List<DraftSegment> segments = await GenerateGrounded(DemandDraftSystemPrompt,
-            BuildGroundedInstruction(piCase, "Write the demand letter narrative section, citing the quotes for every fact."), piCase);
+            BuildGroundedInstruction(piCase, "Write the demand letter narrative section, citing the records for every fact."), documents, resolve);
 
         return new DemandDraft()
         {
@@ -201,19 +209,23 @@ public class AnthropicProvider : ILLMProvider
     }
 
     /**
-     * Generates text grounded in the case's extracted quotes. Each record's quotes become a citable
-     * custom-content document with one block per quote, so every statement traces back to verbatim quotes
-     * from the source records. Returned citations are mapped back to those quotes.
+     * Maps a citation in the response back to source citations, given the summary text it supports as the claim.
      */
-    private async Task<List<DraftSegment>> GenerateGrounded(string system, string instruction, PICase piCase)
+    private delegate Citation[] CitationResolver(TextCitation citation, string claim);
+
+    /**
+     * Each record's extracted quotes become a citable custom-content document with one block per quote, so
+     * content_block_location citations map straight back to those quotes.
+     */
+    private static (List<DocumentBlockParam> Documents, CitationResolver Resolve) BuildQuoteDocuments(PICase piCase)
     {
         List<IReadOnlyList<Citation>> documentQuotes = [];
-        List<ContentBlockParam> content = [];
+        List<DocumentBlockParam> documents = [];
         foreach (IGrouping<string, Citation> record in NumberQuotes(piCase).GroupBy(citation => citation.FilePath))
         {
             List<Citation> quotes = record.ToList();
             documentQuotes.Add(quotes);
-            content.Add(new DocumentBlockParam()
+            documents.Add(new DocumentBlockParam()
             {
                 Source = new ContentBlockSource()
                 {
@@ -224,11 +236,78 @@ public class AnthropicProvider : ILLMProvider
             });
         }
 
-        if (documentQuotes.Count == 0)
+        return (documents, (citation, claim) => citation.TryPickCitationContentBlockLocation(out CitationContentBlockLocation? location)
+            ? ResolveContentBlockCitation(documentQuotes, (int)location.DocumentIndex, (int)location.StartBlockIndex, (int)location.EndBlockIndex, claim)
+            : []);
+    }
+
+    /**
+     * Each passage becomes a citable plain-text document, so the API cites individual sentences with
+     * char_location citations that are offset back into the source file's extracted text.
+     */
+    private static (List<DocumentBlockParam> Documents, CitationResolver Resolve) BuildPassageDocuments(IReadOnlyList<RetrievedPassage> passages)
+    {
+        List<DocumentBlockParam> documents = passages.Select(passage => new DocumentBlockParam()
         {
-            throw new InvalidOperationException("No quotes were extracted from the records, so grounded text cannot be written.");
+            Source = new PlainTextSource() { Data = passage.Text },
+            Title = Path.GetFileName(passage.FilePath),
+            Context = $"Excerpt from {Path.GetFileName(passage.FilePath)} starting at character {passage.StartPosition}.",
+            Citations = new CitationsConfigParam() { Enabled = true },
+        }).ToList();
+
+        return (documents, (citation, claim) =>
+        {
+            if (!citation.TryPickCitationCharLocation(out CitationCharLocation? location))
+            {
+                return [];
+            }
+
+            Citation? resolved = ResolvePassageCitation(passages, (int)location.DocumentIndex, location.CitedText, (int)location.StartCharIndex, claim);
+            return resolved is null ? [] : [resolved];
+        });
+    }
+
+    /**
+     * Maps a char_location citation within a passage document to the source file, verifying the cited text
+     * really occurs in the passage. Returns null for out-of-range documents or text not found in the passage.
+     */
+    internal static Citation? ResolvePassageCitation(IReadOnlyList<RetrievedPassage> passages, int documentIndex,
+        string citedText, int startCharIndex, string claim)
+    {
+        if (documentIndex < 0 || documentIndex >= passages.Count)
+        {
+            return null;
         }
 
+        RetrievedPassage passage = passages[documentIndex];
+        int? start = LocateCitedText(passage.Text, citedText, startCharIndex);
+        if (start is null)
+        {
+            return null;
+        }
+
+        return new Citation()
+        {
+            FilePath = passage.FilePath,
+            CitedText = citedText,
+            StartPosition = passage.StartPosition + start.Value,
+            Claim = claim,
+        };
+    }
+
+    /**
+     * Generates text grounded in the given citable documents, mapping each response citation back to source
+     * citations with the resolver.
+     */
+    private async Task<List<DraftSegment>> GenerateGrounded(string system, string instruction,
+        List<DocumentBlockParam> documents, CitationResolver resolve)
+    {
+        if (documents.Count == 0)
+        {
+            throw new InvalidOperationException("No source text was extracted from the records, so grounded text cannot be written.");
+        }
+
+        List<ContentBlockParam> content = documents.Select(document => (ContentBlockParam)document).ToList();
         content.Add(new TextBlockParam() { Text = instruction });
 
         MessageCreateParams parameters = new MessageCreateParams()
@@ -253,17 +332,9 @@ public class AnthropicProvider : ILLMProvider
                 continue;
             }
 
-            List<Citation> citations = [];
-            foreach (TextCitation textCitation in text.Citations ?? [])
-            {
-                if (textCitation.TryPickCitationContentBlockLocation(out CitationContentBlockLocation? location))
-                {
-                    citations.AddRange(ResolveContentBlockCitation(documentQuotes, (int)location.DocumentIndex,
-                        (int)location.StartBlockIndex, (int)location.EndBlockIndex, text.Text.Trim()));
-                }
-            }
-
-            segments.Add(new DraftSegment() { Text = text.Text, Citations = citations.ToArray() });
+            string claim = text.Text.Trim();
+            Citation[] citations = (text.Citations ?? []).SelectMany(citation => resolve(citation, claim)).ToArray();
+            segments.Add(new DraftSegment() { Text = text.Text, Citations = citations });
         }
 
         if (segments.All(segment => string.IsNullOrWhiteSpace(segment.Text)))

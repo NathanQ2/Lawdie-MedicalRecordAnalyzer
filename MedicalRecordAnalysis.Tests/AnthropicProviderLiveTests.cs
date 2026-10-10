@@ -1,5 +1,6 @@
 using MedicalRecordAnalysis.LLM;
 using MedicalRecordAnalysis.LLM.Providers;
+using MedicalRecordAnalysis.Retrieval;
 using Xunit.Abstractions;
 
 namespace MedicalRecordAnalysis.Tests;
@@ -70,7 +71,7 @@ public class AnthropicProviderLiveTests
     }
 
     [LiveFact(ApiKeyVariable)]
-    public async Task DraftDemandCitesQuotesAndUsesPlaceholders()
+    public async Task DraftDemandCitesRecordsAndUsesPlaceholders()
     {
         string[] fileNames = ["ER_Visit_2026-03-14.txt", "PT_Intake_2026-03-20.txt"];
         AnthropicProvider provider = new AnthropicProvider();
@@ -85,7 +86,8 @@ public class AnthropicProviderLiveTests
         }
 
         piCase.Contradictions = (await provider.Verify(piCase)).Contradictions;
-        DemandDraft draft = await provider.DraftDemand(piCase);
+        piCase.Sources = sources.Select(source => new SourceDocument() { FilePath = source.Key, Passages = PassageSplitter.Split(source.Value) }).ToArray();
+        DemandDraft draft = await provider.DraftDemand(piCase, PassageRetriever.Select(piCase));
 
         m_output.WriteLine(DemandLetterRenderer.Render(draft, piCase, DraftFormat.Markdown));
 

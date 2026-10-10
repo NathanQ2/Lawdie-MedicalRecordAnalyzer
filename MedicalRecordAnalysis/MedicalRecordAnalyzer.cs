@@ -3,6 +3,7 @@ using MedicalRecordAnalysis.LLM;
 using MedicalRecordAnalysis.LLM.Providers;
 using MedicalRecordAnalysis.OCR;
 using MedicalRecordAnalysis.OCR.Providers;
+using MedicalRecordAnalysis.Retrieval;
 
 namespace MedicalRecordAnalysis;
 
@@ -27,6 +28,7 @@ public class MedicalRecordAnalyzer
         // Skip hidden files such as .DS_Store.
         FileInfo[] files = directory.GetFiles().Where(file => !file.Attributes.HasFlag(FileAttributes.Hidden)).ToArray();
         List<DocumentSummary> documentSummaries = [];
+        List<SourceDocument> sources = [];
         
         foreach (FileInfo file in files)
         {
@@ -44,10 +46,12 @@ public class MedicalRecordAnalyzer
 
             // 2. Summarize 
             documentSummaries.Add(await m_llmProvider.SummarizeDocument(result.File, result.Text));
+            sources.Add(new SourceDocument() { FilePath = result.File.FullName, Passages = PassageSplitter.Split(result.Text) });
         }
 
         PICase piCase = new PICase(documentSummaries.Count);
         documentSummaries.CopyTo(piCase.DocumentSummaries);
+        piCase.Sources = sources.ToArray();
         
         // 3. Find contradictions, so the case summary can present disputed facts as disputed
         VerificationResult verification = await m_llmProvider.Verify(piCase);
@@ -71,8 +75,9 @@ public class MedicalRecordAnalyzer
                 ?? throw new InvalidDataException($"'{file.Name}' does not contain a case.");
         }
 
-        // 2. Draft the narrative from the case's cited quotes
-        DemandDraft draft = await m_llmProvider.DraftDemand(piCase);
+        // 2. Draft the narrative from the source passages most relevant to each part of the letter
+        RetrievedPassage[] passages = PassageRetriever.Select(piCase);
+        DemandDraft draft = await m_llmProvider.DraftDemand(piCase, passages);
 
         // 3. Export with source notes and an attorney review section
         string letter = DemandLetterRenderer.Render(draft, piCase, DemandLetterRenderer.FormatFor(output));

@@ -1,3 +1,5 @@
+using MedicalRecordAnalysis.Retrieval;
+
 namespace MedicalRecordAnalysis.LLM.Providers;
 
 public class DummyLLMProvider : ILLMProvider
@@ -19,7 +21,7 @@ public class DummyLLMProvider : ILLMProvider
         };
     }
 
-    public async Task<DemandDraft> DraftDemand(PICase piCase)
+    public async Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages)
     {
         return new DemandDraft()
         {

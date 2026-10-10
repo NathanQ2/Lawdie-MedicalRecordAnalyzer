@@ -1,3 +1,5 @@
+using MedicalRecordAnalysis.Retrieval;
+
 namespace MedicalRecordAnalysis.LLM;
 
 public interface ILLMProvider
@@ -18,9 +20,10 @@ public interface ILLMProvider
      */
     public Task<VerificationResult> Verify(PICase piCase);
     /**
-     * Prompts the LLM to draft the narrative section of a demand letter from the case's cited quotes. Every
-     * factual statement should cite those quotes, disputed facts are attributed to each record, and facts the
-     * records do not contain are left as bracketed placeholders.
+     * Prompts the LLM to draft the narrative section of a demand letter from the given source passages, or from
+     * the case's extracted quotes when no passages are given. Every factual statement should cite that text,
+     * disputed facts are attributed to each record, and facts the records do not contain are left as bracketed
+     * placeholders.
      */
-    public Task<DemandDraft> DraftDemand(PICase piCase);
+    public Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages);
 }

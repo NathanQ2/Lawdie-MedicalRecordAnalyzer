@@ -1,6 +1,7 @@
 using System.Text.Json;
 using MedicalRecordAnalysis.LLM;
 using MedicalRecordAnalysis.LLM.Providers;
+using MedicalRecordAnalysis.Retrieval;
 
 namespace MedicalRecordAnalysis.Tests;
 
@@ -50,6 +51,24 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
     }
 
     [Fact]
+    public async Task IngestStoresPassagesThatDraftRetrievesFromTheExport()
+    {
+        FileInfo note = m_files.WriteText("note.txt", "Patient reports neck pain after a rear-end collision.\n\nPlan: physical therapy.");
+        DirectoryInfo outputDirectory = m_files.Directory.CreateSubdirectory("out");
+        FileInfo caseFile = new FileInfo(Path.Combine(outputDirectory.FullName, "case.json"));
+        OrderRecordingProvider provider = new OrderRecordingProvider();
+        MedicalRecordAnalyzer analyzer = new MedicalRecordAnalyzer(provider);
+
+        await analyzer.Ingest(m_files.Directory, caseFile);
+        await analyzer.Draft(caseFile, new FileInfo(Path.Combine(outputDirectory.FullName, "Draft.md")));
+
+        RetrievedPassage passage = Assert.Single(provider.PassagesSeenByDraftDemand);
+        Assert.Equal(note.FullName, passage.FilePath);
+        Assert.Equal(0, passage.StartPosition);
+        Assert.Equal(await File.ReadAllTextAsync(note.FullName), passage.Text);
+    }
+
+    [Fact]
     public async Task DraftRejectsAFileWithoutACase()
     {
         FileInfo caseFile = m_files.WriteText("case.json", "null");
@@ -76,6 +95,7 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
     {
         public List<string> Calls { get; } = [];
         public int ContradictionsSeenBySummarizeCase { get; private set; } = -1;
+        public IReadOnlyList<RetrievedPassage> PassagesSeenByDraftDemand { get; private set; } = [];
 
         public Task<DocumentSummary> SummarizeDocument(FileInfo file, string text)
         {
@@ -90,9 +110,10 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
             return Task.FromResult(new CaseSummary() { Summary = "case" });
         }
 
-        public Task<DemandDraft> DraftDemand(PICase piCase)
+        public Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages)
         {
             Calls.Add(nameof(DraftDemand));
+            PassagesSeenByDraftDemand = passages;
             return Task.FromResult(new DemandDraft() { Segments = [] });
         }
 

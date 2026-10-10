@@ -10,29 +10,47 @@ public class MedicalRecordAnalyzer
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions() { WriteIndented = true };
     
-    private ILLMProvider m_llmProvider = new AnthropicProvider();
-    private IOCRProvider m_ocrProvider = new DummyOCRProvider();
+    private readonly ILLMProvider m_llmProvider;
+    private readonly IOCRProvider m_ocrProvider;
+
+    public MedicalRecordAnalyzer(ILLMProvider? llmProvider = null, IOCRProvider? ocrProvider = null)
+    {
+        m_llmProvider = llmProvider ?? new AnthropicProvider();
+        // Embedded text is read directly. Add an OCR provider after it to also handle scans and images.
+        m_ocrProvider = ocrProvider ?? new ChainedOCRProvider([new DirectTextProvider()]);
+    }
     
     public void Ingest(DirectoryInfo directory, FileInfo output)
     {
         Console.WriteLine($"DIR: {directory.FullName}");
         
-        FileInfo[] files = directory.GetFiles();
-        PICase piCase = new PICase(files.Length);
+        // Skip hidden files such as .DS_Store.
+        FileInfo[] files = directory.GetFiles().Where(file => !file.Attributes.HasFlag(FileAttributes.Hidden)).ToArray();
+        List<DocumentSummary> documentSummaries = [];
         
-        for (int i = 0; i < piCase.DocumentSummaries.Length; i++)
+        foreach (FileInfo file in files)
         {
-            // 1. Run OCR on file
-            Task<OCRResult> ocrTask = m_ocrProvider.DetectTextFromFile(files[i]);
-            // TODO: Add proper async/await
-            ocrTask.Wait();
-            OCRResult result = ocrTask.Result;
+            // 1. Extract text, running OCR if needed
+            OCRResult result;
+            try
+            {
+                // TODO: Add proper async/await. GetResult() rethrows the original exception, unlike Wait().
+                result = m_ocrProvider.DetectTextFromFile(file).GetAwaiter().GetResult();
+            }
+            catch (NotSupportedException exception)
+            {
+                Console.Error.WriteLine($"SKIPPED {file.Name}: {exception.Message}");
+                continue;
+            }
 
             // 2. Summarize 
             Task<DocumentSummary> summarizeTask = m_llmProvider.SummarizeDocument(result.File, result.Text);
             summarizeTask.Wait();
-            piCase.DocumentSummaries[i] = summarizeTask.Result;
+            documentSummaries.Add(summarizeTask.Result);
         }
+
+        PICase piCase = new PICase(documentSummaries.Count);
+        documentSummaries.CopyTo(piCase.DocumentSummaries);
         
         // 3. Summarize Case
         Task<CaseSummary> caseSummarizeTask = m_llmProvider.SummarizeCase(piCase);

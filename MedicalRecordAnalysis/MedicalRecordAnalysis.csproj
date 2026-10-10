@@ -10,6 +10,7 @@
       <PackageReference Include="Anthropic" Version="12.55.0" />
       <PackageReference Include="AWSSDK.S3" Version="4.0.104.2" />
       <PackageReference Include="AWSSDK.Textract" Version="4.0.100.16" />
+      <PackageReference Include="PdfPig" Version="0.1.16" />
     </ItemGroup>
 
     <ItemGroup>

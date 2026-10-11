@@ -1,4 +1,4 @@
-import type { CaseAnalysis, CaseDetail, CaseListItem, JobStatus, RecordInfo } from './types'
+import type { CaseAnalysis, CaseDetail, CaseListItem, DemandDraft, JobStatus, RecordInfo, ReviewItem, ReviewStatus } from './types'
 
 // The API rejects changes without this header; other websites cannot send it to a local server.
 export const CLIENT_HEADER = 'X-MRA-Client'
@@ -62,14 +62,23 @@ export const api = {
   cancelJob: (caseId: string) => request<null>(`${casePath(caseId)}/jobs/cancel`, { method: 'POST' }),
 
   /** The case's analysis, or null if it has not been ingested yet. */
-  getAnalysis: async (caseId: string) => {
-    try {
-      return await request<CaseAnalysis>(`${casePath(caseId)}/analysis`)
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        return null
-      }
-      throw error
+  getAnalysis: (caseId: string) => orNullIfMissing(request<CaseAnalysis>(`${casePath(caseId)}/analysis`)),
+  /** The case's draft, or null if it has not been drafted yet. */
+  getDraft: (caseId: string) => orNullIfMissing(request<DemandDraft>(`${casePath(caseId)}/draft`)),
+  draftExportUrl: (caseId: string, format: 'md' | 'txt') => `${casePath(caseId)}/draft/export?format=${format}`,
+
+  getReview: (caseId: string) => request<ReviewItem[]>(`${casePath(caseId)}/review`),
+  updateReview: (caseId: string, itemId: string, status: ReviewStatus, note: string | null) =>
+    request<ReviewItem>(`${casePath(caseId)}/review/${encodeURIComponent(itemId)}`, json('PUT', { status, note })),
+}
+
+async function orNullIfMissing<T>(pending: Promise<T>): Promise<T | null> {
+  try {
+    return await pending
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null
     }
-  },
+    throw error
+  }
 }

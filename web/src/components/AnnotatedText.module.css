@@ -10,6 +10,14 @@
   padding: 0 1px;
 }
 
+.placeholder {
+  background-color: var(--mantine-color-grape-1);
+  color: var(--mantine-color-grape-9);
+  font-weight: 600;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
 .marker {
   display: inline-block;
   vertical-align: super;

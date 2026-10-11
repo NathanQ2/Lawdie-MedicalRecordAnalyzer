@@ -45,4 +45,17 @@ describe('AnnotatedText', () => {
 
     expect(screen.getByText('She was rear-ended on 01/09/2026.').tagName).toBe('MARK')
   })
+
+  it('highlights placeholders only when asked', () => {
+    const withPlaceholder = 'The demand is [DEMAND AMOUNT] for claim [CLAIM NUMBER].'
+    const { rerender } = renderWithMantine(
+      <AnnotatedText text={withPlaceholder} citations={[]} numberOf={() => 0} selectedKey={null} onSelect={() => {}} highlightPlaceholders />,
+    )
+
+    expect(screen.getByText('[DEMAND AMOUNT]').tagName).toBe('MARK')
+    expect(screen.getByText('[CLAIM NUMBER]').tagName).toBe('MARK')
+
+    rerender(<AnnotatedText text={withPlaceholder} citations={[]} numberOf={() => 0} selectedKey={null} onSelect={() => {}} />)
+    expect(screen.queryByText('[DEMAND AMOUNT]')).not.toBeInTheDocument()
+  })
 })

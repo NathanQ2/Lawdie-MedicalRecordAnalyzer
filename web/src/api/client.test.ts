@@ -42,4 +42,22 @@ describe('api client', () => {
   it('encodes record names in paths', () => {
     expect(api.recordUrl('abc', 'ED record #1.pdf')).toBe('/api/cases/abc/records/ED%20record%20%231.pdf')
   })
+
+  it('updates a review item with PUT and the client header', async () => {
+    const fetchMock = mockFetch(new Response(JSON.stringify({ id: 'placeholder-1' }), { status: 200 }))
+
+    await api.updateReview('abc', 'placeholder-1', 'Resolved', 'Filled in.')
+
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(path).toBe('/api/cases/abc/review/placeholder-1')
+    expect(init.method).toBe('PUT')
+    expect(new Headers(init.headers).get(CLIENT_HEADER)).toBe('web')
+    expect(init.body).toBe(JSON.stringify({ status: 'Resolved', note: 'Filled in.' }))
+  })
+
+  it('returns null for a case that has not been drafted', async () => {
+    mockFetch(new Response(JSON.stringify({ error: 'This case has not been drafted yet.' }), { status: 404 }))
+
+    await expect(api.getDraft('abc')).resolves.toBeNull()
+  })
 })

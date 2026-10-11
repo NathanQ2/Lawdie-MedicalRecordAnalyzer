@@ -25,3 +25,8 @@ class ResizeObserverStub {
   disconnect() {}
 }
 window.ResizeObserver = ResizeObserverStub
+
+// Autosizing textareas re-measure when fonts load.
+if (!('fonts' in document)) {
+  Object.defineProperty(document, 'fonts', { value: { addEventListener: () => {}, removeEventListener: () => {} } })
+}

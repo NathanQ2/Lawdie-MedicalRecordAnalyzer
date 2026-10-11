@@ -48,7 +48,7 @@ The UI checks the status of a running job every couple of seconds. Live updates 
 4. ✅ **Analysis screen and source viewer**
    - The case summary with clickable citations, uncited sentences highlighted, side-by-side contradictions, and per-record summaries.
    - Clicking a citation opens the file at the right page with the quote highlighted.
-5. **Draft screen**
+5. ✅ **Draft screen**
    - The narrative with clickable source notes, an attorney review checklist (resolve or dismiss each item, with a note), and Markdown or text export.
 
 Later: login and cloud storage, an OCR provider for scanned files, `.docx` export, and editing the draft in the browser.

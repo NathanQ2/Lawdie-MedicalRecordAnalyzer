@@ -4,6 +4,7 @@ import { Link, Navigate, Outlet, Route, Routes } from 'react-router'
 import { AnalysisTab } from './pages/AnalysisTab'
 import { CasePage } from './pages/CasePage'
 import { CasesPage } from './pages/CasesPage'
+import { DraftTab } from './pages/DraftTab'
 import { RecordsTab } from './pages/RecordsTab'
 import { RunTab } from './pages/RunTab'
 
@@ -17,7 +18,7 @@ export function App() {
           <Route path="records" element={<RecordsTab />} />
           <Route path="run" element={<RunTab />} />
           <Route path="analysis" element={<AnalysisTab />} />
-          <Route path="draft" element={<ComingSoon what="The draft view" />} />
+          <Route path="draft" element={<DraftTab />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>
@@ -46,14 +47,6 @@ function Layout() {
         </Container>
       </AppShell.Main>
     </AppShell>
-  )
-}
-
-function ComingSoon({ what }: { what: string }) {
-  return (
-    <Text c="dimmed" py="lg">
-      {what} is coming in the next milestone. For now, the results can be read from the API or exported from the CLI.
-    </Text>
   )
 }
 

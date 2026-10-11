@@ -11,6 +11,8 @@ export const caseKeys = {
   all: ['cases'] as const,
   detail: (caseId: string) => ['cases', caseId] as const,
   analysis: (caseId: string, updatedAt: string | null) => ['cases', caseId, 'analysis', updatedAt] as const,
+  draft: (caseId: string, updatedAt: string | null) => ['cases', caseId, 'draft', updatedAt] as const,
+  review: (caseId: string) => ['cases', caseId, 'review'] as const,
 }
 
 export function useCases() {
@@ -57,6 +59,21 @@ export function useAnalysis(caseId: string, analysisUpdatedAt: string | null | u
     enabled: analysisUpdatedAt !== undefined,
     staleTime: Infinity,
   })
+}
+
+/** Loads the case's draft (null until drafted), keyed by its timestamp like the analysis. */
+export function useDraft(caseId: string, draftUpdatedAt: string | null | undefined) {
+  return useQuery({
+    queryKey: caseKeys.draft(caseId, draftUpdatedAt ?? null),
+    queryFn: () => api.getDraft(caseId),
+    enabled: draftUpdatedAt !== undefined,
+    staleTime: Infinity,
+  })
+}
+
+/** Loads the review checklist; finished jobs invalidate every case query, which reloads it. */
+export function useReview(caseId: string) {
+  return useQuery({ queryKey: caseKeys.review(caseId), queryFn: () => api.getReview(caseId) })
 }
 
 /**

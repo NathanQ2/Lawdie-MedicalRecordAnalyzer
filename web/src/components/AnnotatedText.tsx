@@ -12,14 +12,20 @@ interface AnnotatedTextProps {
   numberOf: (citation: Citation) => number
   selectedKey: string | null
   onSelect: (citation: Citation) => void
+  /** Highlight bracketed placeholders such as [CLAIM NUMBER] that must be filled in. */
+  highlightPlaceholders?: boolean
 }
+
+// Matches the API's placeholder pattern (DemandLetterRenderer.FindPlaceholders).
+const PLACEHOLDER = /(\[[A-Z][A-Z0-9 &/'.,-]*\])/
 
 /**
  * Generated text with a numbered marker after each cited claim (click to open the source) and uncited sentences
  * highlighted for review.
  */
-export function AnnotatedText({ text, citations, unsupportedStatements = [], numberOf, selectedKey, onSelect }: AnnotatedTextProps) {
+export function AnnotatedText({ text, citations, unsupportedStatements = [], numberOf, selectedKey, onSelect, highlightPlaceholders = false }: AnnotatedTextProps) {
   const segments = annotate(text, citations, unsupportedStatements)
+  const show = (content: string) => (highlightPlaceholders ? withPlaceholders(content) : content)
 
   return (
     <Text component="div" className={classes.text}>
@@ -27,10 +33,10 @@ export function AnnotatedText({ text, citations, unsupportedStatements = [], num
         <Fragment key={index}>
           {segment.unsupported ? (
             <Tooltip label="No citation supports this sentence. Check it against the records." multiline w={260}>
-              <Mark className={classes.unsupported}>{segment.text}</Mark>
+              <Mark className={classes.unsupported}>{show(segment.text)}</Mark>
             </Tooltip>
           ) : (
-            segment.text
+            show(segment.text)
           )}
           {segment.citations.map((citation) => (
             <CitationMarker
@@ -66,5 +72,17 @@ export function CitationMarker({ citation, number, selected, onSelect }: Citatio
         {number}
       </UnstyledButton>
     </Tooltip>
+  )
+}
+
+function withPlaceholders(content: string) {
+  return content.split(PLACEHOLDER).map((part, index) =>
+    index % 2 === 1 ? (
+      <Tooltip key={index} label="Fill this in before sending">
+        <Mark className={classes.placeholder}>{part}</Mark>
+      </Tooltip>
+    ) : (
+      part
+    ),
   )
 }

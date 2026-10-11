@@ -97,3 +97,25 @@ export interface CaseAnalysis {
   sources: SourceDocument[]
   skippedFiles: SkippedFile[]
 }
+
+export interface DraftSegment {
+  text: string
+  citations: Citation[]
+}
+
+export interface DemandDraft {
+  segments: DraftSegment[]
+  unsupportedStatements: string[]
+}
+
+export type ReviewItemKind = 'Contradiction' | 'UnsupportedStatement' | 'Placeholder'
+export type ReviewStatus = 'Open' | 'Resolved' | 'Dismissed'
+
+export interface ReviewItem {
+  id: string
+  kind: ReviewItemKind
+  text: string
+  citations: Citation[]
+  status: ReviewStatus
+  note: string | null
+}

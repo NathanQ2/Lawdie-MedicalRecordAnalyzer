@@ -16,9 +16,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace MedicalRecordAnalysis.Tests;
 
 /**
- * Runs the API in memory against a temporary cases folder, with a test LLM provider instead of Anthropic.
+ * Runs the API in memory against a temporary cases folder, with a test LLM provider instead of Anthropic. The type
+ * argument only identifies the API assembly, whose entry point is run; Program is static and cannot be used here.
  */
-public sealed class ApiFactory : WebApplicationFactory<Program>
+public sealed class ApiFactory : WebApplicationFactory<FileCaseStore>
 {
     public DirectoryInfo Root { get; } = Directory.CreateTempSubdirectory("MedicalRecordAnalysisApi");
     public ILLMProvider Provider { get; set; } = new DummyLLMProvider();

@@ -56,7 +56,8 @@ public class AnthropicProvider : ILLMProvider
         "You are a legal intake quality reviewer. Compare the provided document summaries and " +
         "supporting quotes, and report any contradictions, including conflicting dates, " +
         "diagnoses, providers, or causal statements. A single document can contradict itself. " +
-        "Each supporting quote is labeled with an ID such as [Q3]; reference the quotes that " +
+        "Each document is labeled with its record's file name; refer to records by that name in " +
+        "your descriptions. Each supporting quote is labeled with an ID such as [Q3]; reference the quotes that " +
         "show each contradiction by ID only, never by restating their text. Respond with JSON " +
         "only, using this exact shape: " +
         "{\"contradictions\":[{\"summary\":\"<description>\",\"quoteIds\":[\"Q1\",\"Q2\"]}]}. " +
@@ -71,7 +72,7 @@ public class AnthropicProvider : ILLMProvider
         m_model = model ?? DefaultModel;
     }
 
-    public async Task<DocumentSummary> SummarizeDocument(FileInfo file, string text)
+    public async Task<DocumentSummary> SummarizeDocument(FileInfo file, string text, CancellationToken cancellationToken = default)
     {
         // The record is sent as a citable document of small chunks (lines, split into sentences), so each
         // citation maps to an exact, tight span of the text we sent.
@@ -100,7 +101,7 @@ public class AnthropicProvider : ILLMProvider
             Model = m_model,
         };
 
-        Message message = await CreateMessage(parameters);
+        Message message = await CreateMessage(parameters, cancellationToken);
 
         StringBuilder summary = new StringBuilder();
         List<Citation> citations = [];
@@ -138,11 +139,11 @@ public class AnthropicProvider : ILLMProvider
         };
     }
 
-    public async Task<CaseSummary> SummarizeCase(PICase piCase)
+    public async Task<CaseSummary> SummarizeCase(PICase piCase, CancellationToken cancellationToken = default)
     {
         (List<DocumentBlockParam> documents, CitationResolver resolve) = BuildQuoteDocuments(piCase);
         List<DraftSegment> segments = await GenerateGrounded(CaseSummarizationSystemPrompt,
-            BuildGroundedInstruction(piCase, "Write the case summary, citing the quotes for every fact."), documents, resolve);
+            BuildGroundedInstruction(piCase, "Write the case summary, citing the quotes for every fact."), documents, resolve, cancellationToken);
 
         return new CaseSummary()
         {
@@ -152,14 +153,14 @@ public class AnthropicProvider : ILLMProvider
         };
     }
 
-    public async Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages)
+    public async Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages, CancellationToken cancellationToken = default)
     {
         // Older exports have no stored passages; fall back to the quotes extracted during ingest.
         (List<DocumentBlockParam> documents, CitationResolver resolve) = passages.Count > 0
             ? BuildPassageDocuments(passages)
             : BuildQuoteDocuments(piCase);
         List<DraftSegment> segments = await GenerateGrounded(DemandDraftSystemPrompt,
-            BuildGroundedInstruction(piCase, "Write the demand letter narrative section, citing the records for every fact."), documents, resolve);
+            BuildGroundedInstruction(piCase, "Write the demand letter narrative section, citing the records for every fact."), documents, resolve, cancellationToken);
 
         return new DemandDraft()
         {
@@ -233,7 +234,7 @@ public class AnthropicProvider : ILLMProvider
      * citations with the resolver.
      */
     private async Task<List<DraftSegment>> GenerateGrounded(string system, string instruction,
-        List<DocumentBlockParam> documents, CitationResolver resolve)
+        List<DocumentBlockParam> documents, CitationResolver resolve, CancellationToken cancellationToken)
     {
         if (documents.Count == 0)
         {
@@ -251,7 +252,7 @@ public class AnthropicProvider : ILLMProvider
             Model = m_model,
         };
 
-        Message message = await CreateMessage(parameters);
+        Message message = await CreateMessage(parameters, cancellationToken);
 
         List<DraftSegment> segments = [];
         foreach (ContentBlock block in message.Content)
@@ -334,10 +335,10 @@ public class AnthropicProvider : ILLMProvider
         return resolved.ToArray();
     }
 
-    public async Task<VerificationResult> Verify(PICase piCase)
+    public async Task<VerificationResult> Verify(PICase piCase, CancellationToken cancellationToken = default)
     {
         string user = BuildCaseContext(piCase);
-        string response = await Complete(VerificationSystemPrompt, user);
+        string response = await Complete(VerificationSystemPrompt, user, cancellationToken);
         List<Citation> quotes = NumberQuotes(piCase);
 
         VerificationResultDto? dto = Deserialize<VerificationResultDto>(response);
@@ -369,9 +370,9 @@ public class AnthropicProvider : ILLMProvider
     /**
      * Sends the request and rejects responses cut off by the token limit, so truncated text is never used.
      */
-    private async Task<Message> CreateMessage(MessageCreateParams parameters)
+    private async Task<Message> CreateMessage(MessageCreateParams parameters, CancellationToken cancellationToken)
     {
-        Message message = await m_client.Messages.Create(parameters);
+        Message message = await m_client.Messages.Create(parameters, cancellationToken);
         if (message.StopReason == StopReason.MaxTokens)
         {
             throw new InvalidOperationException("The response reached the token limit and was cut off.");
@@ -380,7 +381,7 @@ public class AnthropicProvider : ILLMProvider
         return message;
     }
 
-    private async Task<string> Complete(string system, string user)
+    private async Task<string> Complete(string system, string user, CancellationToken cancellationToken)
     {
         MessageCreateParams parameters = new MessageCreateParams()
         {
@@ -390,7 +391,7 @@ public class AnthropicProvider : ILLMProvider
             Model = m_model,
         };
 
-        Message message = await CreateMessage(parameters);
+        Message message = await CreateMessage(parameters, cancellationToken);
 
         StringBuilder builder = new StringBuilder();
         foreach (ContentBlock content in message.Content)
@@ -430,7 +431,14 @@ public class AnthropicProvider : ILLMProvider
         {
             DocumentSummary summary = piCase.DocumentSummaries[i];
 
-            builder.Append("DOCUMENT ").Append(i + 1).AppendLine();
+            builder.Append("DOCUMENT ").Append(i + 1);
+            string? filePath = i < piCase.Sources.Length ? piCase.Sources[i].FilePath : summary.Citations.FirstOrDefault()?.FilePath;
+            if (filePath is not null)
+            {
+                builder.Append(": ").Append(Path.GetFileName(filePath));
+            }
+
+            builder.AppendLine();
             builder.AppendLine(summary.Summary);
 
             if (summary.Citations.Length > 0)

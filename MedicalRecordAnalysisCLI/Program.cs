@@ -1,5 +1,6 @@
 ﻿using System.CommandLine;
 using MedicalRecordAnalysis;
+using MedicalRecordAnalysis.Caching;
 
 namespace MedicalRecordAnalysisCLI;
 
@@ -12,7 +13,7 @@ public static class Program
     private static readonly Argument<FileInfo> PathArgument = new Argument<FileInfo>("Path");
     private static readonly Option<FileInfo> DraftOutputFileOption = new Option<FileInfo>("--output", "-o")
     {
-        Description = "Output file path (.txt for plain text, otherwise Markdown)",
+        Description = "Output file path (.docx for Word, .txt for plain text, otherwise Markdown)",
         DefaultValueFactory = _ => new FileInfo("Draft.md")
     };
     private static readonly Option<FileInfo> IngestOutputFileOption = new Option<FileInfo>("--output", "-o")
@@ -21,18 +22,29 @@ public static class Program
         DefaultValueFactory = _ => new FileInfo("PICaseData.json")
     };
 
+    private static readonly Option<DirectoryInfo?> IngestCacheOption = new Option<DirectoryInfo?>("--cache")
+    {
+        Description = "Directory for per-record results, so a repeated or failed ingest only summarizes new or changed records",
+    };
+
     private static MedicalRecordAnalyzer s_analyzer = new MedicalRecordAnalyzer();
     
     public static async Task<int> Main(String[] args)
     {
         IngestCmd.Arguments.Add(DirectoryArgument);
         IngestCmd.Options.Add(IngestOutputFileOption);
-        IngestCmd.SetAction((result, _) => s_analyzer.Ingest(result.GetValue(DirectoryArgument)!, result.GetValue(IngestOutputFileOption)!));
+        IngestCmd.Options.Add(IngestCacheOption);
+        IngestCmd.SetAction((result, cancellationToken) =>
+        {
+            DirectoryInfo? cacheDirectory = result.GetValue(IngestCacheOption);
+            IDocumentCache? cache = cacheDirectory is null ? null : new FileDocumentCache(cacheDirectory);
+            return s_analyzer.Ingest(result.GetValue(DirectoryArgument)!, result.GetValue(IngestOutputFileOption)!, cache, cancellationToken);
+        });
         RootCmd.Subcommands.Add(IngestCmd);
         
         DraftCmd.Arguments.Add(PathArgument);
         DraftCmd.Options.Add(DraftOutputFileOption);
-        DraftCmd.SetAction((result, _) => s_analyzer.Draft(result.GetValue(PathArgument)!, result.GetValue(DraftOutputFileOption)!));
+        DraftCmd.SetAction((result, cancellationToken) => s_analyzer.Draft(result.GetValue(PathArgument)!, result.GetValue(DraftOutputFileOption)!, cancellationToken));
         RootCmd.Subcommands.Add(DraftCmd);
 
         return await RootCmd.Parse(args).InvokeAsync();

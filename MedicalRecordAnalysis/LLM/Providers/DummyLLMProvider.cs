@@ -4,7 +4,7 @@ namespace MedicalRecordAnalysis.LLM.Providers;
 
 public class DummyLLMProvider : ILLMProvider
 {
-    public async Task<DocumentSummary> SummarizeDocument(FileInfo file, string text)
+    public async Task<DocumentSummary> SummarizeDocument(FileInfo file, string text, CancellationToken cancellationToken = default)
     {
         return new DocumentSummary()
         {
@@ -13,7 +13,7 @@ public class DummyLLMProvider : ILLMProvider
         };
     }
     
-    public async Task<CaseSummary> SummarizeCase(PICase piCase)
+    public async Task<CaseSummary> SummarizeCase(PICase piCase, CancellationToken cancellationToken = default)
     {
         return new CaseSummary()
         {
@@ -21,7 +21,7 @@ public class DummyLLMProvider : ILLMProvider
         };
     }
 
-    public async Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages)
+    public async Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages, CancellationToken cancellationToken = default)
     {
         return new DemandDraft()
         {
@@ -33,7 +33,7 @@ public class DummyLLMProvider : ILLMProvider
         };
     }
 
-    public async Task<VerificationResult> Verify(PICase piCase)
+    public async Task<VerificationResult> Verify(PICase piCase, CancellationToken cancellationToken = default)
     {
         return new VerificationResult()
         {

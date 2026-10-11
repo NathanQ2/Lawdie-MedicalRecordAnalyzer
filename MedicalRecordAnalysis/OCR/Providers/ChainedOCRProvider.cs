@@ -18,7 +18,7 @@ public class ChainedOCRProvider : IOCRProvider
         m_providers = providers;
     }
 
-    public async Task<OCRResult> DetectTextFromFile(FileInfo file)
+    public async Task<OCRResult> DetectTextFromFile(FileInfo file, CancellationToken cancellationToken = default)
     {
         List<string> reasons = [];
 
@@ -26,7 +26,7 @@ public class ChainedOCRProvider : IOCRProvider
         {
             try
             {
-                return await provider.DetectTextFromFile(file);
+                return await provider.DetectTextFromFile(file, cancellationToken);
             }
             catch (NotSupportedException exception)
             {

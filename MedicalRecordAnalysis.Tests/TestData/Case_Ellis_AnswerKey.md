@@ -1,6 +1,6 @@
 # Case_Ellis — fictional test case and answer key
 
-Everything in `TestData/Case_Ellis/` is made up for testing. The people, providers, phone numbers and claims are all invented. This file sits outside `TestData/` on purpose: `ingest` reads `.md` files, so keeping it here stops the answer key from being ingested.
+Everything in `Case_Ellis/` is made up for testing. The people, providers, phone numbers and claims are all invented. This file sits next to the folder rather than inside it, because `ingest` reads `.md` files: ingest `Case_Ellis/` itself, not `TestData/`, or the answer key is treated as a record.
 
 ## The case
 Morgan Ellis (DOB 04/11/1985) was a warehouse shift supervisor. On **01/09/2026** she was the restrained driver of a car stopped on I-5 when a box truck rear-ended it. There are 24 files covering the six months after the crash:

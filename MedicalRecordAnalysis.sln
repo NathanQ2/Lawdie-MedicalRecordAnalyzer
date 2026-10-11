@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MedicalRecordAnalysis", "Me
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MedicalRecordAnalysis.Tests", "MedicalRecordAnalysis.Tests\MedicalRecordAnalysis.Tests.csproj", "{B9DFCA8D-E03C-4D54-9A9C-0E0F339D7688}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MedicalRecordAnalysis.Api", "MedicalRecordAnalysis.Api\MedicalRecordAnalysis.Api.csproj", "{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -52,6 +54,18 @@ Global
 		{B9DFCA8D-E03C-4D54-9A9C-0E0F339D7688}.Release|x64.Build.0 = Release|Any CPU
 		{B9DFCA8D-E03C-4D54-9A9C-0E0F339D7688}.Release|x86.ActiveCfg = Release|Any CPU
 		{B9DFCA8D-E03C-4D54-9A9C-0E0F339D7688}.Release|x86.Build.0 = Release|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Debug|x64.Build.0 = Debug|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Debug|x86.Build.0 = Debug|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Release|x64.ActiveCfg = Release|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Release|x64.Build.0 = Release|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Release|x86.ActiveCfg = Release|Any CPU
+		{EECBC1C5-FEA9-4F3D-A7D8-8380D6A8CE9E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

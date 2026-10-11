@@ -1,0 +1,80 @@
+/* The parts of pdf.js's viewer stylesheet (pdfjs-dist/web/pdf_viewer.css) that position the text layer over the
+   rendered page, plus the quote highlight. */
+
+.mra-pdf-page {
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  width: fit-content;
+  border: 1px solid var(--mantine-color-gray-3);
+  box-shadow: var(--mantine-shadow-xs);
+  background: white;
+}
+
+.mra-pdf-page canvas {
+  display: block;
+}
+
+.textLayer {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 0;
+
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.textLayer .markedContent {
+  display: contents;
+}
+
+.textLayer ::selection {
+  background: color-mix(in srgb, AccentColor, transparent 50%);
+  color: transparent;
+}
+
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+
+/* Highlights sit inside a text run, so they keep the run's position and only add a background. */
+.textLayer .mra-highlight {
+  position: static;
+  background-color: rgb(250 204 21 / 0.45);
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px rgb(250 204 21 / 0.45);
+}

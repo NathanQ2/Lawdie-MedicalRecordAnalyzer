@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Anthropic;
+using Anthropic.Core;
 using Anthropic.Models.Messages;
 using MedicalRecordAnalysis.Retrieval;
 
@@ -378,17 +379,27 @@ public class AnthropicProvider : ILLMProvider
 
     /**
      * Sends the request as a stream (long responses would otherwise hit HTTP timeouts), collects it into the complete
-     * message, and rejects responses cut off by the token limit, so truncated text is never used.
+     * message, and rejects responses that stopped early (cut off by the token limit, or declined partway by a safety
+     * classifier), so incomplete text is never used.
      */
     private async Task<Message> CreateMessage(MessageCreateParams parameters, CancellationToken cancellationToken)
     {
         Message message = await m_client.Messages.CreateStreaming(parameters, cancellationToken).Aggregate();
-        if (message.StopReason == StopReason.MaxTokens)
+        CheckComplete(message.StopReason);
+        return message;
+    }
+
+    internal static void CheckComplete(ApiEnum<string, StopReason>? stopReason)
+    {
+        if (stopReason == StopReason.MaxTokens)
         {
             throw new InvalidOperationException("The response reached the token limit and was cut off.");
         }
 
-        return message;
+        if (stopReason == StopReason.Refusal)
+        {
+            throw new InvalidOperationException("The response was declined before it finished, so it was not used.");
+        }
     }
 
     private async Task<string> Complete(string system, string user, CancellationToken cancellationToken)

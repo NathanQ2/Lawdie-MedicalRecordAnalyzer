@@ -15,6 +15,7 @@ public static class CaseEndpoints
         cases.MapGet("/", ListCases);
         cases.MapPost("/", CreateCase);
         cases.MapGet("/{caseId}", GetCase);
+        cases.MapPatch("/{caseId}", RenameCase);
         cases.MapDelete("/{caseId}", DeleteCase);
 
         cases.MapGet("/{caseId}/records", ListRecords);
@@ -60,6 +61,19 @@ public static class CaseEndpoints
     private static async Task<IResult> GetCase(string caseId, ICaseStore store, IJobQueue jobs, CancellationToken cancellationToken)
     {
         CaseMeta? meta = await store.Get(caseId, cancellationToken);
+        return meta is null ? CaseNotFound() : Results.Ok(await ToCaseDto(meta, store, jobs, cancellationToken));
+    }
+
+    private static async Task<IResult> RenameCase(string caseId, RenameCaseRequest request, ICaseStore store, IJobQueue jobs,
+        CancellationToken cancellationToken)
+    {
+        string name = request.Name?.Trim() ?? "";
+        if (name.Length == 0 || name.Length > MaxCaseNameLength)
+        {
+            return Error(StatusCodes.Status400BadRequest, $"A case name of 1 to {MaxCaseNameLength} characters is required.");
+        }
+
+        CaseMeta? meta = await store.Update(caseId, current => current.Name = name, cancellationToken);
         return meta is null ? CaseNotFound() : Results.Ok(await ToCaseDto(meta, store, jobs, cancellationToken));
     }
 

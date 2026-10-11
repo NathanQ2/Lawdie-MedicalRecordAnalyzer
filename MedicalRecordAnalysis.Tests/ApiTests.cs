@@ -122,6 +122,22 @@ public sealed class ApiTests : IDisposable
         Assert.Null(opened.Job);
     }
 
+    [Fact]
+    public async Task RenamesCases()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+
+        HttpResponseMessage renamed = await client.PatchAsJsonAsync($"/api/cases/{created.Id}", new RenameCaseRequest("  Ellis v. Cascade Freight  "));
+        HttpResponseMessage blank = await client.PatchAsJsonAsync($"/api/cases/{created.Id}", new RenameCaseRequest(" "));
+        HttpResponseMessage missing = await client.PatchAsJsonAsync("/api/cases/zzzzzzzzzzzz", new RenameCaseRequest("Name"));
+
+        Assert.Equal("Ellis v. Cascade Freight", (await renamed.Content.ReadFromJsonAsync<CaseDto>(Json))!.Name);
+        Assert.Equal("Ellis v. Cascade Freight", (await client.GetFromJsonAsync<CaseDto>($"/api/cases/{created.Id}", Json))!.Name);
+        Assert.Equal(HttpStatusCode.BadRequest, blank.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
@@ -336,12 +352,13 @@ public sealed class ApiTests : IDisposable
         await client.PostAsync($"/api/cases/{created.Id}/draft", null);
         await WaitForJobToFinish(client, created.Id);
 
-        ReviewItem placeholder = Assert.Single((await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!);
-        Assert.Equal((ReviewItemKind.Placeholder, "[CLAIM NUMBER]", ReviewStatus.Open), (placeholder.Kind, placeholder.Text, placeholder.Status));
+        ReviewItem[] items = (await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!;
+        Assert.All(items, item => Assert.Equal((ReviewItemKind.Placeholder, ReviewStatus.Open), (item.Kind, item.Status)));
+        ReviewItem placeholder = items.Single(item => item.Text == "[CLAIM NUMBER]");
 
         HttpResponseMessage update = await client.PutAsJsonAsync($"/api/cases/{created.Id}/review/{placeholder.Id}",
             new UpdateReviewRequest(ReviewStatus.Resolved, "Claim number is 26-55102."), Json);
-        ReviewItem reviewed = Assert.Single((await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!);
+        ReviewItem reviewed = (await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!.Single(item => item.Id == placeholder.Id);
 
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
         Assert.Equal((ReviewStatus.Resolved, "Claim number is 26-55102."), (reviewed.Status, reviewed.Note));

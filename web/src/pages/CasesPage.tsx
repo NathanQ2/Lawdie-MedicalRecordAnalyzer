@@ -1,17 +1,69 @@
-import { Alert, Badge, Button, Center, Group, Loader, Modal, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core'
+import { ActionIcon, Alert, Badge, Box, Button, Center, Group, Loader, Modal, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import { IconPlus } from '@tabler/icons-react'
+import { modals } from '@mantine/modals'
+import { notifications } from '@mantine/notifications'
+import { IconDotsVertical, IconPlus } from '@tabler/icons-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { api } from '../api/client'
+import type { CaseListItem } from '../api/types'
+import { CaseActionsMenu, type CaseAction } from '../components/CaseActionsMenu'
 import { caseKeys, useCases } from '../hooks/useCase'
 import { formatDateTime, isJobActive, jobStateColors } from '../lib/format'
 
 export function CasesPage() {
   const cases = useCases()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [creating, { open, close }] = useDisclosure(false)
+  const [renaming, setRenaming] = useState<CaseListItem | null>(null)
+  // A right-click opens the case's menu at the cursor.
+  const [contextMenu, setContextMenu] = useState<{ item: CaseListItem; x: number; y: number } | null>(null)
+
+  const remove = useMutation({
+    mutationFn: (item: CaseListItem) => api.deleteCase(item.id),
+    onSuccess: async (_, item) => {
+      await queryClient.invalidateQueries({ queryKey: caseKeys.all })
+      notifications.show({ color: 'green', message: `Deleted "${item.name}".` })
+    },
+    onError: (error) => notifications.show({ color: 'red', title: 'Could not delete the case', message: error.message }),
+  })
+
+  const runAction = (item: CaseListItem, action: CaseAction) => {
+    setContextMenu(null)
+    switch (action) {
+      case 'open':
+        navigate(`/cases/${item.id}`)
+        break
+      case 'documents':
+        navigate(`/cases/${item.id}/records`)
+        break
+      case 'analysis':
+        navigate(`/cases/${item.id}/analysis`)
+        break
+      case 'draft':
+        navigate(`/cases/${item.id}/draft`)
+        break
+      case 'rename':
+        setRenaming(item)
+        break
+      case 'delete':
+        modals.openConfirmModal({
+          title: `Delete "${item.name}"?`,
+          children: <Text size="sm">This permanently deletes the case, its uploaded documents, and all results. It cannot be undone.</Text>,
+          labels: { confirm: 'Delete case', cancel: 'Keep it' },
+          confirmProps: { color: 'red' },
+          onConfirm: () => remove.mutate(item),
+        })
+        break
+    }
+  }
+
+  const openContextMenu = (event: MouseEvent, item: CaseListItem) => {
+    event.preventDefault()
+    setContextMenu({ item, x: event.clientX, y: event.clientY })
+  }
 
   return (
     <Stack gap="lg">
@@ -49,11 +101,17 @@ export function CasesPage() {
                 <Table.Th>Documents</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Updated</Table.Th>
+                <Table.Th aria-label="Actions" w={48} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {cases.data.map((item) => (
-                <Table.Tr key={item.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/cases/${item.id}`)}>
+                <Table.Tr
+                  key={item.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/cases/${item.id}`)}
+                  onContextMenu={(event) => openContextMenu(event, item)}
+                >
                   <Table.Td>
                     <Text fw={500}>{item.name}</Text>
                   </Table.Td>
@@ -71,6 +129,17 @@ export function CasesPage() {
                     </Group>
                   </Table.Td>
                   <Table.Td>{formatDateTime(item.updatedAt)}</Table.Td>
+                  <Table.Td onClick={(event) => event.stopPropagation()}>
+                    <CaseActionsMenu
+                      item={item}
+                      onAction={(action) => runAction(item, action)}
+                      target={
+                        <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${item.name}`}>
+                          <IconDotsVertical size={18} />
+                        </ActionIcon>
+                      }
+                    />
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -78,7 +147,19 @@ export function CasesPage() {
         </Paper>
       )}
 
+      {contextMenu && (
+        <CaseActionsMenu
+          key={`${contextMenu.item.id}-${contextMenu.x}-${contextMenu.y}`}
+          item={contextMenu.item}
+          opened
+          onChange={(opened) => !opened && setContextMenu(null)}
+          onAction={(action) => runAction(contextMenu.item, action)}
+          target={<Box pos="fixed" left={contextMenu.x} top={contextMenu.y} w={1} h={1} />}
+        />
+      )}
+
       <NewCaseModal opened={creating} onClose={close} onCreated={(caseId) => navigate(`/cases/${caseId}/records`)} />
+      <RenameCaseModal item={renaming} onClose={() => setRenaming(null)} />
     </Stack>
   )
 }
@@ -134,5 +215,59 @@ function NewCaseModal({ opened, onClose, onCreated }: NewCaseModalProps) {
         </Stack>
       </form>
     </Modal>
+  )
+}
+
+function RenameCaseModal({ item, onClose }: { item: CaseListItem | null; onClose: () => void }) {
+  return (
+    <Modal opened={item !== null} onClose={onClose} title="Rename case">
+      {/* Keyed by case so the field starts from that case's current name. */}
+      {item && <RenameCaseForm key={item.id} item={item} onClose={onClose} />}
+    </Modal>
+  )
+}
+
+function RenameCaseForm({ item, onClose }: { item: CaseListItem; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const [name, setName] = useState(item.name)
+  const rename = useMutation({
+    mutationFn: (newName: string) => api.renameCase(item.id, newName),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: caseKeys.all })
+      onClose()
+    },
+  })
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    if (name.trim() && name.trim() !== item.name) {
+      rename.mutate(name.trim())
+    } else {
+      onClose()
+    }
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <Stack>
+        <TextInput
+          label="Case name"
+          value={name}
+          onChange={(event) => setName(event.currentTarget.value)}
+          maxLength={200}
+          data-autofocus
+          required
+        />
+        {rename.isError && <Alert color="red">{rename.error.message}</Alert>}
+        <Group justify="flex-end">
+          <Button variant="default" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={rename.isPending} disabled={!name.trim()}>
+            Rename
+          </Button>
+        </Group>
+      </Stack>
+    </form>
   )
 }

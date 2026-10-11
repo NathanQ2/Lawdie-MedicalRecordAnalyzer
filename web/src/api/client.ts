@@ -45,6 +45,7 @@ export const api = {
   listCases: () => request<CaseListItem[]>('/api/cases'),
   createCase: (name: string) => request<CaseDetail>('/api/cases', json('POST', { name })),
   getCase: (caseId: string) => request<CaseDetail>(casePath(caseId)),
+  renameCase: (caseId: string, name: string) => request<CaseDetail>(casePath(caseId), json('PATCH', { name })),
   deleteCase: (caseId: string) => request<null>(casePath(caseId), { method: 'DELETE' }),
 
   uploadRecords: (caseId: string, files: File[]) => {

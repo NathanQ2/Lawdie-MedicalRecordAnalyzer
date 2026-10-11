@@ -28,6 +28,8 @@ public record CaseDto(string Id, string Name, DateTimeOffset CreatedAt, DateTime
 
 public record CreateCaseRequest(string Name);
 
+public record RenameCaseRequest(string Name);
+
 public record UpdateReviewRequest(ReviewStatus Status, string? Note);
 
 public record ErrorResponse(string Error);

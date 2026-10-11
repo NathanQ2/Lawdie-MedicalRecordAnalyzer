@@ -62,6 +62,10 @@ export interface Citation {
   claim: string | null
   pageNumber: number | null
   endPageNumber: number | null
+  /** Set when the quote was read by OCR from a scanned page, so it may contain misread characters. */
+  recognized?: boolean
+  handwritten?: boolean
+  lowConfidence?: boolean
 }
 
 export interface DocumentSummary {
@@ -78,7 +82,7 @@ export interface CaseSummary {
 export interface Contradiction {
   summary: string
   citations: Citation[]
-  /** False when no quote supports the contradiction; it is shown for review but never used as a fact. */
+  /** False unless two different quotes support the contradiction; it is shown for review but never used as a fact. */
   isVerified: boolean
 }
 
@@ -110,7 +114,7 @@ export interface DemandDraft {
   unsupportedStatements: string[]
 }
 
-export type ReviewItemKind = 'Contradiction' | 'UnsupportedStatement' | 'Placeholder'
+export type ReviewItemKind = 'Contradiction' | 'UnsupportedStatement' | 'Placeholder' | 'RecognizedQuote'
 export type ReviewStatus = 'Open' | 'Resolved' | 'Dismissed'
 
 export interface ReviewItem {

@@ -170,6 +170,11 @@ export function ContradictionCard({ contradiction, selectedKey, onSelect }: Cont
           </Badge>
         )}
         <Text size="sm">{contradiction.summary}</Text>
+        {!contradiction.isVerified && contradiction.citations.length > 0 && (
+          <Text size="xs" c="dimmed">
+            Only one quote supports this, so the documents don't show a conflict. Check it against the documents before relying on it.
+          </Text>
+        )}
         {contradiction.citations.length === 0 ? (
           <Text size="xs" c="dimmed">
             No quote from the documents supports this contradiction. Check it against the documents before relying on it.

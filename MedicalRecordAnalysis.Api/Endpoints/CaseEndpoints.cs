@@ -362,6 +362,8 @@ public static class CaseEndpoints
             ".png" => "image/png",
             ".jpg" or ".jpeg" => "image/jpeg",
             ".tif" or ".tiff" => "image/tiff",
+            ".bmp" => "image/bmp",
+            ".heif" => "image/heif",
             _ => "application/octet-stream",
         };
     }

@@ -9,14 +9,15 @@ public enum ReviewItemKind
     Contradiction,
     UnsupportedStatement,
     Placeholder,
+    RecognizedQuote,
 }
 
 public record ReviewItem(string Id, ReviewItemKind Kind, string Text, Citation[] Citations, ReviewStatus Status, string? Note);
 
 /**
- * The attorney review checklist: contradictions from the analysis, plus uncited statements and placeholders
- * from the draft. An item's id comes from its kind and text, so its review state carries over when the
- * analysis or draft is regenerated with the same item.
+ * The attorney review checklist: contradictions from the analysis, plus uncited statements, placeholders and
+ * quotes read by OCR from the draft. An item's id comes from its kind and text, so its review state carries over when
+ * the analysis or draft is regenerated with the same item.
  */
 public static class ReviewItems
 {
@@ -33,6 +34,8 @@ public static class ReviewItems
         {
             items.AddRange(draft.UnsupportedStatements.Select(statement => (ReviewItemKind.UnsupportedStatement, statement, Array.Empty<Citation>())));
             items.AddRange(DemandLetterRenderer.FindPlaceholders(draft.Narrative).Select(placeholder => (ReviewItemKind.Placeholder, placeholder, Array.Empty<Citation>())));
+            items.AddRange(DemandLetterRenderer.FindRecognizedQuotes(draft).Select(citation =>
+                (ReviewItemKind.RecognizedQuote, DemandLetterRenderer.DescribeRecognizedQuote(citation), new[] { citation })));
         }
 
         return items

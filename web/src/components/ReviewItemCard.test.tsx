@@ -8,7 +8,10 @@ const contradiction: ReviewItem = {
   id: 'contradiction-1',
   kind: 'Contradiction',
   text: '12_Pain_Management_Consult.txt gives the collision date as 01/08/2026.',
-  citations: [{ filePath: '/r/12_Pain.txt', citedText: 'collision on 01/08/2026', startPosition: 5, citationLength: 23, claim: null, pageNumber: 1, endPageNumber: null }],
+  citations: [
+    { filePath: '/r/12_Pain.txt', citedText: 'collision on 01/08/2026', startPosition: 5, citationLength: 23, claim: null, pageNumber: 1, endPageNumber: null },
+    { filePath: '/r/04_PCP.txt', citedText: 'collision on 01/09/2026', startPosition: 90, citationLength: 23, claim: null, pageNumber: 1, endPageNumber: null },
+  ],
   status: 'Open',
   note: null,
 }
@@ -34,8 +37,9 @@ describe('ReviewItemCard', () => {
     expect(screen.queryByText('Unverified')).not.toBeInTheDocument()
   })
 
-  it('labels a contradiction without quotes as unverified', () => {
-    renderWithMantine(<ReviewItemCard item={{ ...contradiction, citations: [] }} onUpdate={() => {}} onSelectCitation={() => {}} />)
+  it('labels a contradiction without two different quotes as unverified', () => {
+    const [quote] = contradiction.citations
+    renderWithMantine(<ReviewItemCard item={{ ...contradiction, citations: [quote, { ...quote }] }} onUpdate={() => {}} onSelectCitation={() => {}} />)
 
     expect(screen.getByText('Unverified')).toBeInTheDocument()
   })

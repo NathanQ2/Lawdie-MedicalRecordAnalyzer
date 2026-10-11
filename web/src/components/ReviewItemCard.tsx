@@ -2,12 +2,13 @@ import { Badge, Button, Card, Group, Stack, Text, Textarea, UnstyledButton } fro
 import { IconArrowBackUp, IconCheck, IconX } from '@tabler/icons-react'
 import { useState } from 'react'
 import type { Citation, ReviewItem, ReviewItemKind, ReviewStatus } from '../api/types'
-import { citationKey, pageLabel, recordName } from '../lib/citations'
+import { citationKey, hasTwoQuotes, pageLabel, recordName } from '../lib/citations'
 
 const kindLabels: Record<ReviewItemKind, { label: string; color: string }> = {
   Contradiction: { label: 'Contradiction', color: 'red' },
   UnsupportedStatement: { label: 'Uncited statement', color: 'yellow' },
   Placeholder: { label: 'Placeholder', color: 'grape' },
+  RecognizedQuote: { label: 'Scanned text', color: 'blue' },
 }
 
 interface ReviewItemCardProps {
@@ -24,8 +25,8 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, saving = fals
   const [note, setNote] = useState(item.note ?? '')
   const open = item.status === 'Open'
   const noteChanged = note.trim() !== (item.note ?? '')
-  // A contradiction with no supporting quote is the reviewer's own description, not something the documents show.
-  const unverified = item.kind === 'Contradiction' && item.citations.length === 0
+  // A contradiction without two different quotes is the reviewer's own description, not something the documents show.
+  const unverified = item.kind === 'Contradiction' && !hasTwoQuotes(item.citations)
 
   return (
     <Card withBorder radius="md" padding="sm" opacity={open ? 1 : 0.7}>

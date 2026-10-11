@@ -33,9 +33,29 @@ export function pageLabel(citation: Citation): string {
   return citation.endPageNumber !== null ? `pp. ${citation.pageNumber}–${citation.endPageNumber}` : `p. ${citation.pageNumber}`
 }
 
+/**
+ * A warning for quotes read by OCR from a scanned page, which can contain misread characters; null for quotes
+ * taken from the document's own text.
+ */
+export function recognitionNote(citation: Citation): string | null {
+  if (!citation.recognized) {
+    return null
+  }
+  const details = [citation.handwritten && 'it is handwritten', citation.lowConfidence && 'some words were hard to read'].filter(Boolean)
+  const reason = details.length > 0 ? ` (${details.join('; ')})` : ''
+  return `This quote was read from a scanned page${reason}. Check it against the original before relying on it.`
+}
+
 export function describeCitation(citation: Citation): string {
   const page = pageLabel(citation)
   return page ? `${recordName(citation.filePath)}, ${page}` : recordName(citation.filePath)
+}
+
+/**
+ * Whether a contradiction is backed by at least two different quotes, matching the API's Contradiction.IsVerified.
+ */
+export function hasTwoQuotes(citations: Citation[]): boolean {
+  return new Set(citations.map(citationKey)).size >= 2
 }
 
 /** A run of text, with the citations that support it (placed after it) and whether it is an uncited sentence. */

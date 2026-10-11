@@ -9,4 +9,8 @@ public class OCRResult
      * plain text files, which are treated as a single page.
      */
     public int[] PageStartPositions { get; init; } = [];
+    /**
+     * The parts of Text that came from OCR. Empty when all of the text was embedded in the file.
+     */
+    public RecognitionSpans Recognition { get; init; } = new RecognitionSpans();
 }

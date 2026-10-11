@@ -35,6 +35,33 @@ public class QuoteIdTests
     }
 
     [Fact]
+    public void ContextMarksQuotesReadByOcr()
+    {
+        PICase piCase = CreateCase();
+        piCase.DocumentSummaries[1].Citations[0].Recognized = true;
+        piCase.DocumentSummaries[1].Citations[0].Handwritten = true;
+        piCase.DocumentSummaries[0].Citations[1].Recognized = true;
+
+        string context = AnthropicProvider.BuildCaseContext(piCase);
+
+        Assert.Contains("[Q1] \"PHYSICAL EXAM", context);
+        Assert.Contains("[Q2] (OCR) \"Denies loss of consciousness.\"", context);
+        Assert.Contains("[Q3] (OCR, handwritten) \"Briefly lost consciousness.\"", context);
+    }
+
+    [Fact]
+    public void ContradictionsNeedTwoDifferentQuotes()
+    {
+        List<Citation> quotes = AnthropicProvider.NumberQuotes(CreateCase());
+        Citation sameSpan = new Citation() { FilePath = quotes[1].FilePath, CitedText = quotes[1].CitedText, StartPosition = quotes[1].StartPosition };
+
+        Assert.True(new Contradiction() { Summary = "LOC conflicts.", Citations = [quotes[1], quotes[2]] }.IsVerified);
+        Assert.False(new Contradiction() { Summary = "Billed twice.", Citations = [quotes[1], sameSpan] }.IsVerified);
+        Assert.False(new Contradiction() { Summary = "One quote.", Citations = [quotes[2]] }.IsVerified);
+        Assert.False(new Contradiction() { Summary = "No quotes.", Citations = [] }.IsVerified);
+    }
+
+    [Fact]
     public void ContextLabelsDocumentsWithTheirFileNames()
     {
         string context = AnthropicProvider.BuildCaseContext(CreateCase());

@@ -62,7 +62,7 @@ public class DemandLetterRendererTests
 
         string letter = DemandLetterRenderer.Render(CreateDraft(), piCase, DraftFormat.Markdown);
 
-        Assert.Contains("- Dates conflict. (Unverified: no quote supports this.)", letter);
+        Assert.Contains("- Dates conflict. (Unverified: not supported by two different quotes.)", letter);
         Assert.DoesNotContain("Loss of consciousness conflicts. (Unverified", letter);
     }
 
@@ -73,7 +73,7 @@ public class DemandLetterRendererTests
 
         string letter = DemandLetterRenderer.Render(draft, new PICase([]), DraftFormat.Markdown);
 
-        Assert.Equal(3, letter.Split('\n').Count(line => line.Trim() == "None."));
+        Assert.Equal(4, letter.Split('\n').Count(line => line.Trim() == "None."));
     }
 
     [Fact]

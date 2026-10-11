@@ -13,7 +13,7 @@ import { isJobActive } from '../lib/format'
 
 const MAX_UPLOAD_BYTES = 250 * 1024 * 1024
 
-// Images and TIFFs are accepted for when an OCR provider is configured; until then ingest skips them.
+// Images are read by OCR when it is configured on the server; otherwise ingest skips them with the reason.
 const ACCEPTED_TYPES = {
   'application/pdf': ['.pdf'],
   'text/plain': ['.txt'],
@@ -21,6 +21,8 @@ const ACCEPTED_TYPES = {
   'image/png': ['.png'],
   'image/jpeg': ['.jpg', '.jpeg'],
   'image/tiff': ['.tif', '.tiff'],
+  'image/bmp': ['.bmp'],
+  'image/heif': ['.heif'],
 }
 
 export function RecordsTab() {

@@ -47,6 +47,8 @@ public static partial class DemandLetterDocxRenderer
                 (DemandLetterRenderer.DescribeContradiction(contradiction), contradiction.Citations.Select(DemandLetterRenderer.DescribeSource).ToList())));
             AppendSection(body, "Statements without a cited source", draft.UnsupportedStatements.Select(statement => (statement, new List<string>())));
             AppendSection(body, "Placeholders to fill in", DemandLetterRenderer.FindPlaceholders(draft.Narrative).Select(placeholder => (placeholder, new List<string>())));
+            AppendSection(body, DemandLetterRenderer.RecognizedQuotesHeading, DemandLetterRenderer.FindRecognizedQuotes(draft)
+                .Select(citation => (DemandLetterRenderer.DescribeRecognizedQuote(citation), new List<string>())));
         }
 
         MakeRelationshipTargetsRelative(stream);

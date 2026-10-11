@@ -53,7 +53,10 @@ The UI checks the status of a running job every couple of seconds. Live updates 
 6. ✅ **Case management**
    - Rename and delete cases from a ⋮ or right-click menu on the case list, with confirmation before deleting.
 
-Later: login and cloud storage, an OCR provider for scanned files, and editing the draft in the browser.
+7. ✅ **OCR**
+   - Scanned PDF pages and images are read with Azure Document Intelligence when it is configured. Quotes from them are flagged in the source viewer and listed as "Scanned text" review items.
+
+Later: login and cloud storage, and editing the draft in the browser.
 
 ## API endpoints
 | Endpoint | Purpose |

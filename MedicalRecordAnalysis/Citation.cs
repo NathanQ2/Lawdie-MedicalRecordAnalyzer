@@ -15,5 +15,13 @@ public class Citation
      */
     public int? PageNumber { get; set; }
     public int? EndPageNumber { get; set; }
+    /**
+     * Whether the quote, or part of it, was read by OCR rather than taken from text embedded in the file, whether
+     * that part is handwritten, and whether the OCR service was unsure of any of its words. OCR can misread
+     * characters, so these quotes are listed for the attorney to check against the original page.
+     */
+    public bool Recognized { get; set; }
+    public bool Handwritten { get; set; }
+    public bool LowConfidence { get; set; }
     public int CitationLength => CitedText.Length;
 }

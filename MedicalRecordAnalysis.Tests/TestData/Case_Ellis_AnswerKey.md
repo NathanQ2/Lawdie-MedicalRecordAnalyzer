@@ -3,10 +3,10 @@
 Everything in `Case_Ellis/` is made up for testing. The people, providers, phone numbers and claims are all invented. This file sits next to the folder rather than inside it, because `ingest` reads `.md` files: ingest `Case_Ellis/` itself, not `TestData/`, or the answer key is treated as a record.
 
 ## The case
-Morgan Ellis (DOB 04/11/1985) was a warehouse shift supervisor. On **01/09/2026** she was the restrained driver of a car stopped on I-5 when a box truck rear-ended it. There are 24 files covering the six months after the crash:
+Morgan Ellis (DOB 04/11/1985) was a warehouse shift supervisor. On **01/09/2026** she was the restrained driver of a car stopped on I-5 when a box truck rear-ended it. There are 25 files covering the six months after the crash:
 - **First day:** EMS run sheet, ED record, CT reports.
 - **Follow-up care:** primary care (3 visits), physical therapy (evaluation, 33 daily notes over 17 pages, re-evaluation, discharge), cervical and lumbar MRIs, orthopedic spine (consult and follow-up), pain management (consult, epidural injection, follow-up), and behavioral health (PTSD).
-- **Supporting records:** pharmacy history, billing summary ($35,390.05) and an employer letter (lost wages).
+- **Supporting records:** pharmacy history, billing summary ($35,390.05), an employer letter (lost wages) and a handwritten pain journal kept by the client.
 
 PDFs are digital (text layer) unless noted below.
 
@@ -19,9 +19,12 @@ PDFs are digital (text layer) unless noted below.
 4. **Prior neck history:** the PCP (01/13) records "Denies prior neck or back injuries," and orthopedics records "denies any prior neck problems." But the 2023 Lakeside Chiropractic record shows 6 visits for neck stiffness, which resolved fully. The orthopedic causation opinion relies on "the absence of prior neck complaints."
 5. **Contradiction inside one file:** the epidural injection note's date of service is 03/17/2026, but its procedure description says "On 03/18/2026 the patient was brought to the procedure suite."
 6. **PT visit count:** the discharge summary says she "attended 34 of 40 scheduled visits," but the daily notes contain only 33 visits.
+7. **Work during leave:** the pain journal's entry for Thu 2/26 says she "went into work for a 4hr light duty shift." The ortho consult (02/24), the PCP follow-up (02/27: "She remains off work") and the employer letter (03/02: "on medical leave since 01/09/2026") all say she was off work. This undercuts the lost-wages claim.
+8. **Impossible date:** the journal's last entry is dated "Sat 2/29," but 2026 is not a leap year. Saturday was 02/28/2026. This is borderline: the contradiction check is told that implausible dates in OCR'd handwriting are likely misreads, so it may leave this out. The quote is still flagged for review as handwritten.
 
 ## Edge cases
-- **`09_Faxed_Referral_2026-02-20.pdf`** is image-only (a simulated scan with no text layer). With no OCR provider configured, `ingest` should report it as skipped.
+- **`09_Faxed_Referral_2026-02-20.pdf`** is image-only (a simulated scan with no text layer). With no OCR provider configured, `ingest` should report it as skipped; with Azure Document Intelligence configured, it is read by OCR and its quotes are flagged for review.
+- **`25_Patient_Pain_Journal_2026-02-23.jpeg`** is a phone photo of a handwritten page, read by OCR. Every quote from it should be flagged as handwritten. OCR misreads several words; in one run it read "Wed 2/25" as "2125" (without marking it uncertain), "6/10" as "6/1." and "4hr" as "the". A misread must not be reported as a contradiction. Its consistent details are left-hand tingling (matching the MRI and PCP), gabapentin started 02/24 (matching the pharmacy history) and being unable to lift her son.
 - **`23_Dental_Cleaning_2026-02-03.txt`** is unrelated to the injury and should not appear in the narrative.
 - **`22_Chiropractic_Record_Lakeside_2023-05-02.txt`** predates the collision. It matters for causation and the pre-existing-condition question, not for damages.
 - **`06_PT_Daily_Notes_…pdf`** is 17 pages and the largest file, so it tests passage retrieval.

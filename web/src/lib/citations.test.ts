@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Citation } from '../api/types'
-import { annotate, citationNumbering, describeCitation, findQuoteRange, locateInText, pageLabel, recordName } from './citations'
+import { annotate, citationNumbering, describeCitation, findQuoteRange, hasTwoQuotes, locateInText, pageLabel, recognitionNote, recordName } from './citations'
 
 const citation = (overrides: Partial<Citation>): Citation => ({
   filePath: '/cases/abc/records/02_ED_Record.pdf',
@@ -23,6 +23,16 @@ describe('labels', () => {
     expect(describeCitation(citation({ pageNumber: 2 }))).toBe('02_ED_Record.pdf, p. 2')
   })
 
+  it('warns about quotes read from scanned pages', () => {
+    expect(recognitionNote(citation({}))).toBeNull()
+    expect(recognitionNote(citation({ recognized: true }))).toBe(
+      'This quote was read from a scanned page. Check it against the original before relying on it.',
+    )
+    expect(recognitionNote(citation({ recognized: true, handwritten: true, lowConfidence: true }))).toContain(
+      '(it is handwritten; some words were hard to read)',
+    )
+  })
+
   it('numbers distinct sources in order, reusing numbers for repeats', () => {
     const a = citation({ startPosition: 1 })
     const b = citation({ startPosition: 2 })
@@ -32,6 +42,13 @@ describe('labels', () => {
 })
 
 describe('annotate', () => {
+  it('needs two different quotes to support a contradiction', () => {
+    const quote = citation({})
+    expect(hasTwoQuotes([quote, citation({ startPosition: 500 })])).toBe(true)
+    expect(hasTwoQuotes([quote, { ...quote }])).toBe(false)
+    expect(hasTwoQuotes([])).toBe(false)
+  })
+
   const text = 'She was rear-ended. She denied loss of consciousness. The date is disputed.'
 
   it('places citations after the claims they support, in order', () => {

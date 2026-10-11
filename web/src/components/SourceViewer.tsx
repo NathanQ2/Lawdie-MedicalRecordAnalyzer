@@ -5,10 +5,14 @@ import { useQuery } from '@tanstack/react-query'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { Citation } from '../api/types'
-import { citationKey, locateInText, pageLabel, recordName } from '../lib/citations'
+import { citationKey, locateInText, pageLabel, recognitionNote, recordName } from '../lib/citations'
 
 // pdf.js is large, so it loads only when a PDF is first shown.
 const PdfPage = lazy(() => import('./PdfPage'))
+
+// Image types browsers can display; others (such as TIFF in Chrome) are offered through "Open original".
+const DISPLAYABLE_IMAGE = /\.(png|jpe?g|bmp)$/i
+const IMAGE = /\.(png|jpe?g|bmp|tiff?|heif)$/i
 
 interface SourceViewerProps {
   caseId: string
@@ -23,6 +27,7 @@ export function SourceViewer({ caseId, citation, onClose }: SourceViewerProps) {
   const name = recordName(citation.filePath)
   const url = api.recordUrl(caseId, name)
   const isPdf = name.toLowerCase().endsWith('.pdf')
+  const ocrNote = recognitionNote(citation)
 
   return (
     <Paper withBorder radius="md" p="md" h="100%">
@@ -58,10 +63,21 @@ export function SourceViewer({ caseId, citation, onClose }: SourceViewerProps) {
             Supports: {citation.claim}
           </Text>
         )}
+        {ocrNote && (
+          <Alert color="blue" p="xs" styles={{ message: { fontSize: 'var(--mantine-font-size-xs)' } }}>
+            {ocrNote}
+          </Alert>
+        )}
 
         <Box style={{ flex: 1, minHeight: 0 }}>
           {/* Keyed by citation so page navigation starts over at the cited page for each new citation. */}
-          {isPdf ? <PdfSource key={citationKey(citation)} url={url} citation={citation} /> : <TextSource url={url} citation={citation} />}
+          {isPdf ? (
+            <PdfSource key={citationKey(citation)} url={url} citation={citation} />
+          ) : IMAGE.test(name) ? (
+            <ImageSource url={url} name={name} />
+          ) : (
+            <TextSource url={url} citation={citation} />
+          )}
         </Box>
       </Stack>
     </Paper>
@@ -114,17 +130,33 @@ function PdfSource({ url, citation }: { url: string; citation: Citation }) {
               </Center>
             }
           >
+            {/* Scanned pages have no text layer to search, so OCR quotes are not highlighted. */}
             <PdfPage
               url={url}
               pageNumber={page}
               width={Math.max(width - 2, 0)}
-              quote={page === startPage ? citation.citedText : ''}
+              quote={page === startPage && !citation.recognized ? citation.citedText : ''}
               onPageCount={onPageCount}
             />
           </Suspense>
         </Box>
       </ScrollArea.Autosize>
     </Stack>
+  )
+}
+
+function ImageSource({ url, name }: { url: string; name: string }) {
+  if (!DISPLAYABLE_IMAGE.test(name)) {
+    return (
+      <Text size="sm" c="dimmed">
+        This image type can't be shown here. Use “Open original” to view it.
+      </Text>
+    )
+  }
+  return (
+    <ScrollArea.Autosize mah="calc(100vh - 300px)" type="auto">
+      <img src={url} alt={name} style={{ width: '100%', display: 'block' }} />
+    </ScrollArea.Autosize>
   )
 }
 

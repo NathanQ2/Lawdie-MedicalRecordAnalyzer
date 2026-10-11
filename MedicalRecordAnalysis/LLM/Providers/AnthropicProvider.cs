@@ -63,7 +63,10 @@ public class AnthropicProvider : ILLMProvider
         "diagnoses, providers, or causal statements. A single document can contradict itself. " +
         "Each document is labeled with its record's file name; refer to records by that name in " +
         "your descriptions. Each supporting quote is labeled with an ID such as [Q3]; reference the quotes that " +
-        "show each contradiction by ID only, never by restating their text. Respond with JSON " +
+        "show each contradiction by ID only, never by restating their text. Every contradiction needs at least " +
+        "two different quotes that conflict. Quotes marked (OCR) were read by text recognition from a scanned " +
+        "or handwritten page and may contain misread characters, especially in dates and numbers; do not report " +
+        "a contradiction that rests only on a garbled or implausible reading that is likely a misread. Respond with JSON " +
         "only, using this exact shape: " +
         "{\"contradictions\":[{\"summary\":\"<description>\",\"quoteIds\":[\"Q1\",\"Q2\"]}]}. " +
         "If there are no contradictions, return {\"contradictions\":[]}.";
@@ -441,7 +444,8 @@ public class AnthropicProvider : ILLMProvider
 
     /**
      * Renders the case for the model. Each quote gets an ID (Q1, Q2, ...) matching its position in
-     * NumberQuotes, and its text is JSON-escaped so multi-line quotes stay on a single line.
+     * NumberQuotes, and its text is JSON-escaped so multi-line quotes stay on a single line. Quotes read by OCR are
+     * marked, so a likely misread is not mistaken for a conflict between records.
      */
     internal static string BuildCaseContext(PICase piCase)
     {
@@ -468,7 +472,13 @@ public class AnthropicProvider : ILLMProvider
                 foreach (Citation citation in summary.Citations)
                 {
                     quoteNumber++;
-                    builder.Append("[Q").Append(quoteNumber).Append("] ").AppendLine(JsonSerializer.Serialize(citation.CitedText));
+                    builder.Append("[Q").Append(quoteNumber).Append("] ");
+                    if (citation.Recognized)
+                    {
+                        builder.Append(citation.Handwritten ? "(OCR, handwritten) " : "(OCR) ");
+                    }
+
+                    builder.AppendLine(JsonSerializer.Serialize(citation.CitedText));
                 }
             }
 

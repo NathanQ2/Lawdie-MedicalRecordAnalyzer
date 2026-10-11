@@ -13,11 +13,13 @@ public enum DraftFormat
 
 /**
  * Renders a demand draft with a numbered source note for every cited claim, followed by an attorney review
- * section listing contradictions, uncited statements, and placeholders that must be resolved before sending.
+ * section listing contradictions, uncited statements, placeholders, and quotes read by OCR that must be resolved or
+ * checked before sending.
  */
 public static partial class DemandLetterRenderer
 {
     internal const string ReviewTitle = "Attorney Review - Remove Before Sending";
+    internal const string RecognizedQuotesHeading = "Quotes read by OCR (check against the original page)";
 
     [GeneratedRegex(@"\[[A-Z][A-Z0-9 &/'.,-]*\]")]
     private static partial Regex PlaceholderPattern();
@@ -81,6 +83,7 @@ public static partial class DemandLetterRenderer
             DescribeContradiction(contradiction) + string.Concat(contradiction.Citations.Select(citation => $"\n    - {DescribeSource(citation)}"))));
         AppendSection(builder, markdown, "Statements without a cited source", draft.UnsupportedStatements);
         AppendSection(builder, markdown, "Placeholders to fill in", FindPlaceholders(draft.Narrative));
+        AppendSection(builder, markdown, RecognizedQuotesHeading, FindRecognizedQuotes(draft).Select(DescribeRecognizedQuote));
 
         return builder.ToString().TrimEnd() + Environment.NewLine;
     }
@@ -119,6 +122,38 @@ public static partial class DemandLetterRenderer
     public static IReadOnlyList<string> FindPlaceholders(string text)
     {
         return PlaceholderPattern().Matches(text).Select(match => match.Value).Distinct().ToList();
+    }
+
+    /**
+     * The distinct quotes cited in the draft that came from OCR, in order of first use. OCR can misread characters,
+     * so each must be checked against the original page before the letter is sent.
+     */
+    public static IReadOnlyList<Citation> FindRecognizedQuotes(DemandDraft draft)
+    {
+        return draft.Segments
+            .SelectMany(segment => segment.Citations)
+            .Where(citation => citation.Recognized)
+            .DistinctBy(citation => (citation.FilePath, citation.StartPosition, citation.CitedText))
+            .ToList();
+    }
+
+    /**
+     * The quote's source, with what makes it uncertain: "er.pdf, p. 2: "..." (handwritten; some words uncertain)".
+     */
+    public static string DescribeRecognizedQuote(Citation citation)
+    {
+        List<string> notes = [];
+        if (citation.Handwritten)
+        {
+            notes.Add("handwritten");
+        }
+
+        if (citation.LowConfidence)
+        {
+            notes.Add("some words uncertain");
+        }
+
+        return notes.Count > 0 ? $"{DescribeSource(citation)} ({string.Join("; ", notes)})" : DescribeSource(citation);
     }
 
     /**
@@ -177,14 +212,15 @@ public static partial class DemandLetterRenderer
     }
 
     /**
-     * The contradiction's summary, labeled when no quote supports it so the reviewer checks it against the records.
+     * The contradiction's summary, labeled when two different quotes don't support it, so the reviewer checks it
+     * against the records.
      */
     internal static string DescribeContradiction(Contradiction contradiction)
     {
-        return contradiction.IsVerified ? contradiction.Summary : $"{contradiction.Summary} (Unverified: no quote supports this.)";
+        return contradiction.IsVerified ? contradiction.Summary : $"{contradiction.Summary} (Unverified: not supported by two different quotes.)";
     }
 
-    internal static string DescribeSource(Citation citation)
+    public static string DescribeSource(Citation citation)
     {
         string quote = WhitespacePattern().Replace(citation.CitedText, " ").Trim();
         return $"{Path.GetFileName(citation.FilePath)}, {DescribeLocation(citation)}: \"{quote}\"";

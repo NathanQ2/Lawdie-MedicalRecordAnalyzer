@@ -1,3 +1,5 @@
+using MedicalRecordAnalysis.OCR;
+
 namespace MedicalRecordAnalysis.Retrieval;
 
 /**
@@ -21,6 +23,10 @@ public class SourceDocument
      * The offset in the extracted text where each page begins; empty for unpaged sources (a single page).
      */
     public int[] PageStartPositions { get; init; } = [];
+    /**
+     * The parts of the extracted text that came from OCR, so citations quoting them can be flagged for review.
+     */
+    public RecognitionSpans Recognition { get; init; } = new RecognitionSpans();
 }
 
 /**

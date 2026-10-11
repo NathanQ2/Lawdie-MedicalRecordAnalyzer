@@ -61,19 +61,22 @@ public class MedicalRecordAnalyzer
             return piCase;
         }
 
-        // 2. Find contradictions, so the case summary can present disputed facts as disputed
+        // 2. Find contradictions, so the case summary can present disputed facts as disputed. Quotes are flagged
+        // first so the provider can tell OCR text, where odd characters may be misreads, from embedded text.
+        RecognitionLocator.AssignFlags(piCase.DocumentSummaries.SelectMany(summary => summary.Citations), piCase.Sources);
         progress?.Report(new PipelineProgress(PipelineStage.FindingContradictions, 0, 1));
         VerificationResult verification = await m_llmProvider.Verify(piCase, cancellationToken);
-        piCase.Contradictions = verification.Contradictions;
+        piCase.Contradictions = verification.Contradictions.Select(WithDistinctCitations).ToArray();
 
         // 3. Summarize the case, grounded in the extracted quotes
         progress?.Report(new PipelineProgress(PipelineStage.SummarizingCase, 0, 1));
         piCase.Summary = await m_llmProvider.SummarizeCase(piCase, cancellationToken);
-        PageLocator.AssignPages(
-            piCase.DocumentSummaries.SelectMany(summary => summary.Citations)
-                .Concat(piCase.Contradictions.SelectMany(contradiction => contradiction.Citations))
-                .Concat(piCase.Summary.Citations),
-            piCase.Sources);
+        Citation[] citations = piCase.DocumentSummaries.SelectMany(summary => summary.Citations)
+            .Concat(piCase.Contradictions.SelectMany(contradiction => contradiction.Citations))
+            .Concat(piCase.Summary.Citations)
+            .ToArray();
+        PageLocator.AssignPages(citations, piCase.Sources);
+        RecognitionLocator.AssignFlags(citations, piCase.Sources);
 
         return piCase;
     }
@@ -88,7 +91,9 @@ public class MedicalRecordAnalyzer
         progress?.Report(new PipelineProgress(PipelineStage.Drafting, 0, 1));
         RetrievedPassage[] passages = PassageRetriever.Select(piCase);
         DemandDraft body = VerbatimCitations.Apply(await m_llmProvider.DraftDemand(piCase, passages, cancellationToken), piCase.Sources);
-        PageLocator.AssignPages(body.Segments.SelectMany(segment => segment.Citations), piCase.Sources);
+        Citation[] citations = body.Segments.SelectMany(segment => segment.Citations).ToArray();
+        PageLocator.AssignPages(citations, piCase.Sources);
+        RecognitionLocator.AssignFlags(citations, piCase.Sources);
         return DemandLetterTemplate.Wrap(body);
     }
 
@@ -156,6 +161,18 @@ public class MedicalRecordAnalyzer
     }
 
     /**
+     * The contradiction with each quoted span cited once, so a quote cited twice can't look like two statements.
+     */
+    private static Contradiction WithDistinctCitations(Contradiction contradiction)
+    {
+        return new Contradiction()
+        {
+            Summary = contradiction.Summary,
+            Citations = contradiction.Citations.DistinctBy(citation => (citation.FilePath, citation.StartPosition, citation.CitationLength)).ToArray(),
+        };
+    }
+
+    /**
      * Returns the record's summary and source text, from the cache when its contents are unchanged. Records that
      * cannot be read are added to skippedFiles and return null.
      */
@@ -195,6 +212,7 @@ public class MedicalRecordAnalyzer
             FilePath = result.File.FullName,
             Passages = PassageSplitter.Split(result.Text),
             PageStartPositions = result.PageStartPositions,
+            Recognition = result.Recognition,
         };
 
         CachedDocument document = new CachedDocument() { ContentHash = contentHash ?? "", Summary = summary, Source = source };

@@ -7,6 +7,8 @@ using MedicalRecordAnalysis.Api.Cases;
 using MedicalRecordAnalysis.Api.Endpoints;
 using MedicalRecordAnalysis.LLM;
 using MedicalRecordAnalysis.LLM.Providers;
+using MedicalRecordAnalysis.OCR;
+using MedicalRecordAnalysis.OCR.Providers;
 using MedicalRecordAnalysis.Retrieval;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -39,6 +41,9 @@ public sealed class ApiFactory : WebApplicationFactory<FileCaseStore>
         {
             services.RemoveAll<ILLMProvider>();
             services.AddSingleton(_ => Provider);
+            // Never call a real OCR service from tests, even when its keys are set in the environment.
+            services.RemoveAll<IOCRProvider>();
+            services.AddSingleton<IOCRProvider>(_ => new ChainedOCRProvider([new DirectTextProvider()]));
         });
     }
 

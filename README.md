@@ -6,6 +6,13 @@ This project turns a personal injury case's medical records into structured fact
 - .NET 10 SDK
 - Node.js 22.12 or newer (for the web UI)
 - An Anthropic API key in `ANTHROPIC_API_KEY`, or in a `.env` file at the repository root containing `ANTHROPIC_API_KEY=...`
+- For scanned pages, images and handwriting: an Azure AI Document Intelligence resource, with its endpoint and key in `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT` and `AZURE_DOCUMENT_INTELLIGENCE_KEY` (or in `.env`). Without them, documents that need OCR are skipped and listed with the reason. The free (F0) tier reads only the first two pages of each request, so use Standard (S0) for real cases, and arrange Microsoft's HIPAA agreement before sending real patient records.
+
+```
+ANTHROPIC_API_KEY=...
+AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://<resource-name>.cognitiveservices.azure.com/
+AZURE_DOCUMENT_INTELLIGENCE_KEY=...
+```
 
 ## Web UI (local)
 Start the API and the web dev server in two terminals:
@@ -42,4 +49,4 @@ dotnet test
 npm test --prefix web
 ```
 
-Both suites run offline. Tests that call the real Anthropic API are skipped unless `RUN_LIVE_TESTS=1` is set, and they cost money.
+Both suites run offline. Tests that call the real Anthropic or Azure APIs are skipped unless `RUN_LIVE_TESTS=1` is set, and they cost money.

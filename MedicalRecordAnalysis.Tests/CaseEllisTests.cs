@@ -11,6 +11,8 @@ namespace MedicalRecordAnalysis.Tests;
 public class CaseEllisTests
 {
     private const string ScannedFax = "09_Faxed_Referral_2026-02-20.pdf";
+    private const string HandwrittenJournal = "25_Patient_Pain_Journal_2026-02-23.jpeg";
+    private static readonly string[] NeedsOcr = [ScannedFax, HandwrittenJournal];
 
     private static readonly DirectoryInfo CaseDirectory = new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "TestData", "Case_Ellis"));
 
@@ -18,7 +20,7 @@ public class CaseEllisTests
     {
         DirectTextProvider provider = new DirectTextProvider();
         List<SourceDocument> sources = [];
-        foreach (FileInfo file in CaseDirectory.GetFiles().Where(file => file.Name != ScannedFax).OrderBy(file => file.Name))
+        foreach (FileInfo file in CaseDirectory.GetFiles().Where(file => !NeedsOcr.Contains(file.Name)).OrderBy(file => file.Name))
         {
             OCRResult result = await provider.DetectTextFromFile(file);
             sources.Add(new SourceDocument() { FilePath = file.FullName, Passages = PassageSplitter.Split(result.Text) });
@@ -30,17 +32,20 @@ public class CaseEllisTests
     }
 
     [Fact]
-    public async Task EveryRecordExceptTheScannedFaxHasReadableText()
+    public async Task EveryRecordExceptTheScansHasReadableText()
     {
         DirectTextProvider provider = new DirectTextProvider();
 
-        foreach (FileInfo file in CaseDirectory.GetFiles().Where(file => file.Name != ScannedFax))
+        foreach (FileInfo file in CaseDirectory.GetFiles().Where(file => !NeedsOcr.Contains(file.Name)))
         {
             OCRResult result = await provider.DetectTextFromFile(file);
             Assert.Contains("Ellis", result.Text);
         }
 
-        await Assert.ThrowsAsync<NotSupportedException>(() => provider.DetectTextFromFile(new FileInfo(Path.Combine(CaseDirectory.FullName, ScannedFax))));
+        foreach (string scan in NeedsOcr)
+        {
+            await Assert.ThrowsAsync<NotSupportedException>(() => provider.DetectTextFromFile(new FileInfo(Path.Combine(CaseDirectory.FullName, scan))));
+        }
     }
 
     [Fact]

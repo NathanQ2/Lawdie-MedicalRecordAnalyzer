@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using MedicalRecordAnalysis;
 using MedicalRecordAnalysis.Caching;
+using MedicalRecordAnalysis.OCR.Providers;
 
 namespace MedicalRecordAnalysisCLI;
 
@@ -27,7 +28,8 @@ public static class Program
         Description = "Directory for per-record results, so a repeated or failed ingest only summarizes new or changed records",
     };
 
-    private static MedicalRecordAnalyzer s_analyzer = new MedicalRecordAnalyzer();
+    private static MedicalRecordAnalyzer s_analyzer = new MedicalRecordAnalyzer(
+        ocrProvider: new ChainedOCRProvider([new DirectTextProvider(AzureDocumentIntelligenceRecognizer.FromEnvironment())]));
     
     public static async Task<int> Main(string[] args)
     {

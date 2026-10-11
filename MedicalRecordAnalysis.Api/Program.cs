@@ -64,7 +64,16 @@ public static class Program
             string? model = configuration["Anthropic:Model"];
             return new AnthropicProvider(new AnthropicClient() { ApiKey = apiKey }, string.IsNullOrWhiteSpace(model) ? null : model);
         });
-        builder.Services.AddSingleton<IOCRProvider>(_ => new ChainedOCRProvider([new DirectTextProvider()]));
+        // Pages without embedded text are sent to OCR when Document Intelligence is configured; otherwise those files
+        // are skipped with the reason.
+        builder.Services.AddSingleton<IOCRProvider>(services =>
+        {
+            IConfiguration configuration = services.GetRequiredService<IConfiguration>();
+            IPageRecognizer? recognizer = AzureDocumentIntelligenceRecognizer.Create(
+                configuration["AzureDocumentIntelligence:Endpoint"] ?? Environment.GetEnvironmentVariable(AzureDocumentIntelligenceRecognizer.EndpointVariable),
+                configuration["AzureDocumentIntelligence:ApiKey"] ?? Environment.GetEnvironmentVariable(AzureDocumentIntelligenceRecognizer.KeyVariable));
+            return new ChainedOCRProvider([new DirectTextProvider(recognizer)]);
+        });
         builder.Services.AddTransient(services =>
             new MedicalRecordAnalyzer(services.GetRequiredService<ILLMProvider>(), services.GetRequiredService<IOCRProvider>()));
     }

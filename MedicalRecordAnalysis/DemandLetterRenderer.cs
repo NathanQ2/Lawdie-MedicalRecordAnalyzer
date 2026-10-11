@@ -8,6 +8,7 @@ public enum DraftFormat
 {
     Markdown,
     PlainText,
+    Docx,
 }
 
 /**
@@ -16,8 +17,8 @@ public enum DraftFormat
  */
 public static partial class DemandLetterRenderer
 {
-    private const string Title = "Demand Letter Narrative (Draft)";
-    private const string ReviewTitle = "Attorney Review - Remove Before Sending";
+    internal const string Title = "Demand Letter Narrative (Draft)";
+    internal const string ReviewTitle = "Attorney Review - Remove Before Sending";
 
     [GeneratedRegex(@"\[[A-Z][A-Z0-9 &/'.,-]*\]")]
     private static partial Regex PlaceholderPattern();
@@ -27,11 +28,34 @@ public static partial class DemandLetterRenderer
 
     public static DraftFormat FormatFor(FileInfo output)
     {
-        return string.Equals(output.Extension, ".txt", StringComparison.OrdinalIgnoreCase) ? DraftFormat.PlainText : DraftFormat.Markdown;
+        return output.Extension.ToLowerInvariant() switch
+        {
+            ".txt" => DraftFormat.PlainText,
+            ".docx" => DraftFormat.Docx,
+            _ => DraftFormat.Markdown,
+        };
     }
 
+    /**
+     * The rendered draft as file contents in any format: UTF-8 text for Markdown and plain text, or a Word document.
+     */
+    public static byte[] RenderBytes(DemandDraft draft, PICase piCase, DraftFormat format)
+    {
+        return format == DraftFormat.Docx
+            ? DemandLetterDocxRenderer.Render(draft, piCase)
+            : Encoding.UTF8.GetBytes(Render(draft, piCase, format));
+    }
+
+    /**
+     * The rendered draft as Markdown or plain text. Use RenderBytes for Word documents.
+     */
     public static string Render(DemandDraft draft, PICase piCase, DraftFormat format)
     {
+        if (format == DraftFormat.Docx)
+        {
+            throw new ArgumentException("Word documents are binary; use RenderBytes.", nameof(format));
+        }
+
         bool markdown = format == DraftFormat.Markdown;
         StringBuilder builder = new StringBuilder();
 
@@ -126,7 +150,7 @@ public static partial class DemandLetterRenderer
         builder.AppendLine();
     }
 
-    private static string DescribeSource(Citation citation)
+    internal static string DescribeSource(Citation citation)
     {
         string quote = WhitespacePattern().Replace(citation.CitedText, " ").Trim();
         return $"{Path.GetFileName(citation.FilePath)}, {DescribeLocation(citation)}: \"{quote}\"";

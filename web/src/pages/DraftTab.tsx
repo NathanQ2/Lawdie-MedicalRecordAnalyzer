@@ -150,6 +150,9 @@ function ExportMenu({ caseId, openItems }: { caseId: string; openItems: number }
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
+          <Menu.Item component="a" href={api.draftExportUrl(caseId, 'docx')} download>
+            Word (.docx)
+          </Menu.Item>
           <Menu.Item component="a" href={api.draftExportUrl(caseId, 'md')} download>
             Markdown (.md)
           </Menu.Item>

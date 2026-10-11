@@ -41,6 +41,7 @@ describe('api client', () => {
 
   it('encodes record names in paths', () => {
     expect(api.recordUrl('abc', 'ED record #1.pdf')).toBe('/api/cases/abc/records/ED%20record%20%231.pdf')
+    expect(api.draftExportUrl('abc', 'docx')).toBe('/api/cases/abc/draft/export?format=docx')
   })
 
   it('updates a review item with PUT and the client header', async () => {

@@ -1,4 +1,3 @@
-using System.Text;
 using MedicalRecordAnalysis.Api.Cases;
 using MedicalRecordAnalysis.Api.Jobs;
 using MedicalRecordAnalysis.LLM;
@@ -251,11 +250,12 @@ public static class CaseEndpoints
         {
             "md" => DraftFormat.Markdown,
             "txt" => DraftFormat.PlainText,
+            "docx" => DraftFormat.Docx,
             _ => null,
         };
         if (draftFormat is null)
         {
-            return Error(StatusCodes.Status400BadRequest, "The format must be 'md' or 'txt'.");
+            return Error(StatusCodes.Status400BadRequest, "The format must be 'md', 'txt', or 'docx'.");
         }
 
         DemandDraft? draft = await store.LoadDraft(caseId, cancellationToken);
@@ -265,10 +265,14 @@ public static class CaseEndpoints
             return Error(StatusCodes.Status404NotFound, "This case has not been drafted yet.");
         }
 
-        string letter = DemandLetterRenderer.Render(draft, analysis, draftFormat.Value);
-        bool markdown = draftFormat == DraftFormat.Markdown;
-        return Results.File(Encoding.UTF8.GetBytes(letter), markdown ? "text/markdown; charset=utf-8" : "text/plain; charset=utf-8",
-            $"{SafeFileName(meta.Name)}-draft.{(markdown ? "md" : "txt")}");
+        (string contentType, string extension) = draftFormat.Value switch
+        {
+            DraftFormat.Docx => ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx"),
+            DraftFormat.PlainText => ("text/plain; charset=utf-8", "txt"),
+            _ => ("text/markdown; charset=utf-8", "md"),
+        };
+        return Results.File(DemandLetterRenderer.RenderBytes(draft, analysis, draftFormat.Value), contentType,
+            $"{SafeFileName(meta.Name)}-draft.{extension}");
     }
 
     private static async Task<IResult> GetReview(string caseId, ICaseStore store, CancellationToken cancellationToken)

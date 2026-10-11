@@ -13,7 +13,7 @@ public static class Program
     private static readonly Argument<FileInfo> PathArgument = new Argument<FileInfo>("Path");
     private static readonly Option<FileInfo> DraftOutputFileOption = new Option<FileInfo>("--output", "-o")
     {
-        Description = "Output file path (.txt for plain text, otherwise Markdown)",
+        Description = "Output file path (.docx for Word, .txt for plain text, otherwise Markdown)",
         DefaultValueFactory = _ => new FileInfo("Draft.md")
     };
     private static readonly Option<FileInfo> IngestOutputFileOption = new Option<FileInfo>("--output", "-o")

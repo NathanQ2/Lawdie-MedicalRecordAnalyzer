@@ -109,8 +109,8 @@ public class MedicalRecordAnalyzer
         PICase piCase = await LoadCase(file, cancellationToken);
         DemandDraft draft = await Draft(piCase, cancellationToken: cancellationToken);
 
-        string letter = DemandLetterRenderer.Render(draft, piCase, DemandLetterRenderer.FormatFor(output));
-        await File.WriteAllTextAsync(output.FullName, letter, cancellationToken);
+        byte[] letter = DemandLetterRenderer.RenderBytes(draft, piCase, DemandLetterRenderer.FormatFor(output));
+        await File.WriteAllBytesAsync(output.FullName, letter, cancellationToken);
     }
 
     /**

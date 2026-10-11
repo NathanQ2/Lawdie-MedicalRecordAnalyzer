@@ -65,7 +65,7 @@ export const api = {
   getAnalysis: (caseId: string) => orNullIfMissing(request<CaseAnalysis>(`${casePath(caseId)}/analysis`)),
   /** The case's draft, or null if it has not been drafted yet. */
   getDraft: (caseId: string) => orNullIfMissing(request<DemandDraft>(`${casePath(caseId)}/draft`)),
-  draftExportUrl: (caseId: string, format: 'md' | 'txt') => `${casePath(caseId)}/draft/export?format=${format}`,
+  draftExportUrl: (caseId: string, format: 'docx' | 'md' | 'txt') => `${casePath(caseId)}/draft/export?format=${format}`,
 
   getReview: (caseId: string) => request<ReviewItem[]>(`${casePath(caseId)}/review`),
   updateReview: (caseId: string, itemId: string, status: ReviewStatus, note: string | null) =>

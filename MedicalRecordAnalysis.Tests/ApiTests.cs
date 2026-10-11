@@ -248,7 +248,16 @@ public sealed class ApiTests : IDisposable
 
         HttpResponseMessage text = await client.GetAsync($"/api/cases/{created.Id}/draft/export?format=txt");
         Assert.Contains("ATTORNEY REVIEW", await text.Content.ReadAsStringAsync());
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/api/cases/{created.Id}/draft/export?format=docx")).StatusCode);
+        HttpResponseMessage word = await client.GetAsync($"/api/cases/{created.Id}/draft/export?format=docx");
+        Assert.Equal("application/vnd.openxmlformats-officedocument.wordprocessingml.document", word.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("Ellis-v--Truck-Co-draft.docx", word.Content.Headers.ContentDisposition?.FileName);
+        using (DocumentFormat.OpenXml.Packaging.WordprocessingDocument document =
+            DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Open(new MemoryStream(await word.Content.ReadAsByteArrayAsync()), false))
+        {
+            Assert.Contains("TestDraftNarrative", document.MainDocumentPart!.Document!.Body!.InnerText);
+        }
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/api/cases/{created.Id}/draft/export?format=pdf")).StatusCode);
     }
 
     [Fact]

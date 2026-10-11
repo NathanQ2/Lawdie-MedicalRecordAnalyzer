@@ -24,7 +24,12 @@ public interface IJobQueue
     public JobStatus? CurrentJob(CaseMeta meta);
 }
 
-public class JobConflictException(string message) : Exception(message);
+public class JobConflictException : Exception
+{
+    public JobConflictException(string message) : base(message)
+    {
+    }
+}
 
 /**
  * Runs ingest and draft jobs one at a time on a background worker. Job status is saved with the case; live
@@ -243,8 +248,17 @@ public sealed class CaseJobQueue : BackgroundService, IJobQueue
     /**
      * Keeps the latest progress for a case in memory, synchronously, so reads always see the newest report.
      */
-    private sealed class Progress(ConcurrentDictionary<string, PipelineProgress> latest, string caseId) : IProgress<PipelineProgress>
+    private sealed class Progress : IProgress<PipelineProgress>
     {
-        public void Report(PipelineProgress value) => latest[caseId] = value;
+        private readonly ConcurrentDictionary<string, PipelineProgress> m_latest;
+        private readonly string m_caseId;
+
+        public Progress(ConcurrentDictionary<string, PipelineProgress> latest, string caseId)
+        {
+            m_latest = latest;
+            m_caseId = caseId;
+        }
+
+        public void Report(PipelineProgress value) => m_latest[m_caseId] = value;
     }
 }

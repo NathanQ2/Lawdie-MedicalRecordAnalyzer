@@ -142,15 +142,23 @@ public static partial class DemandLetterDocxRenderer
      * an address block), "## " lines become bold section headings, and "- " lines become bulleted items. A footnote
      * follows each cited claim.
      */
-    private sealed class NarrativeWriter(Body body, Footnotes footnotes)
+    private sealed class NarrativeWriter
     {
         private enum Kind { Normal, Heading, Bullet }
 
+        private readonly Body m_body;
+        private readonly Footnotes m_footnotes;
         private Paragraph? m_paragraph;
         private Kind m_kind = Kind.Normal;
         private bool m_atLineStart = true;
         private int m_newlines;
         private int m_nextFootnoteId = 1;
+
+        public NarrativeWriter(Body body, Footnotes footnotes)
+        {
+            m_body = body;
+            m_footnotes = footnotes;
+        }
 
         public void Write(DemandDraft draft)
         {
@@ -219,7 +227,7 @@ public static partial class DemandLetterDocxRenderer
             {
                 m_kind = kind;
                 m_paragraph = NewParagraph(kind);
-                body.Append(m_paragraph);
+                m_body.Append(m_paragraph);
             }
             else if (m_newlines == 1)
             {
@@ -248,7 +256,7 @@ public static partial class DemandLetterDocxRenderer
         private Paragraph AppendNewParagraph()
         {
             Paragraph paragraph = NewParagraph(Kind.Normal);
-            body.Append(paragraph);
+            m_body.Append(paragraph);
             return paragraph;
         }
 
@@ -256,7 +264,7 @@ public static partial class DemandLetterDocxRenderer
         {
             int id = m_nextFootnoteId++;
             (m_paragraph ??= AppendNewParagraph()).Append(new Run(Superscript(), new FootnoteReference() { Id = id }));
-            footnotes.Append(new Footnote(new Paragraph(
+            m_footnotes.Append(new Footnote(new Paragraph(
                 new Run(Superscript(), new FootnoteReferenceMark()),
                 TextRun($" {description}", size: FontSizeFootnote))) { Id = id });
         }

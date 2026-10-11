@@ -29,7 +29,7 @@ public static class Program
 
     private static MedicalRecordAnalyzer s_analyzer = new MedicalRecordAnalyzer();
     
-    public static async Task<int> Main(String[] args)
+    public static async Task<int> Main(string[] args)
     {
         IngestCmd.Arguments.Add(DirectoryArgument);
         IngestCmd.Options.Add(IngestOutputFileOption);

@@ -80,7 +80,7 @@ public class MedicalRecordAnalyzer
     {
         progress?.Report(new PipelineProgress(PipelineStage.Drafting, 0, 1));
         RetrievedPassage[] passages = PassageRetriever.Select(piCase);
-        DemandDraft body = await m_llmProvider.DraftDemand(piCase, passages, cancellationToken);
+        DemandDraft body = VerbatimCitations.Apply(await m_llmProvider.DraftDemand(piCase, passages, cancellationToken), piCase.Sources);
         PageLocator.AssignPages(body.Segments.SelectMany(segment => segment.Citations), piCase.Sources);
         return DemandLetterTemplate.Wrap(body);
     }

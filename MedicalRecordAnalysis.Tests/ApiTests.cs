@@ -353,8 +353,8 @@ public sealed class ApiTests : IDisposable
         await WaitForJobToFinish(client, created.Id);
 
         ReviewItem[] items = (await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!;
-        Assert.All(items, item => Assert.Equal((ReviewItemKind.Placeholder, ReviewStatus.Open), (item.Kind, item.Status)));
-        ReviewItem placeholder = items.Single(item => item.Text == "[CLAIM NUMBER]");
+        Assert.All(items, item => Assert.Equal(ReviewStatus.Open, item.Status));
+        ReviewItem placeholder = items.Single(item => item.Kind == ReviewItemKind.Placeholder && item.Text == "[CLAIM NUMBER]");
 
         HttpResponseMessage update = await client.PutAsJsonAsync($"/api/cases/{created.Id}/review/{placeholder.Id}",
             new UpdateReviewRequest(ReviewStatus.Resolved, "Claim number is 26-55102."), Json);

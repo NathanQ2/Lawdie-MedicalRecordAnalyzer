@@ -56,7 +56,8 @@ public class AnthropicProvider : ILLMProvider
         "You are a legal intake quality reviewer. Compare the provided document summaries and " +
         "supporting quotes, and report any contradictions, including conflicting dates, " +
         "diagnoses, providers, or causal statements. A single document can contradict itself. " +
-        "Each supporting quote is labeled with an ID such as [Q3]; reference the quotes that " +
+        "Each document is labeled with its record's file name; refer to records by that name in " +
+        "your descriptions. Each supporting quote is labeled with an ID such as [Q3]; reference the quotes that " +
         "show each contradiction by ID only, never by restating their text. Respond with JSON " +
         "only, using this exact shape: " +
         "{\"contradictions\":[{\"summary\":\"<description>\",\"quoteIds\":[\"Q1\",\"Q2\"]}]}. " +
@@ -430,7 +431,14 @@ public class AnthropicProvider : ILLMProvider
         {
             DocumentSummary summary = piCase.DocumentSummaries[i];
 
-            builder.Append("DOCUMENT ").Append(i + 1).AppendLine();
+            builder.Append("DOCUMENT ").Append(i + 1);
+            string? filePath = i < piCase.Sources.Length ? piCase.Sources[i].FilePath : summary.Citations.FirstOrDefault()?.FilePath;
+            if (filePath is not null)
+            {
+                builder.Append(": ").Append(Path.GetFileName(filePath));
+            }
+
+            builder.AppendLine();
             builder.AppendLine(summary.Summary);
 
             if (summary.Citations.Length > 0)

@@ -1,0 +1,35 @@
+.text {
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.unsupported {
+  background-color: var(--mantine-color-yellow-2);
+  border-bottom: 2px dotted var(--mantine-color-yellow-7);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.marker {
+  display: inline-block;
+  vertical-align: super;
+  min-width: 1.4em;
+  margin: 0 1px;
+  padding: 0 4px;
+  font-size: 0.7em;
+  line-height: 1.5;
+  font-weight: 600;
+  text-align: center;
+  border-radius: var(--mantine-radius-sm);
+  color: var(--mantine-color-indigo-7);
+  background-color: var(--mantine-color-indigo-0);
+
+  &:hover {
+    background-color: var(--mantine-color-indigo-1);
+  }
+
+  &[data-selected] {
+    color: var(--mantine-color-white);
+    background-color: var(--mantine-color-indigo-6);
+  }
+}

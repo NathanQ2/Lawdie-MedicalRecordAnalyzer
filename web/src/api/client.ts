@@ -1,4 +1,4 @@
-import type { CaseDetail, CaseListItem, JobStatus, RecordInfo } from './types'
+import type { CaseAnalysis, CaseDetail, CaseListItem, JobStatus, RecordInfo } from './types'
 
 // The API rejects changes without this header; other websites cannot send it to a local server.
 export const CLIENT_HEADER = 'X-MRA-Client'
@@ -60,4 +60,16 @@ export const api = {
   startDraft: (caseId: string) => request<JobStatus>(`${casePath(caseId)}/draft`, { method: 'POST' }),
   getCurrentJob: (caseId: string) => request<JobStatus | null>(`${casePath(caseId)}/jobs/current`),
   cancelJob: (caseId: string) => request<null>(`${casePath(caseId)}/jobs/cancel`, { method: 'POST' }),
+
+  /** The case's analysis, or null if it has not been ingested yet. */
+  getAnalysis: async (caseId: string) => {
+    try {
+      return await request<CaseAnalysis>(`${casePath(caseId)}/analysis`)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return null
+      }
+      throw error
+    }
+  },
 }

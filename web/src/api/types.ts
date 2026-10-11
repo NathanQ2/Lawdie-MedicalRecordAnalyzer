@@ -50,3 +50,50 @@ export interface CaseDetail {
   draftOutOfDate: boolean
   job: JobStatus | null
 }
+
+// The ingest analysis (PICase). File paths are absolute paths on the API server; the record name is the last
+// path segment.
+
+export interface Citation {
+  filePath: string
+  citedText: string
+  startPosition: number
+  citationLength: number
+  claim: string | null
+  pageNumber: number | null
+  endPageNumber: number | null
+}
+
+export interface DocumentSummary {
+  summary: string
+  citations: Citation[]
+}
+
+export interface CaseSummary {
+  summary: string
+  citations: Citation[]
+  unsupportedStatements: string[]
+}
+
+export interface Contradiction {
+  summary: string
+  citations: Citation[]
+}
+
+export interface SkippedFile {
+  filePath: string
+  reason: string
+}
+
+export interface SourceDocument {
+  filePath: string
+  pageStartPositions: number[]
+}
+
+export interface CaseAnalysis {
+  documentSummaries: DocumentSummary[]
+  summary: CaseSummary | null
+  contradictions: Contradiction[]
+  sources: SourceDocument[]
+  skippedFiles: SkippedFile[]
+}

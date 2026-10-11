@@ -10,6 +10,7 @@ const POLL_INTERVAL_MS = 1500
 export const caseKeys = {
   all: ['cases'] as const,
   detail: (caseId: string) => ['cases', caseId] as const,
+  analysis: (caseId: string, updatedAt: string | null) => ['cases', caseId, 'analysis', updatedAt] as const,
 }
 
 export function useCases() {
@@ -43,6 +44,19 @@ export function useCase(caseId: string) {
   }, [job, queryClient])
 
   return query
+}
+
+/**
+ * Loads the case's analysis (null until ingest has run). The key includes the analysis timestamp from the case,
+ * so a newer analysis is always fetched while an unchanged one is never refetched.
+ */
+export function useAnalysis(caseId: string, analysisUpdatedAt: string | null | undefined) {
+  return useQuery({
+    queryKey: caseKeys.analysis(caseId, analysisUpdatedAt ?? null),
+    queryFn: () => api.getAnalysis(caseId),
+    enabled: analysisUpdatedAt !== undefined,
+    staleTime: Infinity,
+  })
 }
 
 /**

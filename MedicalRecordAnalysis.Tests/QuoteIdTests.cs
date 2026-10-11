@@ -36,6 +36,15 @@ public class QuoteIdTests
     }
 
     [Fact]
+    public void ContextLabelsDocumentsWithTheirFileNames()
+    {
+        string context = AnthropicProvider.BuildCaseContext(CreateCase());
+
+        Assert.Contains("DOCUMENT 1: er.txt", context);
+        Assert.Contains("DOCUMENT 2: pt.txt", context);
+    }
+
+    [Fact]
     public void QuoteIdsResolveToTheCitationsTheyWereRenderedFor()
     {
         PICase piCase = CreateCase();

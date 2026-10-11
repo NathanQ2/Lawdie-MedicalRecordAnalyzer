@@ -45,7 +45,7 @@ The UI checks the status of a running job every couple of seconds. Live updates 
 3. ✅ **Frontend setup**
    - A Vite + React + Mantine app with the Cases, Records and Run screens.
    - At this point the whole pipeline runs from the browser.
-4. **Analysis screen and source viewer**
+4. ✅ **Analysis screen and source viewer**
    - The case summary with clickable citations, uncited sentences highlighted, side-by-side contradictions, and per-record summaries.
    - Clicking a citation opens the file at the right page with the quote highlighted.
 5. **Draft screen**

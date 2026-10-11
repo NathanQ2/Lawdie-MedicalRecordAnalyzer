@@ -41,7 +41,7 @@ export function RunTab() {
       title: 'Draft the demand letter?',
       children: (
         <Text size="sm">
-          Drafting calls the Anthropic API once to write the demand letter narrative from this case's records. This costs money.
+          Drafting calls the Anthropic API once to write the demand letter narrative from this case's documents. This costs money.
         </Text>
       ),
       labels: { confirm: 'Draft', cancel: 'Not now' },
@@ -52,13 +52,13 @@ export function RunTab() {
     <Stack gap="md">
       <Card withBorder padding="lg" radius="md">
         <Stack gap="sm">
-          <Title order={4}>1. Ingest records</Title>
+          <Title order={4}>1. Ingest documents</Title>
           <Text size="sm" c="dimmed">
-            Reads and summarizes each record, checks the records against each other for contradictions, and writes a case
-            summary with citations. Records that haven't changed since the last ingest are reused instead of summarized again.
+            Reads and summarizes each document, checks the documents against each other for contradictions, and writes a case
+            summary with citations. Documents that haven't changed since the last ingest are reused instead of summarized again.
           </Text>
           <Text size="sm">Last ingest: {formatDateTime(detail.analysisUpdatedAt)}</Text>
-          {detail.analysisOutOfDate && <Alert color="yellow">Records changed since the last ingest.</Alert>}
+          {detail.analysisOutOfDate && <Alert color="yellow">Documents changed since the last ingest.</Alert>}
           <Group>
             <Button
               leftSection={<IconPlayerPlay size={16} />}
@@ -70,7 +70,7 @@ export function RunTab() {
             </Button>
             {detail.records.length === 0 && (
               <Text size="sm" c="dimmed">
-                Upload records first.
+                Upload documents first.
               </Text>
             )}
           </Group>
@@ -81,7 +81,7 @@ export function RunTab() {
         <Stack gap="sm">
           <Title order={4}>2. Draft the demand letter</Title>
           <Text size="sm" c="dimmed">
-            Writes the demand letter narrative from the parts of the records most relevant to each section, citing the records
+            Writes the demand letter narrative from the parts of the documents most relevant to each section, citing the documents
             for every fact.
           </Text>
           <Text size="sm">Last draft: {formatDateTime(detail.draftUpdatedAt)}</Text>
@@ -122,8 +122,8 @@ function openIngestConfirmation(detail: CaseDetail, onConfirm: () => void) {
       <Stack gap="xs">
         <Text size="sm">
           Ingest calls the Anthropic API to summarize{' '}
-          {toSummarize === 0 ? 'no new records' : `up to ${toSummarize} new or changed ${toSummarize === 1 ? 'record' : 'records'}`}, then
-          checks for contradictions and writes the case summary over all records. This costs money.
+          {toSummarize === 0 ? 'no new documents' : `up to ${toSummarize} new or changed ${toSummarize === 1 ? 'document' : 'documents'}`}, then
+          checks for contradictions and writes the case summary over all documents. This costs money.
         </Text>
         <Text size="sm" c="dimmed">
           Large cases can take several minutes. You can leave this page; the job keeps running.

@@ -9,7 +9,7 @@ import { caseKeys, useCase } from '../hooks/useCase'
 import { isJobActive, jobStateColors } from '../lib/format'
 
 const tabs = [
-  { value: 'records', label: 'Records' },
+  { value: 'records', label: 'Documents' },
   { value: 'run', label: 'Run' },
   { value: 'analysis', label: 'Analysis' },
   { value: 'draft', label: 'Draft' },
@@ -57,7 +57,7 @@ export function CasePage() {
   const confirmDelete = () =>
     modals.openConfirmModal({
       title: `Delete "${detail.name}"?`,
-      children: <Text size="sm">This permanently deletes the case, its uploaded records, and all results. It cannot be undone.</Text>,
+      children: <Text size="sm">This permanently deletes the case, its uploaded documents, and all results. It cannot be undone.</Text>,
       labels: { confirm: 'Delete case', cancel: 'Keep it' },
       confirmProps: { color: 'red' },
       onConfirm: () => remove.mutate(),
@@ -71,7 +71,7 @@ export function CasePage() {
           <Title order={2}>{detail.name}</Title>
           <Group gap="xs">
             <Text size="sm" c="dimmed">
-              {detail.records.length} {detail.records.length === 1 ? 'record' : 'records'}
+              {detail.records.length} {detail.records.length === 1 ? 'document' : 'documents'}
             </Text>
             {jobActive && detail.job && (
               <Badge color={jobStateColors[detail.job.state]} variant="light">

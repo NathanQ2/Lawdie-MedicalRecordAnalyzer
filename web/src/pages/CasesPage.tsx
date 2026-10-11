@@ -34,7 +34,7 @@ export function CasesPage() {
           <Stack align="center" gap="xs">
             <Text fw={500}>No cases yet</Text>
             <Text c="dimmed" size="sm">
-              Create a case, upload its medical records, and run ingest to analyze them.
+              Create a case, upload its medical documents, and run ingest to analyze them.
             </Text>
           </Stack>
         </Paper>
@@ -46,7 +46,7 @@ export function CasesPage() {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Case</Table.Th>
-                <Table.Th>Records</Table.Th>
+                <Table.Th>Documents</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Updated</Table.Th>
               </Table.Tr>

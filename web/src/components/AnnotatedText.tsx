@@ -32,7 +32,7 @@ export function AnnotatedText({ text, citations, unsupportedStatements = [], num
       {segments.map((segment, index) => (
         <Fragment key={index}>
           {segment.unsupported ? (
-            <Tooltip label="No citation supports this sentence. Check it against the records." multiline w={260}>
+            <Tooltip label="No citation supports this sentence. Check it against the documents." multiline w={260}>
               <Mark className={classes.unsupported}>{show(segment.text)}</Mark>
             </Tooltip>
           ) : (

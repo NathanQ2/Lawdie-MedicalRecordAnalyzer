@@ -33,6 +33,6 @@ describe('RecordsTable', () => {
   it('explains what to do when there are no records', () => {
     renderWithMantine(<RecordsTable records={[]} recordUrl={(name) => name} />)
 
-    expect(screen.getByText(/No records yet/)).toBeInTheDocument()
+    expect(screen.getByText(/No documents yet/)).toBeInTheDocument()
   })
 })

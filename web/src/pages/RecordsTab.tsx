@@ -35,7 +35,7 @@ export function RecordsTab() {
     onSuccess: async (records, files) => {
       queryClient.setQueryData<CaseDetail>(caseKeys.detail(caseId), (current) => (current ? { ...current, records } : current))
       await refresh()
-      notifications.show({ color: 'green', message: `Uploaded ${files.length} ${files.length === 1 ? 'record' : 'records'}.` })
+      notifications.show({ color: 'green', message: `Uploaded ${files.length} ${files.length === 1 ? 'document' : 'documents'}.` })
     },
     onError: (error) => notifications.show({ color: 'red', title: 'Upload failed', message: error.message }),
   })
@@ -43,7 +43,7 @@ export function RecordsTab() {
   const remove = useMutation({
     mutationFn: (fileName: string) => api.deleteRecord(caseId, fileName),
     onSuccess: refresh,
-    onError: (error) => notifications.show({ color: 'red', title: 'Could not delete the record', message: error.message }),
+    onError: (error) => notifications.show({ color: 'red', title: 'Could not delete the document', message: error.message }),
   })
 
   if (!caseQuery.data) {
@@ -56,8 +56,8 @@ export function RecordsTab() {
   const confirmDelete = (record: RecordInfo) =>
     modals.openConfirmModal({
       title: `Delete ${record.name}?`,
-      children: <Text size="sm">The record is removed from this case. Run ingest again to update the analysis.</Text>,
-      labels: { confirm: 'Delete record', cancel: 'Keep it' },
+      children: <Text size="sm">The document is removed from this case. Run ingest again to update the analysis.</Text>,
+      labels: { confirm: 'Delete document', cancel: 'Keep it' },
       confirmProps: { color: 'red' },
       onConfirm: () => remove.mutate(record.name),
     })
@@ -71,9 +71,9 @@ export function RecordsTab() {
 
   return (
     <Stack gap="md">
-      {jobActive && <Alert color="blue">Records can't be changed while a job is running.</Alert>}
+      {jobActive && <Alert color="blue">Documents can't be changed while a job is running.</Alert>}
       {detail.analysisOutOfDate && !jobActive && (
-        <Alert color="yellow">Records changed since the last ingest. Run ingest again to update the analysis.</Alert>
+        <Alert color="yellow">Documents changed since the last ingest. Run ingest again to update the analysis.</Alert>
       )}
 
       <Dropzone
@@ -95,7 +95,7 @@ export function RecordsTab() {
             <IconFileUpload size={40} stroke={1.5} />
           </Dropzone.Idle>
           <Stack gap={4}>
-            <Text size="lg">Drag records here or click to choose files</Text>
+            <Text size="lg">Drag documents here or click to choose files</Text>
             <Text size="sm" c="dimmed">
               PDFs and text files are read directly. Scans and images need OCR, which isn't set up yet, so ingest skips them.
             </Text>

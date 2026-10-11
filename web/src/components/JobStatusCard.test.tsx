@@ -24,8 +24,8 @@ describe('JobStatusCard', () => {
   it('shows the stage, per-record progress, and elapsed time while running', () => {
     renderWithMantine(<JobStatusCard job={running} now={NOW} />)
 
-    expect(screen.getByText('Summarizing records')).toBeInTheDocument()
-    expect(screen.getByText('3 of 23 records — 04_PCP_Visit.txt')).toBeInTheDocument()
+    expect(screen.getByText('Summarizing documents')).toBeInTheDocument()
+    expect(screen.getByText('3 of 23 documents — 04_PCP_Visit.txt')).toBeInTheDocument()
     expect(screen.getByText(/running for 1m 5s/)).toBeInTheDocument()
   })
 

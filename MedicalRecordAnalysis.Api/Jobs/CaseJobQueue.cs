@@ -210,7 +210,7 @@ public sealed class CaseJobQueue : BackgroundService, IJobQueue
         IReadOnlyList<FileInfo> records = m_store.ListRecords(caseId);
         if (records.Count == 0)
         {
-            throw new InvalidOperationException("Upload at least one record before running ingest.");
+            throw new InvalidOperationException("Upload at least one document before running ingest.");
         }
 
         PICase piCase = await analyzer.Ingest(records, m_store.DocumentCache(caseId), progress, cancellationToken);

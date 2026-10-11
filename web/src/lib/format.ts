@@ -31,8 +31,8 @@ export function isJobActive(job: JobStatus | null | undefined): boolean {
 }
 
 const stageLabels: Record<PipelineStage, string> = {
-  SummarizingDocuments: 'Summarizing records',
-  FindingContradictions: 'Checking records for contradictions',
+  SummarizingDocuments: 'Summarizing documents',
+  FindingContradictions: 'Checking documents for contradictions',
   SummarizingCase: 'Writing the case summary',
   Drafting: 'Drafting the demand letter',
 }
@@ -61,7 +61,7 @@ export function jobProgress(job: JobStatus): { percent: number | null; detail: s
     const current = job.completed < job.total ? ` — ${job.currentFile ?? ''}` : ''
     return {
       percent: Math.round((job.completed / job.total) * 100),
-      detail: `${job.completed} of ${job.total} records${current}`,
+      detail: `${job.completed} of ${job.total} documents${current}`,
     }
   }
 

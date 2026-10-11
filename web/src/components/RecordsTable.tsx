@@ -14,7 +14,7 @@ export function RecordsTable({ records, recordUrl, onDelete, disabled = false }:
   if (records.length === 0) {
     return (
       <Text c="dimmed" ta="center" py="lg">
-        No records yet. Upload PDFs or text files above.
+        No documents yet. Upload PDFs or text files above.
       </Text>
     )
   }
@@ -23,7 +23,7 @@ export function RecordsTable({ records, recordUrl, onDelete, disabled = false }:
     <Table highlightOnHover verticalSpacing="xs">
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>Record</Table.Th>
+          <Table.Th>Document</Table.Th>
           <Table.Th>Status</Table.Th>
           <Table.Th>Size</Table.Th>
           <Table.Th>Uploaded</Table.Th>
@@ -54,7 +54,7 @@ export function RecordsTable({ records, recordUrl, onDelete, disabled = false }:
             <Table.Td>
               {onDelete && (
                 <Group justify="flex-end">
-                  <Tooltip label={disabled ? 'Wait for the current job to finish' : 'Delete record'}>
+                  <Tooltip label={disabled ? 'Wait for the current job to finish' : 'Delete document'}>
                     <ActionIcon
                       variant="subtle"
                       color="red"

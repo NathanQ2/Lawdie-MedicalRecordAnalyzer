@@ -125,7 +125,7 @@ public static class CaseEndpoints
         FileInfo? file = store.GetRecord(caseId, fileName);
         if (file is null)
         {
-            return Error(StatusCodes.Status404NotFound, "Record not found.");
+            return Error(StatusCodes.Status404NotFound, "Document not found.");
         }
 
         // Records are untrusted uploads: never let the browser sniff them into active content. Only PDF, text, and
@@ -156,7 +156,7 @@ public static class CaseEndpoints
 
         if (!store.DeleteRecord(caseId, fileName))
         {
-            return Error(StatusCodes.Status404NotFound, "Record not found.");
+            return Error(StatusCodes.Status404NotFound, "Document not found.");
         }
 
         await store.Update(caseId, current => current.RecordsChangedAt = DateTimeOffset.UtcNow, cancellationToken);
@@ -173,7 +173,7 @@ public static class CaseEndpoints
 
         if (kind == JobKind.Ingest && store.ListRecords(caseId).Count == 0)
         {
-            return Error(StatusCodes.Status400BadRequest, "Upload at least one record before running ingest.");
+            return Error(StatusCodes.Status400BadRequest, "Upload at least one document before running ingest.");
         }
 
         if (kind == JobKind.Draft && meta.AnalysisUpdatedAt is null)

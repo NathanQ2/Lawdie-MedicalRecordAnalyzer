@@ -34,7 +34,7 @@ export function AnalysisTab() {
         <Stack align="center" gap="xs">
           <Text fw={500}>This case has not been analyzed yet</Text>
           <Text size="sm" c="dimmed">
-            Upload the records, then{' '}
+            Upload the documents, then{' '}
             <Anchor component={Link} to={`/cases/${caseId}/run`}>
               run ingest
             </Anchor>
@@ -50,7 +50,7 @@ export function AnalysisTab() {
   return (
     <Stack gap="md">
       {caseQuery.data?.analysisOutOfDate && (
-        <Alert color="yellow">Records changed since this analysis was made. Run ingest again to update it.</Alert>
+        <Alert color="yellow">Documents changed since this analysis was made. Run ingest again to update it.</Alert>
       )}
       <Grid gap="md">
         <Grid.Col span={selected && wide ? 7 : 12}>
@@ -98,8 +98,8 @@ function AnalysisSections({ analysis, selected, onSelect }: AnalysisSectionsProp
           </Group>
         </Group>
         <Text size="xs" c="dimmed">
-          Click a number to see the quote in its source record. Highlighted sentences have no citation; check them against the
-          records before relying on them.
+          Click a number to see the quote in its source document. Highlighted sentences have no citation; check them against the
+          documents before relying on them.
         </Text>
         <Paper withBorder p="lg" radius="md">
           {analysis.summary ? (
@@ -126,7 +126,7 @@ function AnalysisSections({ analysis, selected, onSelect }: AnalysisSectionsProp
         </Group>
         {analysis.contradictions.length === 0 ? (
           <Text c="dimmed" size="sm">
-            No contradictions were found between or within the records.
+            No contradictions were found between or within the documents.
           </Text>
         ) : (
           analysis.contradictions.map((contradiction, index) => (
@@ -136,9 +136,9 @@ function AnalysisSections({ analysis, selected, onSelect }: AnalysisSectionsProp
       </Stack>
 
       <Stack gap="xs">
-        <Title order={3}>Records</Title>
+        <Title order={3}>Documents</Title>
         {analysis.skippedFiles.length > 0 && (
-          <Alert color="orange" title={`${analysis.skippedFiles.length} ${analysis.skippedFiles.length === 1 ? 'record was' : 'records were'} skipped`}>
+          <Alert color="orange" title={`${analysis.skippedFiles.length} ${analysis.skippedFiles.length === 1 ? 'document was' : 'documents were'} skipped`}>
             <Stack gap={4}>
               {analysis.skippedFiles.map((skipped) => (
                 <Text key={skipped.filePath} size="sm">
@@ -207,7 +207,7 @@ interface RecordSummariesProps {
 function RecordSummaries({ analysis, selectedKey, onSelect }: RecordSummariesProps) {
   // Sources and document summaries are stored in the same order, one per readable record.
   const records = analysis.documentSummaries.map((summary, index) => ({
-    name: recordName(analysis.sources[index]?.filePath ?? summary.citations[0]?.filePath ?? `Record ${index + 1}`),
+    name: recordName(analysis.sources[index]?.filePath ?? summary.citations[0]?.filePath ?? `Document ${index + 1}`),
     summary,
   }))
 

@@ -44,12 +44,12 @@ describe('jobs', () => {
 
   it('reports per-record progress while summarizing', () => {
     const progress = jobProgress(job({ stage: 'SummarizingDocuments', completed: 7, total: 23, currentFile: 'ed.pdf' }))
-    expect(progress).toEqual({ percent: 30, detail: '7 of 23 records — ed.pdf' })
+    expect(progress).toEqual({ percent: 30, detail: '7 of 23 documents — ed.pdf' })
   })
 
   it('shows indeterminate progress for single-call stages', () => {
     expect(jobProgress(job({ stage: 'FindingContradictions', total: 1 }))).toEqual({ percent: null, detail: '' })
-    expect(stageLabel('FindingContradictions')).toBe('Checking records for contradictions')
+    expect(stageLabel('FindingContradictions')).toBe('Checking documents for contradictions')
   })
 })
 

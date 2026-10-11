@@ -134,7 +134,7 @@ function TextSource({ url, citation }: { url: string; citation: Citation }) {
     queryFn: async () => {
       const response = await fetch(url)
       if (!response.ok) {
-        throw new Error(`The record could not be loaded (${response.status}).`)
+        throw new Error(`The document could not be loaded (${response.status}).`)
       }
       return response.text()
     },

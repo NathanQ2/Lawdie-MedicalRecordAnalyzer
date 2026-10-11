@@ -5,11 +5,11 @@ namespace MedicalRecordAnalysis.LLM;
 public interface ILLMProvider
 {
     /**
-     * Prompts LLM to summarize the provided docuemnt. The file's name and type is provided as context.
+     * Prompts the LLM to summarize the provided document. The file's name and type are provided as context.
      */
     public Task<DocumentSummary> SummarizeDocument(FileInfo file, string text, CancellationToken cancellationToken = default);
     /**
-     * Prompts LLM to summarize the case, using the citations from each individual document. Every statement
+     * Prompts the LLM to summarize the case, using the citations from each individual document. Every statement
      * should cite those quotes; unsupported statements are reported. piCase.Contradictions is populated
      * first so disputed facts are presented as disputed rather than resolved.
      */

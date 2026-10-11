@@ -11,7 +11,7 @@ A browser UI for the full workflow: upload a case's records, run `ingest` and `d
 | Source viewer | pdf.js for PDFs; a text view for `.txt` and `.md` files |
 | Hosting | Local only for now: the API listens on this computer only, has no login, and keeps the API key on the server |
 | Case storage | `cases/` at the repository root (git-ignored), behind an `ICaseStore` interface so cloud storage can replace it later |
-| Draft | Read-only in the UI, with clickable source notes; exported as Markdown or plain text |
+| Draft | Read-only in the UI, with clickable source notes; exported as Word (`.docx`, with footnotes), Markdown, or plain text |
 | Adding records later | Summarize only new or changed files, then rerun verification and the case summary over the whole case |
 
 Real patient records must not go into a shared deployment until login and HIPAA controls exist.
@@ -25,11 +25,11 @@ web/ (React + TS, Vite, Mantine)  ──HTTP──▶  MedicalRecordAnalysis.Api
 ```
 
 Each case folder contains:
-- `records/`: the uploaded files.
-- `case.json`: the `PICase`.
-- `draft.json` and `draft.md`: the draft as structured segments and as Markdown.
-- `meta.json`: the case name, job status, and review checklist state.
-- A per-document summary cache, so `ingest` can resume after a failure or when records are added.
+- `records/`: the uploaded documents.
+- `case.json`: the `PICase` (the ingest result).
+- `draft.json`: the draft as structured segments with their citations. Exports are rendered from it on request, not stored.
+- `meta.json`: the case name, timestamps, job status, and review checklist state.
+- `cache/`: a per-document summary cache, so `ingest` can resume after a failure or when documents are added.
 
 The UI checks the status of a running job every couple of seconds. Live updates (server-sent events) can come later.
 
@@ -49,20 +49,24 @@ The UI checks the status of a running job every couple of seconds. Live updates 
    - The case summary with clickable citations, uncited sentences highlighted, side-by-side contradictions, and per-record summaries.
    - Clicking a citation opens the file at the right page with the quote highlighted.
 5. ✅ **Draft screen**
-   - The narrative with clickable source notes, an attorney review checklist (resolve or dismiss each item, with a note), and Markdown or text export.
+   - The narrative with clickable source notes, an attorney review checklist (resolve or dismiss each item, with a note), and Word, Markdown, or text export.
+6. ✅ **Case management**
+   - Rename and delete cases from a ⋮ or right-click menu on the case list, with confirmation before deleting.
 
-Later: login and cloud storage, an OCR provider for scanned files, `.docx` export, and editing the draft in the browser.
+Later: login and cloud storage, an OCR provider for scanned files, and editing the draft in the browser.
 
 ## API endpoints
 | Endpoint | Purpose |
 |---|---|
 | `POST/GET /api/cases`, `GET /api/cases/{id}` | Create, list, and open cases |
-| `POST/GET/DELETE /api/cases/{id}/records` | Upload records, list them with their read status, and remove them |
-| `GET /api/cases/{id}/records/{file}` | Serve an original record to the source viewer |
+| `PATCH/DELETE /api/cases/{id}` | Rename or delete a case |
+| `POST/GET /api/cases/{id}/records`, `DELETE /api/cases/{id}/records/{file}` | Upload documents, list them with their read status, and remove one |
+| `GET /api/cases/{id}/records/{file}` | Serve an original document to the source viewer |
 | `POST /api/cases/{id}/ingest`, `POST /api/cases/{id}/draft` | Start a job |
 | `GET /api/cases/{id}/jobs/current`, `POST /api/cases/{id}/jobs/cancel` | Check job progress, or cancel it |
 | `GET /api/cases/{id}/analysis`, `GET /api/cases/{id}/draft` | Get the results |
-| `GET /api/cases/{id}/draft/export?format=md\|txt` | Download the draft |
+| `GET /api/cases/{id}/draft/export?format=docx\|md\|txt` | Download the draft |
+| `GET /api/cases/{id}/review` | List the attorney review checklist |
 | `PUT /api/cases/{id}/review/{itemId}` | Resolve or dismiss a review item, with a note |
 
 ## Notes

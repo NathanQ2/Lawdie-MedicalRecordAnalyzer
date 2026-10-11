@@ -23,6 +23,7 @@ export function DraftTab() {
   const review = useReview(caseId)
   const [selected, setSelected] = useState<Citation | null>(null)
   const [panel, setPanel] = useState<Panel>('review')
+  const [shownItem, setShownItem] = useState<ReviewItem | null>(null)
   const wide = useMediaQuery('(min-width: 75em)')
 
   if (caseQuery.isPending || draft.isPending) {
@@ -59,6 +60,11 @@ export function DraftTab() {
   const citations = segments.flatMap((segment) => segment.citations)
   const openItems = review.data?.filter((item) => item.status === 'Open').length ?? 0
 
+  // The highlighted item is looked up again so its ranges follow the latest review data.
+  const shown = review.data?.find((item) => item.id === shownItem?.id) ?? null
+  const highlights = (shown?.draftRanges ?? []).map(({ start, length }): [number, number] => [start, start + length])
+  const showInDraft = (item: ReviewItem) => setShownItem(shown?.id === item.id ? null : item)
+
   const select = (citation: Citation) => {
     setSelected(citation)
     setPanel('source')
@@ -78,7 +84,14 @@ export function DraftTab() {
         {panel === 'source' && selected ? (
           <SourceViewer caseId={caseId} citation={selected} onClose={() => setPanel('review')} />
         ) : (
-          <ReviewChecklist caseId={caseId} items={review.data} loading={review.isPending} onSelectCitation={select} />
+          <ReviewChecklist
+                caseId={caseId}
+                items={review.data}
+                loading={review.isPending}
+                onSelectCitation={select}
+                shownItemId={shown?.id ?? null}
+                onShowInDraft={showInDraft}
+              />
         )}
       </Box>
     </Stack>
@@ -111,11 +124,19 @@ export function DraftTab() {
               selectedKey={selected ? citationKey(selected) : null}
               onSelect={select}
               letter
+              highlights={highlights}
             />
           </Paper>
           {!wide && (
             <Box mt="md">
-              <ReviewChecklist caseId={caseId} items={review.data} loading={review.isPending} onSelectCitation={select} />
+              <ReviewChecklist
+                caseId={caseId}
+                items={review.data}
+                loading={review.isPending}
+                onSelectCitation={select}
+                shownItemId={shown?.id ?? null}
+                onShowInDraft={showInDraft}
+              />
             </Box>
           )}
         </Grid.Col>
@@ -170,9 +191,11 @@ interface ReviewChecklistProps {
   items: ReviewItem[] | undefined
   loading: boolean
   onSelectCitation: (citation: Citation) => void
+  shownItemId?: string | null
+  onShowInDraft?: (item: ReviewItem) => void
 }
 
-export function ReviewChecklist({ caseId, items, loading, onSelectCitation }: ReviewChecklistProps) {
+export function ReviewChecklist({ caseId, items, loading, onSelectCitation, shownItemId = null, onShowInDraft }: ReviewChecklistProps) {
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState<'open' | 'all'>('open')
   const update = useMutation({
@@ -228,6 +251,8 @@ export function ReviewChecklist({ caseId, items, loading, onSelectCitation }: Re
               saving={update.isPending && update.variables?.itemId === item.id}
               onUpdate={(status, note) => update.mutate({ itemId: item.id, status, note })}
               onSelectCitation={onSelectCitation}
+              onShowInDraft={onShowInDraft}
+              shownInDraft={shownItemId === item.id}
             />
           ))
         )}

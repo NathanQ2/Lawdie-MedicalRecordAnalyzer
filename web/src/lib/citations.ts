@@ -58,19 +58,29 @@ export function hasTwoQuotes(citations: Citation[]): boolean {
   return new Set(citations.map(citationKey)).size >= 2
 }
 
-/** A run of text, with the citations that support it (placed after it) and whether it is an uncited sentence. */
+/**
+ * A run of text, with the citations that support it (placed after it), whether it is an uncited sentence, and
+ * whether it is highlighted for a review item.
+ */
 export interface AnnotatedSegment {
   text: string
   citations: Citation[]
   unsupported: boolean
+  highlighted: boolean
 }
 
 /**
  * Splits generated text into segments so each cited claim is followed by its citations and uncited sentences can
  * be highlighted. Each citation's claim is the exact text it supports; claims are located in order, so repeated
- * wording attaches to the right occurrence. Claims or statements that cannot be found are left out.
+ * wording attaches to the right occurrence. Claims or statements that cannot be found are left out. Highlights are
+ * [start, end) ranges of the text to mark, such as the sentences a review item affects.
  */
-export function annotate(text: string, citations: Citation[], unsupportedStatements: string[] = []): AnnotatedSegment[] {
+export function annotate(
+  text: string,
+  citations: Citation[],
+  unsupportedStatements: string[] = [],
+  highlights: [number, number][] = [],
+): AnnotatedSegment[] {
   // Group citations by claim, keeping first-appearance order and dropping duplicate citations.
   const claims: { claim: string; citations: Citation[] }[] = []
   for (const citation of citations) {
@@ -112,7 +122,7 @@ export function annotate(text: string, citations: Citation[], unsupportedStateme
   }
 
   const boundaries = new Set<number>([0, text.length, ...citedAt.keys()])
-  unsupportedRanges.forEach(([start, end]) => {
+  ;[...unsupportedRanges, ...highlights].forEach(([start, end]) => {
     boundaries.add(start)
     boundaries.add(end)
   })
@@ -125,6 +135,7 @@ export function annotate(text: string, citations: Citation[], unsupportedStateme
       text: text.slice(start, end),
       citations: citedAt.get(end) ?? [],
       unsupported: unsupportedRanges.some(([from, to]) => start >= from && end <= to),
+      highlighted: highlights.some(([from, to]) => start >= from && end <= to),
     })
   }
   return segments

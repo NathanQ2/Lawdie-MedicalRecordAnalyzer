@@ -1,5 +1,5 @@
 import { Mark, Text, Tooltip, UnstyledButton } from '@mantine/core'
-import { Fragment } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import type { Citation } from '../api/types'
 import { annotate, citationKey, describeCitation } from '../lib/citations'
 import classes from './AnnotatedText.module.css'
@@ -14,6 +14,8 @@ interface AnnotatedTextProps {
   onSelect: (citation: Citation) => void
   /** Lay the text out as a letter: "## " lines as section headings and placeholders such as [CLAIM NUMBER] highlighted. */
   letter?: boolean
+  /** [start, end) ranges to highlight, such as the sentences a review item affects. The first is scrolled into view. */
+  highlights?: [number, number][]
 }
 
 // Matches the API's placeholder pattern (DemandLetterRenderer.FindPlaceholders).
@@ -21,35 +23,61 @@ const PLACEHOLDER = /(\[[A-Z][A-Z0-9 &/'.,-]*\])/
 const HEADING_LINE = /^## (.*)$/m
 
 /**
- * Generated text with a numbered marker after each cited claim (click to open the source) and uncited sentences
- * highlighted for review.
+ * Generated text with a numbered marker after each cited claim (click to open the source), uncited sentences
+ * highlighted for review, and optionally the sentences a review item affects.
  */
-export function AnnotatedText({ text, citations, unsupportedStatements = [], numberOf, selectedKey, onSelect, letter = false }: AnnotatedTextProps) {
-  const segments = annotate(text, citations, unsupportedStatements)
+export function AnnotatedText({
+  text,
+  citations,
+  unsupportedStatements = [],
+  numberOf,
+  selectedKey,
+  onSelect,
+  letter = false,
+  highlights = [],
+}: AnnotatedTextProps) {
+  const segments = annotate(text, citations, unsupportedStatements, highlights)
   const show = (content: string) => (letter ? asLetter(content) : content)
+  const container = useRef<HTMLDivElement>(null)
+  const highlightKey = highlights.map(([start, end]) => `${start}-${end}`).join(',')
+
+  useEffect(() => {
+    if (highlightKey) {
+      container.current?.querySelector('[data-highlighted]')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [highlightKey])
 
   return (
-    <Text component="div" className={classes.text}>
-      {segments.map((segment, index) => (
-        <Fragment key={index}>
-          {segment.unsupported ? (
-            <Tooltip label="No citation supports this sentence. Check it against the documents." multiline w={260}>
-              <Mark className={classes.unsupported}>{show(segment.text)}</Mark>
-            </Tooltip>
-          ) : (
-            show(segment.text)
-          )}
-          {segment.citations.map((citation) => (
-            <CitationMarker
-              key={citationKey(citation)}
-              citation={citation}
-              number={numberOf(citation)}
-              selected={selectedKey === citationKey(citation)}
-              onSelect={onSelect}
-            />
-          ))}
-        </Fragment>
-      ))}
+    <Text component="div" className={classes.text} ref={container}>
+      {segments.map((segment, index) => {
+        const content = segment.unsupported ? (
+          <Tooltip label="No citation supports this sentence. Check it against the documents." multiline w={260}>
+            <Mark className={classes.unsupported}>{show(segment.text)}</Mark>
+          </Tooltip>
+        ) : (
+          show(segment.text)
+        )
+        return (
+          <Fragment key={index}>
+            {segment.highlighted ? (
+              <mark className={classes.highlighted} data-highlighted>
+                {content}
+              </mark>
+            ) : (
+              content
+            )}
+            {segment.citations.map((citation) => (
+              <CitationMarker
+                key={citationKey(citation)}
+                citation={citation}
+                number={numberOf(citation)}
+                selected={selectedKey === citationKey(citation)}
+                onSelect={onSelect}
+              />
+            ))}
+          </Fragment>
+        )
+      })}
     </Text>
   )
 }

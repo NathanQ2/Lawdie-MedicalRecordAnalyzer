@@ -50,6 +50,7 @@ The UI checks the status of a running job every couple of seconds. Live updates 
    - Clicking a citation opens the file at the right page with the quote highlighted.
 5. ✅ **Draft screen**
    - The narrative with clickable source notes, an attorney review checklist (resolve or dismiss each item, with a note), and Word, Markdown, or text export.
+   - Each review item links to the sentences it affects in the letter. For a contradiction, these are the sentences whose citations overlap its quotes, so the attorney knows what to revise once it is resolved.
 6. ✅ **Case management**
    - Rename and delete cases from a ⋮ or right-click menu on the case list, with confirmation before deleting.
 

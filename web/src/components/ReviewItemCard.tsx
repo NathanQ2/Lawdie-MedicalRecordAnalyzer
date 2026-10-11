@@ -1,5 +1,5 @@
 import { Badge, Button, Card, Group, Stack, Text, Textarea, UnstyledButton } from '@mantine/core'
-import { IconArrowBackUp, IconCheck, IconX } from '@tabler/icons-react'
+import { IconArrowBackUp, IconCheck, IconFocus2, IconX } from '@tabler/icons-react'
 import { useState } from 'react'
 import type { Citation, ReviewItem, ReviewItemKind, ReviewStatus } from '../api/types'
 import { citationKey, hasTwoQuotes, pageLabel, recordName } from '../lib/citations'
@@ -15,18 +15,23 @@ interface ReviewItemCardProps {
   item: ReviewItem
   onUpdate: (status: ReviewStatus, note: string | null) => void
   onSelectCitation: (citation: Citation) => void
+  /** Highlights the item's sentences in the letter. Without it, the letter links are not shown. */
+  onShowInDraft?: (item: ReviewItem) => void
+  /** Whether this item's sentences are the ones highlighted in the letter. */
+  shownInDraft?: boolean
   saving?: boolean
 }
 
 /**
  * One attorney review item: what to check, its sources, and resolve / dismiss with an optional note.
  */
-export function ReviewItemCard({ item, onUpdate, onSelectCitation, saving = false }: ReviewItemCardProps) {
+export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft, shownInDraft = false, saving = false }: ReviewItemCardProps) {
   const [note, setNote] = useState(item.note ?? '')
   const open = item.status === 'Open'
   const noteChanged = note.trim() !== (item.note ?? '')
   // A contradiction without two different quotes is the reviewer's own description, not something the documents show.
   const unverified = item.kind === 'Contradiction' && !hasTwoQuotes(item.citations)
+  const places = item.draftRanges.length
 
   return (
     <Card withBorder radius="md" padding="sm" opacity={open ? 1 : 0.7}>
@@ -59,6 +64,26 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, saving = fals
             </Text>
           </UnstyledButton>
         ))}
+
+        {onShowInDraft &&
+          (places > 0 ? (
+            <Button
+              size="compact-xs"
+              variant={shownInDraft ? 'filled' : 'light'}
+              color="orange"
+              w="fit-content"
+              leftSection={<IconFocus2 size={12} />}
+              onClick={() => onShowInDraft(item)}
+            >
+              {shownInDraft ? 'Shown in letter' : `Show in letter (${places} ${places === 1 ? 'place' : 'places'})`}
+            </Button>
+          ) : (
+            item.kind === 'Contradiction' && (
+              <Text size="xs" c="dimmed">
+                No cited sentence in the letter relies on these quotes. Check the letter for uncited mentions.
+              </Text>
+            )
+          ))}
 
         <Textarea
           size="xs"

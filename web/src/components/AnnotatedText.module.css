@@ -47,3 +47,10 @@
     background-color: var(--mantine-color-indigo-6);
   }
 }
+
+.highlighted {
+  background-color: var(--mantine-color-orange-1);
+  outline: 2px solid var(--mantine-color-orange-4);
+  border-radius: 2px;
+  color: inherit;
+}

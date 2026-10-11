@@ -42,6 +42,16 @@ describe('labels', () => {
 })
 
 describe('annotate', () => {
+  it('marks highlighted ranges as their own segments', () => {
+    const segments = annotate('Neck pain. She lost consciousness. Back pain.', [], [], [[11, 34]])
+
+    expect(segments.map((segment) => [segment.text, segment.highlighted])).toEqual([
+      ['Neck pain. ', false],
+      ['She lost consciousness.', true],
+      [' Back pain.', false],
+    ])
+  })
+
   it('needs two different quotes to support a contradiction', () => {
     const quote = citation({})
     expect(hasTwoQuotes([quote, citation({ startPosition: 500 })])).toBe(true)

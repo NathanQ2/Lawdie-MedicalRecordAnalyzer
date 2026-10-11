@@ -14,6 +14,10 @@ const contradiction: ReviewItem = {
   ],
   status: 'Open',
   note: null,
+  draftRanges: [
+    { start: 10, length: 20 },
+    { start: 80, length: 12 },
+  ],
 }
 
 describe('ReviewItemCard', () => {
@@ -42,6 +46,24 @@ describe('ReviewItemCard', () => {
     renderWithMantine(<ReviewItemCard item={{ ...contradiction, citations: [quote, { ...quote }] }} onUpdate={() => {}} onSelectCitation={() => {}} />)
 
     expect(screen.getByText('Unverified')).toBeInTheDocument()
+  })
+
+  it('links to the sentences it affects in the letter', () => {
+    const onShowInDraft = vi.fn()
+    renderWithMantine(<ReviewItemCard item={contradiction} onUpdate={() => {}} onSelectCitation={() => {}} onShowInDraft={onShowInDraft} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show in letter (2 places)' }))
+
+    expect(onShowInDraft).toHaveBeenCalledWith(contradiction)
+  })
+
+  it('says when the letter does not cite a contradiction', () => {
+    renderWithMantine(
+      <ReviewItemCard item={{ ...contradiction, draftRanges: [] }} onUpdate={() => {}} onSelectCitation={() => {}} onShowInDraft={() => {}} />,
+    )
+
+    expect(screen.getByText(/No cited sentence in the letter relies on these quotes/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Show in letter/ })).not.toBeInTheDocument()
   })
 
   it('lets a handled item be reopened or its note saved', () => {

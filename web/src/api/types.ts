@@ -117,6 +117,12 @@ export interface DemandDraft {
 export type ReviewItemKind = 'Contradiction' | 'UnsupportedStatement' | 'Placeholder' | 'RecognizedQuote'
 export type ReviewStatus = 'Open' | 'Resolved' | 'Dismissed'
 
+/** A range of the draft's narrative (its segments' text joined). */
+export interface DraftRange {
+  start: number
+  length: number
+}
+
 export interface ReviewItem {
   id: string
   kind: ReviewItemKind
@@ -124,4 +130,6 @@ export interface ReviewItem {
   citations: Citation[]
   status: ReviewStatus
   note: string | null
+  /** Where the item appears in the draft: for a contradiction, the sentences that cite its quotes. */
+  draftRanges: DraftRange[]
 }

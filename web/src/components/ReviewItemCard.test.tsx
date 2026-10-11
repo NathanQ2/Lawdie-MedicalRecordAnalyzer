@@ -31,6 +31,13 @@ describe('ReviewItemCard', () => {
     fireEvent.click(screen.getByText(/12_Pain.txt · p. 1/))
 
     expect(onSelectCitation).toHaveBeenCalledWith(contradiction.citations[0])
+    expect(screen.queryByText('Unverified')).not.toBeInTheDocument()
+  })
+
+  it('labels a contradiction without quotes as unverified', () => {
+    renderWithMantine(<ReviewItemCard item={{ ...contradiction, citations: [] }} onUpdate={() => {}} onSelectCitation={() => {}} />)
+
+    expect(screen.getByText('Unverified')).toBeInTheDocument()
   })
 
   it('lets a handled item be reopened or its note saved', () => {

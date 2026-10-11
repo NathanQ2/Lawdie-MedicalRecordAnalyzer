@@ -285,14 +285,19 @@ public class AnthropicProvider : ILLMProvider
             segments.Select(segment => new GeneratedSegment(segment.Text, segment.Citations.Length > 0)).ToList());
     }
 
-    private static string BuildGroundedInstruction(PICase piCase, string task)
+    /**
+     * The task, preceded by the contradictions found in review. Only contradictions backed by quotes are included:
+     * an unverified one is uncited model text and must not steer grounded writing.
+     */
+    internal static string BuildGroundedInstruction(PICase piCase, string task)
     {
         StringBuilder builder = new StringBuilder();
 
-        if (piCase.Contradictions.Length > 0)
+        Contradiction[] verified = piCase.Contradictions.Where(contradiction => contradiction.IsVerified).ToArray();
+        if (verified.Length > 0)
         {
             builder.AppendLine("A separate review found these contradictions between or within the records:");
-            foreach (Contradiction contradiction in piCase.Contradictions)
+            foreach (Contradiction contradiction in verified)
             {
                 builder.Append("- ").AppendLine(contradiction.Summary);
             }

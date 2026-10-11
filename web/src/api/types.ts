@@ -78,6 +78,8 @@ export interface CaseSummary {
 export interface Contradiction {
   summary: string
   citations: Citation[]
+  /** False when no quote supports the contradiction; it is shown for review but never used as a fact. */
+  isVerified: boolean
 }
 
 export interface SkippedFile {

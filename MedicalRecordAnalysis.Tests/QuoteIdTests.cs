@@ -72,4 +72,34 @@ public class QuoteIdTests
 
         Assert.Equal([quotes[0]], resolved);
     }
+
+    [Fact]
+    public void GroundedInstructionLeavesOutUnverifiedContradictions()
+    {
+        PICase piCase = CreateCase();
+        List<Citation> quotes = AnthropicProvider.NumberQuotes(piCase);
+        piCase.Contradictions =
+        [
+            new Contradiction() { Summary = "LOC conflicts.", Citations = [quotes[1], quotes[2]] },
+            new Contradiction() { Summary = "Dates conflict.", Citations = [] },
+        ];
+
+        string instruction = AnthropicProvider.BuildGroundedInstruction(piCase, "Write the summary.");
+
+        Assert.False(piCase.Contradictions[1].IsVerified);
+        Assert.Contains("LOC conflicts.", instruction);
+        Assert.DoesNotContain("Dates conflict.", instruction);
+    }
+
+    [Fact]
+    public void GroundedInstructionReportsNoContradictionsWhenNoneAreVerified()
+    {
+        PICase piCase = CreateCase();
+        piCase.Contradictions = [new Contradiction() { Summary = "Dates conflict.", Citations = [] }];
+
+        string instruction = AnthropicProvider.BuildGroundedInstruction(piCase, "Write the summary.");
+
+        Assert.StartsWith("A separate review found no contradictions", instruction);
+        Assert.DoesNotContain("Dates conflict.", instruction);
+    }
 }

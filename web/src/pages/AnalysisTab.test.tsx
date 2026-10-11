@@ -10,6 +10,7 @@ const contradiction: Contradiction = {
     { filePath: '/r/01_EMS.pdf', citedText: 'may have "blacked out for a second"', startPosition: 10, citationLength: 35, claim: null, pageNumber: 1, endPageNumber: null },
     { filePath: '/r/02_ED.pdf', citedText: 'She denies loss of consciousness.', startPosition: 657, citationLength: 33, claim: null, pageNumber: 2, endPageNumber: null },
   ],
+  isVerified: true,
 }
 
 describe('ContradictionCard', () => {
@@ -21,5 +22,14 @@ describe('ContradictionCard', () => {
     fireEvent.click(screen.getByText('02_ED.pdf · p. 2'))
 
     expect(onSelect).toHaveBeenCalledWith(contradiction.citations[1])
+    expect(screen.queryByText('Unverified')).not.toBeInTheDocument()
+  })
+
+  it('labels a contradiction no quote supports as unverified', () => {
+    const unverified: Contradiction = { summary: 'The collision dates differ.', citations: [], isVerified: false }
+    renderWithMantine(<ContradictionCard contradiction={unverified} selectedKey={null} onSelect={vi.fn()} />)
+
+    expect(screen.getByText('Unverified')).toBeInTheDocument()
+    expect(screen.getByText(/No quote from the documents supports this contradiction/)).toBeInTheDocument()
   })
 })

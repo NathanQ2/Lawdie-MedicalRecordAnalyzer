@@ -24,14 +24,23 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, saving = fals
   const [note, setNote] = useState(item.note ?? '')
   const open = item.status === 'Open'
   const noteChanged = note.trim() !== (item.note ?? '')
+  // A contradiction with no supporting quote is the reviewer's own description, not something the documents show.
+  const unverified = item.kind === 'Contradiction' && item.citations.length === 0
 
   return (
     <Card withBorder radius="md" padding="sm" opacity={open ? 1 : 0.7}>
       <Stack gap="xs">
         <Group justify="space-between">
-          <Badge size="sm" variant="light" color={kindLabels[item.kind].color}>
-            {kindLabels[item.kind].label}
-          </Badge>
+          <Group gap={4}>
+            <Badge size="sm" variant="light" color={kindLabels[item.kind].color}>
+              {kindLabels[item.kind].label}
+            </Badge>
+            {unverified && (
+              <Badge size="sm" variant="light" color="gray">
+                Unverified
+              </Badge>
+            )}
+          </Group>
           {!open && (
             <Badge size="sm" variant="outline" color={item.status === 'Resolved' ? 'green' : 'gray'}>
               {item.status}

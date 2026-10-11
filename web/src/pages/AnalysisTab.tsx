@@ -164,10 +164,15 @@ export function ContradictionCard({ contradiction, selectedKey, onSelect }: Cont
   return (
     <Card withBorder radius="md" padding="md">
       <Stack gap="sm">
+        {!contradiction.isVerified && (
+          <Badge variant="light" color="gray" w="fit-content">
+            Unverified
+          </Badge>
+        )}
         <Text size="sm">{contradiction.summary}</Text>
         {contradiction.citations.length === 0 ? (
           <Text size="xs" c="dimmed">
-            No quotes were linked to this contradiction.
+            No quote from the documents supports this contradiction. Check it against the documents before relying on it.
           </Text>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: Math.min(contradiction.citations.length, 2) }} spacing="sm">

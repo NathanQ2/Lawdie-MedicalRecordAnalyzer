@@ -78,7 +78,7 @@ public static partial class DemandLetterRenderer
         builder.AppendLine(markdown ? $"## {ReviewTitle}" : ReviewTitle.ToUpperInvariant()).AppendLine();
 
         AppendSection(builder, markdown, "Contradictions between records", piCase.Contradictions.Select(contradiction =>
-            contradiction.Summary + string.Concat(contradiction.Citations.Select(citation => $"\n    - {DescribeSource(citation)}"))));
+            DescribeContradiction(contradiction) + string.Concat(contradiction.Citations.Select(citation => $"\n    - {DescribeSource(citation)}"))));
         AppendSection(builder, markdown, "Statements without a cited source", draft.UnsupportedStatements);
         AppendSection(builder, markdown, "Placeholders to fill in", FindPlaceholders(draft.Narrative));
 
@@ -174,6 +174,14 @@ public static partial class DemandLetterRenderer
         }
 
         builder.AppendLine();
+    }
+
+    /**
+     * The contradiction's summary, labeled when no quote supports it so the reviewer checks it against the records.
+     */
+    internal static string DescribeContradiction(Contradiction contradiction)
+    {
+        return contradiction.IsVerified ? contradiction.Summary : $"{contradiction.Summary} (Unverified: no quote supports this.)";
     }
 
     internal static string DescribeSource(Citation citation)

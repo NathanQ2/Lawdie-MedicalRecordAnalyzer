@@ -55,6 +55,18 @@ public class DemandLetterRendererTests
     }
 
     [Fact]
+    public void ReviewSectionLabelsUnverifiedContradictions()
+    {
+        PICase piCase = CreateCase();
+        piCase.Contradictions = [.. piCase.Contradictions, new Contradiction() { Summary = "Dates conflict.", Citations = [] }];
+
+        string letter = DemandLetterRenderer.Render(CreateDraft(), piCase, DraftFormat.Markdown);
+
+        Assert.Contains("- Dates conflict. (Unverified: no quote supports this.)", letter);
+        Assert.DoesNotContain("Loss of consciousness conflicts. (Unverified", letter);
+    }
+
+    [Fact]
     public void EmptyReviewSectionsSayNone()
     {
         DemandDraft draft = new DemandDraft() { Segments = [new DraftSegment() { Text = "Cited fact", Citations = [LostLoc] }] };

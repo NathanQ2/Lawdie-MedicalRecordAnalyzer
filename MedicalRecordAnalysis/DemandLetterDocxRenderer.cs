@@ -44,7 +44,7 @@ public static partial class DemandLetterDocxRenderer
             body.Append(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
             body.Append(StyledParagraph(DemandLetterRenderer.ReviewTitle, bold: true, size: "28"));
             AppendSection(body, "Contradictions between records", piCase.Contradictions.Select(contradiction =>
-                (contradiction.Summary, contradiction.Citations.Select(DemandLetterRenderer.DescribeSource).ToList())));
+                (DemandLetterRenderer.DescribeContradiction(contradiction), contradiction.Citations.Select(DemandLetterRenderer.DescribeSource).ToList())));
             AppendSection(body, "Statements without a cited source", draft.UnsupportedStatements.Select(statement => (statement, new List<string>())));
             AppendSection(body, "Placeholders to fill in", DemandLetterRenderer.FindPlaceholders(draft.Narrative).Select(placeholder => (placeholder, new List<string>())));
         }

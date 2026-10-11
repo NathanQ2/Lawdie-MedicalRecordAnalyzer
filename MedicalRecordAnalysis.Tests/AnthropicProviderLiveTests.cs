@@ -47,12 +47,14 @@ public class AnthropicProviderLiveTests
         string[] fileNames = ["ER_Visit_2026-03-14.txt", "PT_Intake_2026-03-20.txt"];
         AnthropicProvider provider = new AnthropicProvider();
 
-        PICase piCase = new PICase(fileNames.Length);
-        for (int i = 0; i < fileNames.Length; i++)
+        List<DocumentSummary> summaries = [];
+        foreach (string fileName in fileNames)
         {
-            FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", fileNames[i]));
-            piCase.DocumentSummaries[i] = await provider.SummarizeDocument(file, await File.ReadAllTextAsync(file.FullName));
+            FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", fileName));
+            summaries.Add(await provider.SummarizeDocument(file, await File.ReadAllTextAsync(file.FullName)));
         }
+
+        PICase piCase = new PICase(summaries);
 
         VerificationResult result = await provider.Verify(piCase);
 
@@ -76,14 +78,16 @@ public class AnthropicProviderLiveTests
         string[] fileNames = ["ER_Visit_2026-03-14.txt", "PT_Intake_2026-03-20.txt"];
         AnthropicProvider provider = new AnthropicProvider();
 
-        PICase piCase = new PICase(fileNames.Length);
         Dictionary<string, string> sources = [];
-        for (int i = 0; i < fileNames.Length; i++)
+        List<DocumentSummary> summaries = [];
+        foreach (string fileName in fileNames)
         {
-            FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", fileNames[i]));
+            FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", fileName));
             sources[file.FullName] = await File.ReadAllTextAsync(file.FullName);
-            piCase.DocumentSummaries[i] = await provider.SummarizeDocument(file, sources[file.FullName]);
+            summaries.Add(await provider.SummarizeDocument(file, sources[file.FullName]));
         }
+
+        PICase piCase = new PICase(summaries);
 
         piCase.Contradictions = (await provider.Verify(piCase)).Contradictions;
         piCase.Sources = sources.Select(source => new SourceDocument() { FilePath = source.Key, Passages = PassageSplitter.Split(source.Value) }).ToArray();
@@ -109,14 +113,16 @@ public class AnthropicProviderLiveTests
         string[] fileNames = ["ER_Visit_2026-03-14.txt", "PT_Intake_2026-03-20.txt"];
         AnthropicProvider provider = new AnthropicProvider();
 
-        PICase piCase = new PICase(fileNames.Length);
         Dictionary<string, string> sources = [];
-        for (int i = 0; i < fileNames.Length; i++)
+        List<DocumentSummary> summaries = [];
+        foreach (string fileName in fileNames)
         {
-            FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", fileNames[i]));
+            FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", fileName));
             sources[file.FullName] = await File.ReadAllTextAsync(file.FullName);
-            piCase.DocumentSummaries[i] = await provider.SummarizeDocument(file, sources[file.FullName]);
+            summaries.Add(await provider.SummarizeDocument(file, sources[file.FullName]));
         }
+
+        PICase piCase = new PICase(summaries);
 
         piCase.Contradictions = (await provider.Verify(piCase)).Contradictions;
         CaseSummary summary = await provider.SummarizeCase(piCase);

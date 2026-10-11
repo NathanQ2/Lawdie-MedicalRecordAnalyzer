@@ -24,7 +24,7 @@ public class DemandLetterRendererTests
 
     private static PICase CreateCase()
     {
-        PICase piCase = new PICase(0);
+        PICase piCase = new PICase([]);
         piCase.Contradictions = [new Contradiction() { Summary = "Loss of consciousness conflicts.", Citations = [DeniesLoc, LostLoc] }];
         return piCase;
     }
@@ -71,7 +71,7 @@ public class DemandLetterRendererTests
     {
         DemandDraft draft = new DemandDraft() { Segments = [new DraftSegment() { Text = "Cited fact", Citations = [LostLoc] }] };
 
-        string letter = DemandLetterRenderer.Render(draft, new PICase(0), DraftFormat.Markdown);
+        string letter = DemandLetterRenderer.Render(draft, new PICase([]), DraftFormat.Markdown);
 
         Assert.Equal(3, letter.Split('\n').Count(line => line.Trim() == "None."));
     }
@@ -99,7 +99,7 @@ public class DemandLetterRendererTests
             Segments = [new DraftSegment() { Text = "Denied LOC", Citations = [onePage] }, new DraftSegment() { Text = " and NDI 44%", Citations = [twoPages] }],
         };
 
-        string letter = DemandLetterRenderer.Render(draft, new PICase(0), DraftFormat.Markdown);
+        string letter = DemandLetterRenderer.Render(draft, new PICase([]), DraftFormat.Markdown);
 
         Assert.Contains("[^1]: ed.pdf, p. 2: \"Denies LOC.\"", letter);
         Assert.Contains("[^2]: pt.pdf, pp. 3-4: \"NDI 44%.\"", letter);
@@ -113,8 +113,8 @@ public class DemandLetterRendererTests
             Segments = [new DraftSegment() { Text = "[LAW FIRM NAME]\n[FIRM ADDRESS]\n\n## Medical Expenses\n\n- ED: $6,912.40\n- PT: $9,860.00" }],
         };
 
-        string markdown = DemandLetterRenderer.Render(draft, new PICase(0), DraftFormat.Markdown).ReplaceLineEndings("\n");
-        string text = DemandLetterRenderer.Render(draft, new PICase(0), DraftFormat.PlainText).ReplaceLineEndings("\n");
+        string markdown = DemandLetterRenderer.Render(draft, new PICase([]), DraftFormat.Markdown).ReplaceLineEndings("\n");
+        string text = DemandLetterRenderer.Render(draft, new PICase([]), DraftFormat.PlainText).ReplaceLineEndings("\n");
 
         // Markdown keeps address lines apart with hard line breaks, but not before headings or list items.
         Assert.StartsWith("[LAW FIRM NAME]  \n[FIRM ADDRESS]\n\n## Medical Expenses\n\n- ED: $6,912.40\n- PT: $9,860.00", markdown);

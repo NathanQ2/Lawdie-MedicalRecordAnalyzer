@@ -23,9 +23,12 @@ public class PICase
      */
     public SkippedFile[] SkippedFiles { get; set; } = [];
 
-    public PICase(int numDocuments)
+    /**
+     * A case from its documents' summaries, one per readable record, in the same order as Sources.
+     */
+    public PICase(IReadOnlyList<DocumentSummary> documentSummaries)
     {
-        DocumentSummaries = new DocumentSummary[numDocuments];
+        DocumentSummaries = [.. documentSummaries];
     }
 
     [JsonConstructor]

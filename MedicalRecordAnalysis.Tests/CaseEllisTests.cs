@@ -24,8 +24,7 @@ public class CaseEllisTests
             sources.Add(new SourceDocument() { FilePath = file.FullName, Passages = PassageSplitter.Split(result.Text) });
         }
 
-        PICase piCase = new PICase(1);
-        piCase.DocumentSummaries[0] = new DocumentSummary() { Summary = "summary" };
+        PICase piCase = new PICase([new DocumentSummary() { Summary = "summary" }]);
         piCase.Sources = sources.ToArray();
         return piCase;
     }

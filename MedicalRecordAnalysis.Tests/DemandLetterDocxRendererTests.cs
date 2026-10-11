@@ -24,7 +24,7 @@ public class DemandLetterDocxRendererTests
 
     private static PICase CreateCase()
     {
-        PICase piCase = new PICase(0);
+        PICase piCase = new PICase([]);
         piCase.Contradictions = [new Contradiction() { Summary = "Loss of consciousness conflicts.", Citations = [DeniesLoc, LostLoc] }];
         return piCase;
     }
@@ -121,7 +121,7 @@ public class DemandLetterDocxRendererTests
             ],
         };
 
-        using WordprocessingDocument document = Open(DemandLetterDocxRenderer.Render(draft, new PICase(0)));
+        using WordprocessingDocument document = Open(DemandLetterDocxRenderer.Render(draft, new PICase([])));
         Paragraph[] paragraphs = document.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().ToArray();
 
         // The letterhead lines stay in one paragraph, separated by line breaks.

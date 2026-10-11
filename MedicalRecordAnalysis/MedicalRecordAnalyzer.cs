@@ -50,8 +50,7 @@ public class MedicalRecordAnalyzer
 
         progress?.Report(new PipelineProgress(PipelineStage.SummarizingDocuments, files.Count, files.Count));
 
-        PICase piCase = new PICase(documentSummaries.Count);
-        documentSummaries.CopyTo(piCase.DocumentSummaries);
+        PICase piCase = new PICase(documentSummaries);
         piCase.Sources = sources.ToArray();
         piCase.SkippedFiles = skippedFiles.ToArray();
 

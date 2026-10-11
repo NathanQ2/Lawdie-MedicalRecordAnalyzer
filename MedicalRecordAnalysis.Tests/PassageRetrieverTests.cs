@@ -21,8 +21,7 @@ public class PassageRetrieverTests
             position += text.Length + 2;
         }
 
-        PICase piCase = new PICase(1);
-        piCase.DocumentSummaries[0] = new DocumentSummary() { Summary = "summary" };
+        PICase piCase = new PICase([new DocumentSummary() { Summary = "summary" }]);
         piCase.Sources = [new SourceDocument() { FilePath = "/records/note.txt", Passages = passages.ToArray() }];
         return piCase;
     }
@@ -108,13 +107,14 @@ public class PassageRetrieverTests
     [Fact]
     public void BoostsPassagesContainingExtractedQuotes()
     {
-        PICase piCase = CreateCase("Pain noted.", "Pain noted again.");
-        int secondStart = piCase.Sources[0].Passages[1].StartPosition;
-        piCase.DocumentSummaries[0] = new DocumentSummary()
+        SourceDocument[] sources = CreateCase("Pain noted.", "Pain noted again.").Sources;
+        int secondStart = sources[0].Passages[1].StartPosition;
+        DocumentSummary summary = new DocumentSummary()
         {
             Summary = "summary",
             Citations = [new Citation() { FilePath = "/records/note.txt", CitedText = "Pain noted again.", StartPosition = secondStart }],
         };
+        PICase piCase = new PICase([summary]) { Sources = sources };
 
         RetrievedPassage[] selected = PassageRetriever.Select(piCase, Topics, characterBudget: 20);
 
@@ -124,7 +124,7 @@ public class PassageRetrieverTests
     [Fact]
     public void ReturnsNothingForCasesWithoutStoredSources()
     {
-        PICase piCase = new PICase(0);
+        PICase piCase = new PICase([]);
 
         Assert.Empty(PassageRetriever.Select(piCase));
     }

@@ -12,8 +12,7 @@ public class PICaseSerializationTests
         DummyLLMProvider provider = new DummyLLMProvider();
         FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", "ER_Visit_2026-03-14.txt"));
 
-        PICase piCase = new PICase(1);
-        piCase.DocumentSummaries[0] = await provider.SummarizeDocument(file, "text");
+        PICase piCase = new PICase([await provider.SummarizeDocument(file, "text")]);
         piCase.Summary = await provider.SummarizeCase(piCase);
         piCase.Contradictions = [new Contradiction() { Summary = "test", Citations = piCase.DocumentSummaries[0].Citations }];
 
@@ -26,8 +25,7 @@ public class PICaseSerializationTests
     public void ExportedCaseReadsBackWithAllFields()
     {
         Citation quote = new Citation() { FilePath = "/er.txt", CitedText = "Denies loss of consciousness.", StartPosition = 657, Claim = "denied LOC" };
-        PICase original = new PICase(1);
-        original.DocumentSummaries[0] = new DocumentSummary() { Summary = "ER visit.", Citations = [quote] };
+        PICase original = new PICase([new DocumentSummary() { Summary = "ER visit.", Citations = [quote] }]);
         original.Summary = new CaseSummary() { Summary = "Case.", Citations = [quote], UnsupportedStatements = ["Uncited."] };
         original.Contradictions = [new Contradiction() { Summary = "LOC differs.", Citations = [quote] }];
 

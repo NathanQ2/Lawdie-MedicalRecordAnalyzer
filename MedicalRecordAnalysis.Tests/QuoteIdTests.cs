@@ -7,8 +7,7 @@ public class QuoteIdTests
 {
     private static PICase CreateCase()
     {
-        PICase piCase = new PICase(2);
-        piCase.DocumentSummaries[0] = new DocumentSummary()
+        DocumentSummary er = new DocumentSummary()
         {
             Summary = "ER visit.",
             Citations =
@@ -17,12 +16,12 @@ public class QuoteIdTests
                 new Citation() { FilePath = "/er.txt", CitedText = "Denies loss of consciousness.", StartPosition = 40 },
             ],
         };
-        piCase.DocumentSummaries[1] = new DocumentSummary()
+        DocumentSummary pt = new DocumentSummary()
         {
             Summary = "PT intake.",
             Citations = [new Citation() { FilePath = "/pt.txt", CitedText = "Briefly lost consciousness.", StartPosition = 10 }],
         };
-        return piCase;
+        return new PICase([er, pt]);
     }
 
     [Fact]

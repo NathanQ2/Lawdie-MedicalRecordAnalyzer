@@ -63,7 +63,7 @@ public class VerbatimCitationsTests
     public void LeavesParaphrasesShortTextAndHeadingsUncitedAndReportsThem()
     {
         DemandDraft cited = VerbatimCitations.Apply(
-            Draft(new DraftSegment() { Text = "## Facts of the Collision\n\nShe was rear-ended while waiting at a light. Pain 6/10." }),
+            Draft(new DraftSegment() { Text = "## Facts of the Incident\n\nShe was rear-ended while waiting at a light. Pain 6/10." }),
             Sources);
 
         Assert.All(cited.Segments, segment => Assert.Empty(segment.Citations));

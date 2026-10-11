@@ -42,7 +42,7 @@ public class AnthropicProvider : ILLMProvider
         "to an insurance adjuster; the letterhead, salutation, opening paragraph, demand, and signature " +
         "are added separately, so do not write them. Use exactly these section headings, each on its own " +
         "line starting with \"## \", with a blank line before and after every heading and paragraph: " +
-        "\"## Facts of the Collision\", \"## Injuries and Medical Treatment\", \"## Medical Expenses\", " +
+        "\"## Facts of the Incident\", \"## Injuries and Medical Treatment\", \"## Medical Expenses\", " +
         "\"## Lost Wages and Other Economic Losses\", \"## Pain, Suffering, and Impact on Daily Life\", and " +
         "\"## Future Medical Care\". Describe treatment chronologically by provider. Under Medical Expenses, " +
         "list each provider's charges on its own line starting with \"- \", with dates of service and " +

@@ -161,6 +161,9 @@ public sealed class IngestPipelineTests : IDisposable
         Assert.Contains("TestDraftNarrative", draft.Narrative);
         Assert.Contains("Dear [ADJUSTER NAME]:", draft.Narrative);
         Assert.Contains("[DEMAND AMOUNT]", draft.Narrative);
+        // The incident type is a placeholder, never assumed to be a collision.
+        Assert.Contains("[INCIDENT TYPE]", DemandLetterTemplate.Opening);
+        Assert.DoesNotContain("collision", DemandLetterTemplate.Opening + DemandLetterTemplate.Closing, StringComparison.OrdinalIgnoreCase);
         // The template's fixed text is never reported as uncited.
         Assert.DoesNotContain(draft.UnsupportedStatements, statement => statement.Contains("This firm represents"));
     }

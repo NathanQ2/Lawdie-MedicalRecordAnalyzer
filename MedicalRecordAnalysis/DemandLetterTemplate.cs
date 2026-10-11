@@ -32,7 +32,7 @@ public static class DemandLetterTemplate
         "\n" +
         "Dear [ADJUSTER NAME]:\n" +
         "\n" +
-        "This firm represents [CLIENT NAME] for injuries sustained on [DATE OF LOSS] in a collision involving " +
+        "This firm represents [CLIENT NAME] for injuries sustained on [DATE OF LOSS] in [INCIDENT TYPE] involving " +
         "your insured, [INSURED NAME]. We submit this letter and the enclosed medical documentation to set out " +
         "our client's injuries and damages and to resolve this claim without litigation.\n" +
         "\n";

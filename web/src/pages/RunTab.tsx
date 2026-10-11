@@ -41,7 +41,7 @@ export function RunTab() {
       title: 'Draft the demand letter?',
       children: (
         <Text size="sm">
-          Drafting calls the Anthropic API once to write the demand letter narrative from this case's documents. This costs money.
+          This writes the demand letter narrative from this case's documents. It can take a minute or two.
         </Text>
       ),
       labels: { confirm: 'Draft', cancel: 'Not now' },
@@ -121,9 +121,9 @@ function openIngestConfirmation(detail: CaseDetail, onConfirm: () => void) {
     children: (
       <Stack gap="xs">
         <Text size="sm">
-          Ingest calls the Anthropic API to summarize{' '}
+          This summarizes{' '}
           {toSummarize === 0 ? 'no new documents' : `up to ${toSummarize} new or changed ${toSummarize === 1 ? 'document' : 'documents'}`}, then
-          checks for contradictions and writes the case summary over all documents. This costs money.
+          checks all documents for contradictions and writes the case summary.
         </Text>
         <Text size="sm" c="dimmed">
           Large cases can take several minutes. You can leave this page; the job keeps running.

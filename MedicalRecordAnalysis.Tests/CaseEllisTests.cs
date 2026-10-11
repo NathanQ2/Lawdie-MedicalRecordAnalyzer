@@ -6,7 +6,7 @@ using MedicalRecordAnalysis.Retrieval;
 namespace MedicalRecordAnalysis.Tests;
 
 /**
- * Offline checks over the fictional Case_Ellis records (see Case_Ellis_AnswerKey.md).
+ * Offline checks over the fictional Case_Ellis records (see TestData/Case_Ellis_AnswerKey.md).
  */
 public class CaseEllisTests
 {

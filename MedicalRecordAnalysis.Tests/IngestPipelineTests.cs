@@ -37,6 +37,24 @@ public sealed class IngestPipelineTests : IDisposable
     }
 
     [Fact]
+    public async Task ReportsSkippedFilesWithoutCheckingOrSummarizingWhenNothingIsReadable()
+    {
+        DirectoryInfo records = RecordsDirectory("records");
+        Write(records, "scan.png", "not really an image");
+        Write(records, "blank.txt", "   \n  ");
+        CountingProvider provider = new CountingProvider();
+
+        PICase piCase = await new MedicalRecordAnalyzer(provider).Ingest(MedicalRecordAnalyzer.GetRecordFiles(records));
+
+        Assert.Empty(piCase.DocumentSummaries);
+        Assert.Null(piCase.Summary);
+        Assert.Empty(piCase.Contradictions);
+        Assert.Equal(["blank.txt", "scan.png"], piCase.SkippedFiles.Select(skipped => Path.GetFileName(skipped.FilePath)));
+        Assert.Equal(0, provider.Verifications);
+        Assert.Equal(0, provider.CaseSummaries);
+    }
+
+    [Fact]
     public async Task ReportsProgressThroughEveryStage()
     {
         DirectoryInfo records = RecordsDirectory("records");

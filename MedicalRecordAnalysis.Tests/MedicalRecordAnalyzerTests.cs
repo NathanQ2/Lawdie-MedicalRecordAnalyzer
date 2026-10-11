@@ -100,7 +100,8 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
         public Task<DocumentSummary> SummarizeDocument(FileInfo file, string text, CancellationToken cancellationToken = default)
         {
             Calls.Add(nameof(SummarizeDocument));
-            return Task.FromResult(new DocumentSummary() { Summary = "summary" });
+            Citation quote = new Citation() { FilePath = file.FullName, CitedText = text, StartPosition = 0 };
+            return Task.FromResult(new DocumentSummary() { Summary = "summary", Citations = [quote] });
         }
 
         public Task<CaseSummary> SummarizeCase(PICase piCase, CancellationToken cancellationToken = default)

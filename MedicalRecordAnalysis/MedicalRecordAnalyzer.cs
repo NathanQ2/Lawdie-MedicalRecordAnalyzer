@@ -25,7 +25,8 @@ public class MedicalRecordAnalyzer
     /**
      * Extracts and summarizes each record, finds contradictions, and writes the grounded case summary. With a
      * cache, records whose contents are unchanged reuse their earlier summaries, so a failed or repeated run only
-     * pays for new work; contradictions and the case summary are always redone over the whole case.
+     * pays for new work; contradictions and the case summary are always redone over the whole case. When no record
+     * yields a quote (for example, every file is a scan), the case has no summary and only reports what was skipped.
      */
     public async Task<PICase> Ingest(IReadOnlyList<FileInfo> files, IDocumentCache? cache = null,
         IProgress<PipelineProgress>? progress = null, CancellationToken cancellationToken = default)
@@ -53,6 +54,13 @@ public class MedicalRecordAnalyzer
         documentSummaries.CopyTo(piCase.DocumentSummaries);
         piCase.Sources = sources.ToArray();
         piCase.SkippedFiles = skippedFiles.ToArray();
+
+        // With no quotes there is nothing to check or summarize, but the case is still returned so the skipped files
+        // and their reasons reach the user instead of being lost with a failed run.
+        if (!piCase.DocumentSummaries.Any(summary => summary.Citations.Length > 0))
+        {
+            return piCase;
+        }
 
         // 2. Find contradictions, so the case summary can present disputed facts as disputed
         progress?.Report(new PipelineProgress(PipelineStage.FindingContradictions, 0, 1));

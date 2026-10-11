@@ -8,6 +8,8 @@ riderModule.iml
 
 .env
 
+.claude
+
 .idea/
 
 *.DotSettings.user

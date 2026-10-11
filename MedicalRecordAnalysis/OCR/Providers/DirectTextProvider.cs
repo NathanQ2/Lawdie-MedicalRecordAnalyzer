@@ -1,6 +1,8 @@
 using System.Text;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
+using UglyToad.PdfPig.Core;
+using UglyToad.PdfPig.Exceptions;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace MedicalRecordAnalysis.OCR.Providers;
@@ -44,7 +46,7 @@ public class DirectTextProvider : IOCRProvider
 
         if (string.Equals(file.Extension, ".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            (string text, int[] pageStarts) = ExtractPdfText(file, cancellationToken);
+            (string text, int[] pageStarts) = ReadPdf(file, cancellationToken);
             return new OCRResult()
             {
                 File = file,
@@ -54,6 +56,26 @@ public class DirectTextProvider : IOCRProvider
         }
 
         throw new NotSupportedException($"'{file.Extension}' files have no embedded text to read.");
+    }
+
+    /**
+     * A damaged or password-protected PDF is a file this provider can't read, not a failure of the whole ingest, so
+     * PdfPig's errors become NotSupportedException and the file is reported as skipped with the reason.
+     */
+    private static (string Text, int[] PageStartPositions) ReadPdf(FileInfo file, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return ExtractPdfText(file, cancellationToken);
+        }
+        catch (PdfDocumentEncryptedException exception)
+        {
+            throw new NotSupportedException("The PDF is password-protected.", exception);
+        }
+        catch (PdfDocumentFormatException exception)
+        {
+            throw new NotSupportedException($"The PDF is damaged or not a valid PDF: {exception.Message}", exception);
+        }
     }
 
     private static (string Text, int[] PageStartPositions) ExtractPdfText(FileInfo file, CancellationToken cancellationToken)

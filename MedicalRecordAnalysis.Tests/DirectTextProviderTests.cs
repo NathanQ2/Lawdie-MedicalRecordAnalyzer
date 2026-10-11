@@ -63,6 +63,16 @@ public sealed class DirectTextProviderTests : IDisposable
         Assert.Contains("Page 2", exception.Message);
     }
 
+    [Fact]
+    public async Task RejectsDamagedPdfAsUnreadable()
+    {
+        FileInfo file = m_files.WriteText("damaged.pdf", "this is not a pdf");
+
+        NotSupportedException exception = await Assert.ThrowsAsync<NotSupportedException>(() => m_provider.DetectTextFromFile(file));
+
+        Assert.Contains("damaged", exception.Message);
+    }
+
     [Theory]
     [InlineData("scan.png")]
     [InlineData("scan.jpg")]

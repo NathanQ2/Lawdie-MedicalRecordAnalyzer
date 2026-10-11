@@ -49,7 +49,7 @@ describe('AnnotatedText', () => {
   it('highlights placeholders only when asked', () => {
     const withPlaceholder = 'The demand is [DEMAND AMOUNT] for claim [CLAIM NUMBER].'
     const { rerender } = renderWithMantine(
-      <AnnotatedText text={withPlaceholder} citations={[]} numberOf={() => 0} selectedKey={null} onSelect={() => {}} highlightPlaceholders />,
+      <AnnotatedText text={withPlaceholder} citations={[]} numberOf={() => 0} selectedKey={null} onSelect={() => {}} letter />,
     )
 
     expect(screen.getByText('[DEMAND AMOUNT]').tagName).toBe('MARK')
@@ -57,5 +57,14 @@ describe('AnnotatedText', () => {
 
     rerender(<AnnotatedText text={withPlaceholder} citations={[]} numberOf={() => 0} selectedKey={null} onSelect={() => {}} />)
     expect(screen.queryByText('[DEMAND AMOUNT]')).not.toBeInTheDocument()
+  })
+
+  it('shows "## " lines as section headings in a letter', () => {
+    renderWithMantine(
+      <AnnotatedText text={'Dear [ADJUSTER NAME]:\n\n## Medical Expenses\n\nTotal charges.'} citations={[]} numberOf={() => 0} selectedKey={null} onSelect={() => {}} letter />,
+    )
+
+    expect(screen.getByText('Medical Expenses').tagName).toBe('SPAN')
+    expect(screen.queryByText(/## /)).not.toBeInTheDocument()
   })
 })

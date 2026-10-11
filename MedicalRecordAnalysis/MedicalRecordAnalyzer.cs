@@ -72,16 +72,17 @@ public class MedicalRecordAnalyzer
     }
 
     /**
-     * Drafts the demand-letter narrative from the source passages most relevant to each part of the letter.
+     * Drafts the demand letter: the provider writes the body from the source passages most relevant to each part
+     * of the letter, inside the standard letter template.
      */
     public async Task<DemandDraft> Draft(PICase piCase, IProgress<PipelineProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         progress?.Report(new PipelineProgress(PipelineStage.Drafting, 0, 1));
         RetrievedPassage[] passages = PassageRetriever.Select(piCase);
-        DemandDraft draft = await m_llmProvider.DraftDemand(piCase, passages, cancellationToken);
-        PageLocator.AssignPages(draft.Segments.SelectMany(segment => segment.Citations), piCase.Sources);
-        return draft;
+        DemandDraft body = await m_llmProvider.DraftDemand(piCase, passages, cancellationToken);
+        PageLocator.AssignPages(body.Segments.SelectMany(segment => segment.Citations), piCase.Sources);
+        return DemandLetterTemplate.Wrap(body);
     }
 
     /**

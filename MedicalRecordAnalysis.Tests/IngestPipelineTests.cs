@@ -129,6 +129,25 @@ public sealed class IngestPipelineTests : IDisposable
     }
 
     [Fact]
+    public async Task DraftsAreWrappedInTheDemandLetterTemplate()
+    {
+        DirectoryInfo records = RecordsDirectory("records");
+        Write(records, "note.txt", "Neck pain after collision.");
+        MedicalRecordAnalyzer analyzer = new MedicalRecordAnalyzer(new DummyLLMProvider());
+        PICase piCase = await analyzer.Ingest(MedicalRecordAnalyzer.GetRecordFiles(records));
+
+        DemandDraft draft = await analyzer.Draft(piCase);
+
+        Assert.StartsWith(DemandLetterTemplate.Opening, draft.Narrative);
+        Assert.EndsWith(DemandLetterTemplate.Closing, draft.Narrative);
+        Assert.Contains("TestDraftNarrative", draft.Narrative);
+        Assert.Contains("Dear [ADJUSTER NAME]:", draft.Narrative);
+        Assert.Contains("[DEMAND AMOUNT]", draft.Narrative);
+        // The template's fixed text is never reported as uncited.
+        Assert.DoesNotContain(draft.UnsupportedStatements, statement => statement.Contains("This firm represents"));
+    }
+
+    [Fact]
     public async Task DraftJsonReadsBackWithSegmentsAndCitations()
     {
         Citation citation = new Citation() { FilePath = "/records/er.pdf", CitedText = "Denies LOC.", StartPosition = 40, PageNumber = 2 };

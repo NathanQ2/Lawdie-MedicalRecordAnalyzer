@@ -61,16 +61,15 @@ public class DemandLetterDocxRendererTests
         using WordprocessingDocument document = Open(DemandLetterDocxRenderer.Render(CreateDraft(), CreateCase()));
         string[] paragraphs = document.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().Select(paragraph => paragraph.InnerText).ToArray();
 
-        Assert.Equal("Demand Letter Narrative (Draft)", paragraphs[0]);
-        Assert.Equal("The ER record states she denied loss of consciousness, while the PT record says she briefly lost consciousness.", paragraphs[1]);
-        Assert.Equal("Claim [CLAIM NUMBER] demands [DEMAND AMOUNT].", paragraphs[2]);
+        Assert.Equal("The ER record states she denied loss of consciousness, while the PT record says she briefly lost consciousness.", paragraphs[0]);
+        Assert.Equal("Claim [CLAIM NUMBER] demands [DEMAND AMOUNT].", paragraphs[1]);
     }
 
     [Fact]
     public void CitesEachSourceInAFootnoteAfterItsClaim()
     {
         using WordprocessingDocument document = Open(DemandLetterDocxRenderer.Render(CreateDraft(), CreateCase()));
-        Paragraph narrative = document.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().ElementAt(1);
+        Paragraph narrative = document.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().ElementAt(0);
         Footnote[] footnotes = document.MainDocumentPart.FootnotesPart!.Footnotes!.Elements<Footnote>().Where(footnote => footnote.Id! > 0).ToArray();
 
         // The repeated citation in one claim gets a single footnote.
@@ -87,7 +86,7 @@ public class DemandLetterDocxRendererTests
     public void HighlightsPlaceholders()
     {
         using WordprocessingDocument document = Open(DemandLetterDocxRenderer.Render(CreateDraft(), CreateCase()));
-        string[] highlighted = document.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().ElementAt(2)
+        string[] highlighted = document.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().ElementAt(1)
             .Descendants<Run>().Where(run => run.RunProperties?.Highlight is not null).Select(run => run.InnerText).ToArray();
 
         Assert.Equal(["[CLAIM NUMBER]", "[DEMAND AMOUNT]"], highlighted);
@@ -107,6 +106,38 @@ public class DemandLetterDocxRendererTests
         Assert.Contains("– er.pdf, p. 2: \"Denies loss of consciousness.\"", paragraphs);
         Assert.Contains("• Claim [CLAIM NUMBER] demands [DEMAND AMOUNT].", paragraphs);
         Assert.Contains("• [DEMAND AMOUNT]", paragraphs);
+    }
+
+    [Fact]
+    public void FormatsLetterBlocksHeadingsAndExpenseItems()
+    {
+        DemandDraft draft = new DemandDraft()
+        {
+            Segments =
+            [
+                new DraftSegment() { Text = "[LAW FIRM NAME]\n[FIRM ADDRESS]\n\nDear [ADJUSTER NAME]:\n\n## Medical Expenses\n\n" },
+                new DraftSegment() { Text = "- Mercy General ED (01/09/2026): $6,912.40", Citations = [DeniesLoc] },
+                new DraftSegment() { Text = "\n- Valley Rehab: $9,860.00\n\nShe has suffered." },
+            ],
+        };
+
+        using WordprocessingDocument document = Open(DemandLetterDocxRenderer.Render(draft, new PICase(0)));
+        Paragraph[] paragraphs = document.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().ToArray();
+
+        // The letterhead lines stay in one paragraph, separated by line breaks.
+        Assert.Equal("[LAW FIRM NAME][FIRM ADDRESS]", paragraphs[0].InnerText);
+        Assert.Single(paragraphs[0].Descendants<Break>());
+        Assert.Equal("Dear [ADJUSTER NAME]:", paragraphs[1].InnerText);
+
+        Assert.Equal("Medical Expenses", paragraphs[2].InnerText);
+        Assert.All(paragraphs[2].Descendants<Run>(), run => Assert.NotNull(run.RunProperties?.Bold));
+        Assert.NotNull(paragraphs[2].ParagraphProperties?.KeepNext);
+
+        Assert.Equal("•\tMercy General ED (01/09/2026): $6,912.40", string.Concat(paragraphs[3].Descendants<Text>().Select(text => text.Text)));
+        Assert.Single(paragraphs[3].Descendants<FootnoteReference>());
+        Assert.Equal("•\tValley Rehab: $9,860.00", string.Concat(paragraphs[4].Descendants<Text>().Select(text => text.Text)));
+        Assert.Equal("720", paragraphs[4].ParagraphProperties?.Indentation?.Left?.Value);
+        Assert.Equal("She has suffered.", paragraphs[5].InnerText);
     }
 
     [Theory]

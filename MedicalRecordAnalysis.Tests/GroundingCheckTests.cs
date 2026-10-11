@@ -60,6 +60,19 @@ public class GroundingCheckTests
     }
 
     [Fact]
+    public void IgnoresSectionHeadings()
+    {
+        GeneratedSegment[] segments =
+        [
+            new GeneratedSegment("## Medical Expenses\n\n", false),
+            new GeneratedSegment("Total charges were $35,390.05", true),
+            new GeneratedSegment(".", false),
+        ];
+
+        Assert.Empty(GroundingCheck.FindUnsupportedSentences(segments));
+    }
+
+    [Fact]
     public void FlagsEverythingWhenNothingIsCited()
     {
         GeneratedSegment[] segments = [new GeneratedSegment("The collision occurred on 03/12/2026.", false)];

@@ -9,16 +9,14 @@ using MedicalRecordAnalysis.LLM;
 namespace MedicalRecordAnalysis;
 
 /**
- * Renders a demand draft as a Word document: the narrative with a Word footnote citing the source record, page,
- * and quote after each cited claim, placeholders highlighted, and the attorney review section on its own page.
+ * Renders a demand draft as a Word document: the letter with a Word footnote citing the source record, page, and
+ * quote after each cited claim, section headings and expense items formatted, placeholders highlighted, and the
+ * attorney review section on its own page.
  */
 public static partial class DemandLetterDocxRenderer
 {
     private const string FontSizeBody = "24"; // Half-points: 12 pt.
     private const string FontSizeFootnote = "18"; // 9 pt.
-
-    [GeneratedRegex(@"\n[ \t]*\n\s*")]
-    private static partial Regex ParagraphBreak();
 
     [GeneratedRegex(@"(\[[A-Z][A-Z0-9 &/'.,-]*\])")]
     private static partial Regex Placeholder();
@@ -41,7 +39,6 @@ public static partial class DemandLetterDocxRenderer
                 new Footnote(new Paragraph(new Run(new SeparatorMark()))) { Type = FootnoteEndnoteValues.Separator, Id = -1 },
                 new Footnote(new Paragraph(new Run(new ContinuationSeparatorMark()))) { Type = FootnoteEndnoteValues.ContinuationSeparator, Id = 0 });
 
-            body.Append(StyledParagraph(DemandLetterRenderer.Title, bold: true, size: "32"));
             new NarrativeWriter(body, footnotesPart.Footnotes).Write(draft);
 
             body.Append(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
@@ -141,16 +138,22 @@ public static partial class DemandLetterDocxRenderer
     }
 
     /**
-     * Writes the narrative into paragraphs (blank lines separate them), adding a footnote after each cited claim.
+     * Writes the letter into paragraphs: blank lines separate paragraphs, single line breaks stay within one (as in
+     * an address block), "## " lines become bold section headings, and "- " lines become bulleted items. A footnote
+     * follows each cited claim.
      */
     private sealed class NarrativeWriter(Body body, Footnotes footnotes)
     {
-        private Paragraph m_paragraph = NewParagraph();
+        private enum Kind { Normal, Heading, Bullet }
+
+        private Paragraph? m_paragraph;
+        private Kind m_kind = Kind.Normal;
+        private bool m_atLineStart = true;
+        private int m_newlines;
         private int m_nextFootnoteId = 1;
 
         public void Write(DemandDraft draft)
         {
-            body.Append(m_paragraph);
             foreach (DraftSegment segment in draft.Segments)
             {
                 string text = segment.Text.TrimEnd();
@@ -171,36 +174,88 @@ public static partial class DemandLetterDocxRenderer
 
         private void AppendText(string text)
         {
-            string[] paragraphs = ParagraphBreak().Split(text);
-            for (int i = 0; i < paragraphs.Length; i++)
+            string[] lines = text.Split('\n');
+            for (int i = 0; i < lines.Length; i++)
             {
                 if (i > 0)
                 {
-                    m_paragraph = NewParagraph();
-                    body.Append(m_paragraph);
+                    m_newlines++;
+                    m_atLineStart = true;
                 }
 
-                string[] lines = paragraphs[i].Split('\n');
-                for (int line = 0; line < lines.Length; line++)
+                string line = lines[i];
+                if (m_atLineStart)
                 {
-                    if (line > 0)
+                    line = line.TrimStart(' ', '\t', '\r');
+                    if (line.Length == 0)
                     {
-                        m_paragraph.Append(new Run(new Break()));
+                        continue;
                     }
 
-                    foreach (string part in Placeholder().Split(lines[line]).Where(part => part.Length > 0))
-                    {
-                        bool placeholder = Placeholder().IsMatch(part);
-                        m_paragraph.Append(TextRun(part, bold: placeholder, highlight: placeholder));
-                    }
+                    line = StartLine(line);
+                }
+
+                if (line.Length > 0)
+                {
+                    AppendRuns(line.TrimEnd('\r'));
+                    m_atLineStart = false;
+                    m_newlines = 0;
                 }
             }
+        }
+
+        /**
+         * Starts a new paragraph or line break as the preceding line breaks and the line's marker require, and
+         * returns the line without its marker.
+         */
+        private string StartLine(string line)
+        {
+            Kind kind = line.StartsWith("## ", StringComparison.Ordinal) ? Kind.Heading
+                : line.StartsWith("- ", StringComparison.Ordinal) ? Kind.Bullet
+                : Kind.Normal;
+
+            bool newParagraph = m_paragraph is null || m_newlines >= 2 || kind != Kind.Normal || m_kind != Kind.Normal;
+            if (newParagraph)
+            {
+                m_kind = kind;
+                m_paragraph = NewParagraph(kind);
+                body.Append(m_paragraph);
+            }
+            else if (m_newlines == 1)
+            {
+                m_paragraph!.Append(new Run(new Break()));
+            }
+
+            return kind switch
+            {
+                Kind.Heading => line[3..],
+                Kind.Bullet => "•\t" + line[2..],
+                _ => line,
+            };
+        }
+
+        private void AppendRuns(string line)
+        {
+            m_paragraph ??= AppendNewParagraph();
+            foreach (string part in Placeholder().Split(line).Where(part => part.Length > 0))
+            {
+                bool placeholder = Placeholder().IsMatch(part);
+                m_paragraph.Append(TextRun(part, bold: placeholder || m_kind == Kind.Heading, highlight: placeholder,
+                    size: m_kind == Kind.Heading ? "26" : FontSizeBody));
+            }
+        }
+
+        private Paragraph AppendNewParagraph()
+        {
+            Paragraph paragraph = NewParagraph(Kind.Normal);
+            body.Append(paragraph);
+            return paragraph;
         }
 
         private void AppendFootnote(string description)
         {
             int id = m_nextFootnoteId++;
-            m_paragraph.Append(new Run(Superscript(), new FootnoteReference() { Id = id }));
+            (m_paragraph ??= AppendNewParagraph()).Append(new Run(Superscript(), new FootnoteReference() { Id = id }));
             footnotes.Append(new Footnote(new Paragraph(
                 new Run(Superscript(), new FootnoteReferenceMark()),
                 TextRun($" {description}", size: FontSizeFootnote))) { Id = id });
@@ -208,6 +263,15 @@ public static partial class DemandLetterDocxRenderer
 
         private static RunProperties Superscript() => new RunProperties(new VerticalTextAlignment() { Val = VerticalPositionValues.Superscript });
 
-        private static Paragraph NewParagraph() => new Paragraph(new ParagraphProperties(new SpacingBetweenLines() { After = "200", Line = "276", LineRule = LineSpacingRuleValues.Auto }));
+        private static Paragraph NewParagraph(Kind kind)
+        {
+            ParagraphProperties properties = kind switch
+            {
+                Kind.Heading => new ParagraphProperties(new KeepNext(), new SpacingBetweenLines() { Before = "240", After = "120" }),
+                Kind.Bullet => new ParagraphProperties(new SpacingBetweenLines() { After = "60" }, new Indentation() { Left = "720", Hanging = "360" }),
+                _ => new ParagraphProperties(new SpacingBetweenLines() { After = "200", Line = "276", LineRule = LineSpacingRuleValues.Auto }),
+            };
+            return new Paragraph(properties);
+        }
     }
 }

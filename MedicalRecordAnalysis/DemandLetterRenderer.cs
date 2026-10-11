@@ -17,7 +17,6 @@ public enum DraftFormat
  */
 public static partial class DemandLetterRenderer
 {
-    internal const string Title = "Demand Letter Narrative (Draft)";
     internal const string ReviewTitle = "Attorney Review - Remove Before Sending";
 
     [GeneratedRegex(@"\[[A-Z][A-Z0-9 &/'.,-]*\]")]
@@ -62,8 +61,7 @@ public static partial class DemandLetterRenderer
         List<Citation> sources = [];
         string narrative = RenderNarrative(draft, sources, markdown);
 
-        builder.AppendLine(markdown ? $"# {Title}" : Title.ToUpperInvariant()).AppendLine();
-        builder.AppendLine(narrative.Trim()).AppendLine();
+        builder.AppendLine(FormatLetter(narrative.Trim(), markdown)).AppendLine();
 
         if (!markdown && sources.Count > 0)
         {
@@ -85,6 +83,34 @@ public static partial class DemandLetterRenderer
         AppendSection(builder, markdown, "Placeholders to fill in", FindPlaceholders(draft.Narrative));
 
         return builder.ToString().TrimEnd() + Environment.NewLine;
+    }
+
+    /**
+     * Lays out the letter's lines for the format. In plain text, "## " section headings become capitalized lines. In
+     * Markdown, consecutive lines inside a block (an address, the "Re:" block, a signature) end with two spaces so
+     * they stay on separate lines instead of being joined into one paragraph.
+     */
+    private static string FormatLetter(string letter, bool markdown)
+    {
+        string[] lines = letter.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            bool heading = lines[i].StartsWith("## ", StringComparison.Ordinal);
+            if (!markdown)
+            {
+                lines[i] = heading ? lines[i][3..].ToUpperInvariant() : lines[i];
+                continue;
+            }
+
+            bool continuesBlock = i + 1 < lines.Length && lines[i].Trim().Length > 0 && lines[i + 1].Trim().Length > 0 &&
+                !heading && !lines[i + 1].StartsWith("## ", StringComparison.Ordinal) && !lines[i + 1].StartsWith("- ", StringComparison.Ordinal);
+            if (continuesBlock)
+            {
+                lines[i] = lines[i].TrimEnd() + "  ";
+            }
+        }
+
+        return string.Join('\n', lines);
     }
 
     /**

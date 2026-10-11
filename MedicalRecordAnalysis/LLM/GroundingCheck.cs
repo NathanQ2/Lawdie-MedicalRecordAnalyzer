@@ -42,7 +42,8 @@ public static class GroundingCheck
 
             int end = Math.Min(i + 1, text.Length);
             string sentence = text[start..end].Trim();
-            if (sentence.Any(char.IsLetterOrDigit) && !cited.AsSpan(start, end - start).Contains(true))
+            // Section headings ("## Medical Expenses") are structure, not claims.
+            if (sentence.Any(char.IsLetterOrDigit) && !sentence.StartsWith('#') && !cited.AsSpan(start, end - start).Contains(true))
             {
                 unsupported.Add(sentence);
             }

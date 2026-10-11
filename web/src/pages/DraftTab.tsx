@@ -92,7 +92,7 @@ export function DraftTab() {
 
       <Group justify="space-between" align="flex-end">
         <Stack gap={4}>
-          <Title order={3}>Demand letter narrative</Title>
+          <Title order={3}>Demand letter</Title>
           <Text size="xs" c="dimmed">
             Click a number to see its source. Yellow sentences have no citation; purple placeholders must be filled in.
           </Text>
@@ -110,7 +110,7 @@ export function DraftTab() {
               numberOf={citationNumbering(citations)}
               selectedKey={selected ? citationKey(selected) : null}
               onSelect={select}
-              highlightPlaceholders
+              letter
             />
           </Paper>
           {!wide && (

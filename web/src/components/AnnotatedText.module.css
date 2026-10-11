@@ -10,6 +10,12 @@
   padding: 0 1px;
 }
 
+.heading {
+  display: block;
+  font-weight: 700;
+  font-size: var(--mantine-font-size-lg);
+}
+
 .placeholder {
   background-color: var(--mantine-color-grape-1);
   color: var(--mantine-color-grape-9);

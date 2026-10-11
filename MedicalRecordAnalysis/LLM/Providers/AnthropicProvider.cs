@@ -13,8 +13,9 @@ public class AnthropicProvider : ILLMProvider
         PropertyNameCaseInsensitive = true,
     };
 
-    // Responses are preceded by thinking, which counts against this limit; large cases need the room.
-    private const int MaxTokens = 16000;
+    // Responses are preceded by thinking, which counts against this limit; a full demand letter for a large case
+    // needs the room. Limits this high require streaming (see CreateMessage).
+    private const int MaxTokens = 32000;
     private const string DefaultModel = "claude-haiku-5-5";
 
     private const string DocumentSummarizationSystemPrompt =
@@ -37,20 +38,23 @@ public class AnthropicProvider : ILLMProvider
         "prose only: no preamble, headings, or JSON.";
 
     private const string DemandDraftSystemPrompt =
-        "You are a drafting assistant for a personal injury law firm. Write the narrative section " +
-        "of a demand letter to an insurance adjuster. Make the client's pain and suffering the center " +
-        "of the narrative: the incident, the injuries and diagnoses, the course of treatment, and " +
-        "above all how the injuries have affected the client's daily life, as documented in the " +
-        "records. Each provided document is verbatim text from one of the client's medical records. " +
-        "Write in your own words as a persuasive, readable narrative rather than pasting record text, " +
-        "but state only facts supported by the documents and cite them for every fact; never invent, " +
-        "infer, or exaggerate injuries, dates, symptoms, or causation. Where the records disagree, " +
-        "attribute each version to its record with its citation rather than choosing one. For " +
-        "information a demand letter needs that the records do not contain, such as the claim number, " +
-        "the insured's name, lost wages, or the amount demanded, write a bracketed placeholder in " +
-        "capitals, such as [CLAIM NUMBER], and never guess. The narrative goes to the adjuster as " +
-        "written, so do not include notes to the attorney. Write the narrative section only: no " +
-        "letterhead, salutation, signature, headings, or JSON.";
+        "You are a drafting assistant for a personal injury law firm. Write the body of a demand letter " +
+        "to an insurance adjuster; the letterhead, salutation, opening paragraph, demand, and signature " +
+        "are added separately, so do not write them. Use exactly these section headings, each on its own " +
+        "line starting with \"## \", with a blank line before and after every heading and paragraph: " +
+        "\"## Facts of the Collision\", \"## Injuries and Medical Treatment\", \"## Medical Expenses\", " +
+        "\"## Lost Wages and Other Economic Losses\", \"## Pain, Suffering, and Impact on Daily Life\", and " +
+        "\"## Future Medical Care\". Describe treatment chronologically by provider. Under Medical Expenses, " +
+        "list each provider's charges on its own line starting with \"- \", with dates of service and " +
+        "amounts, followed by the total if the documents state one. Make the client's pain and suffering " +
+        "the center of the letter, as documented in the records. Each provided document is verbatim text " +
+        "from one of the client's medical records. Write in your own words in a professional, persuasive " +
+        "tone rather than pasting record text, but state only facts supported by the documents and cite " +
+        "them for every fact; never invent, infer, or exaggerate injuries, dates, symptoms, amounts, or " +
+        "causation. Where the records disagree, attribute each version to its record with its citation " +
+        "rather than choosing one. Where a section needs information the documents do not contain, write " +
+        "a bracketed placeholder in capitals, such as [LOST WAGES AMOUNT], and never guess. The letter goes " +
+        "to the adjuster as written, so do not include notes to the attorney or JSON.";
 
     private const string VerificationSystemPrompt =
         "You are a legal intake quality reviewer. Compare the provided document summaries and " +
@@ -160,7 +164,7 @@ public class AnthropicProvider : ILLMProvider
             ? BuildPassageDocuments(passages)
             : BuildQuoteDocuments(piCase);
         List<DraftSegment> segments = await GenerateGrounded(DemandDraftSystemPrompt,
-            BuildGroundedInstruction(piCase, "Write the demand letter narrative section, citing the records for every fact."), documents, resolve, cancellationToken);
+            BuildGroundedInstruction(piCase, "Write the body of the demand letter, citing the records for every fact."), documents, resolve, cancellationToken);
 
         return new DemandDraft()
         {
@@ -368,11 +372,12 @@ public class AnthropicProvider : ILLMProvider
     }
 
     /**
-     * Sends the request and rejects responses cut off by the token limit, so truncated text is never used.
+     * Sends the request as a stream (long responses would otherwise hit HTTP timeouts), collects it into the complete
+     * message, and rejects responses cut off by the token limit, so truncated text is never used.
      */
     private async Task<Message> CreateMessage(MessageCreateParams parameters, CancellationToken cancellationToken)
     {
-        Message message = await m_client.Messages.Create(parameters, cancellationToken);
+        Message message = await m_client.Messages.CreateStreaming(parameters, cancellationToken).Aggregate();
         if (message.StopReason == StopReason.MaxTokens)
         {
             throw new InvalidOperationException("The response reached the token limit and was cut off.");

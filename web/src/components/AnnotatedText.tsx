@@ -12,20 +12,21 @@ interface AnnotatedTextProps {
   numberOf: (citation: Citation) => number
   selectedKey: string | null
   onSelect: (citation: Citation) => void
-  /** Highlight bracketed placeholders such as [CLAIM NUMBER] that must be filled in. */
-  highlightPlaceholders?: boolean
+  /** Lay the text out as a letter: "## " lines as section headings and placeholders such as [CLAIM NUMBER] highlighted. */
+  letter?: boolean
 }
 
 // Matches the API's placeholder pattern (DemandLetterRenderer.FindPlaceholders).
 const PLACEHOLDER = /(\[[A-Z][A-Z0-9 &/'.,-]*\])/
+const HEADING_LINE = /^## (.*)$/m
 
 /**
  * Generated text with a numbered marker after each cited claim (click to open the source) and uncited sentences
  * highlighted for review.
  */
-export function AnnotatedText({ text, citations, unsupportedStatements = [], numberOf, selectedKey, onSelect, highlightPlaceholders = false }: AnnotatedTextProps) {
+export function AnnotatedText({ text, citations, unsupportedStatements = [], numberOf, selectedKey, onSelect, letter = false }: AnnotatedTextProps) {
   const segments = annotate(text, citations, unsupportedStatements)
-  const show = (content: string) => (highlightPlaceholders ? withPlaceholders(content) : content)
+  const show = (content: string) => (letter ? asLetter(content) : content)
 
   return (
     <Text component="div" className={classes.text}>
@@ -72,6 +73,23 @@ export function CitationMarker({ citation, number, selected, onSelect }: Citatio
         {number}
       </UnstyledButton>
     </Tooltip>
+  )
+}
+
+/**
+ * Shows "## " lines as section headings (headings are never cited, so a heading line is always whole within one
+ * piece of text) and highlights placeholders in the rest.
+ */
+function asLetter(content: string) {
+  const parts = content.split(new RegExp(HEADING_LINE.source, 'gm'))
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      <span key={index} className={classes.heading}>
+        {part}
+      </span>
+    ) : (
+      <Fragment key={index}>{withPlaceholders(part)}</Fragment>
+    ),
   )
 }
 

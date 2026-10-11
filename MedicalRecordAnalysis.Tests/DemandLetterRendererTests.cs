@@ -93,6 +93,22 @@ public class DemandLetterRendererTests
         Assert.Contains("[^2]: pt.pdf, pp. 3-4: \"NDI 44%.\"", letter);
     }
 
+    [Fact]
+    public void LaysOutLetterBlocksAndHeadingsForEachFormat()
+    {
+        DemandDraft draft = new DemandDraft()
+        {
+            Segments = [new DraftSegment() { Text = "[LAW FIRM NAME]\n[FIRM ADDRESS]\n\n## Medical Expenses\n\n- ED: $6,912.40\n- PT: $9,860.00" }],
+        };
+
+        string markdown = DemandLetterRenderer.Render(draft, new PICase(0), DraftFormat.Markdown).ReplaceLineEndings("\n");
+        string text = DemandLetterRenderer.Render(draft, new PICase(0), DraftFormat.PlainText).ReplaceLineEndings("\n");
+
+        // Markdown keeps address lines apart with hard line breaks, but not before headings or list items.
+        Assert.StartsWith("[LAW FIRM NAME]  \n[FIRM ADDRESS]\n\n## Medical Expenses\n\n- ED: $6,912.40\n- PT: $9,860.00", markdown);
+        Assert.StartsWith("[LAW FIRM NAME]\n[FIRM ADDRESS]\n\nMEDICAL EXPENSES\n\n- ED: $6,912.40", text);
+    }
+
     [Theory]
     [InlineData("Draft.txt", DraftFormat.PlainText)]
     [InlineData("Draft.TXT", DraftFormat.PlainText)]

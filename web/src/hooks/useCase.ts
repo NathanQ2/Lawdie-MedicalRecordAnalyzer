@@ -7,6 +7,9 @@ import { isJobActive, jobKindLabels } from '../lib/format'
 
 const POLL_INTERVAL_MS = 1500
 
+// Several components on a page load the same case, so each finished job is announced only by the first to see it.
+const announcedJobs = new Set<string>()
+
 export const caseKeys = {
   all: ['cases'] as const,
   detail: (caseId: string) => ['cases', caseId] as const,
@@ -39,7 +42,8 @@ export function useCase(caseId: string) {
   useEffect(() => {
     const previous = previousJob.current
     previousJob.current = job
-    if (previous && isJobActive(previous) && job && job.id === previous.id && !isJobActive(job)) {
+    if (previous && isJobActive(previous) && job && job.id === previous.id && !isJobActive(job) && !announcedJobs.has(job.id)) {
+      announcedJobs.add(job.id)
       announceFinishedJob(job)
       void queryClient.invalidateQueries({ queryKey: caseKeys.all })
     }

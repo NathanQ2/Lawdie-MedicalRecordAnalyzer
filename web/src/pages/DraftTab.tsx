@@ -51,7 +51,7 @@ export function DraftTab() {
       title: draft.data ? 'Draft the letter again?' : 'Draft the demand letter?',
       children: (
         <Text size="sm">
-          Drafting takes a minute or two.
+          Drafting may take a couple of minutes.
           {draft.data && ' This replaces the current letter. Your review decisions stay.'}
         </Text>
       ),

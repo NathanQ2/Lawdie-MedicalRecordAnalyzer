@@ -1,7 +1,7 @@
 import { Alert, Anchor, Badge, Box, Button, Center, Drawer, Grid, Group, Loader, Menu, Paper, SegmentedControl, Stack, Text, Title } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
-import { IconDownload } from '@tabler/icons-react'
+import { IconDownload } from '../components/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
@@ -35,7 +35,7 @@ export function DraftTab() {
   }
 
   if (draft.isError) {
-    return <Alert color="red" title="Could not load the draft">{draft.error.message}</Alert>
+    return <Alert color="brick" title="Could not load the draft">{draft.error.message}</Alert>
   }
 
   if (!draft.data) {
@@ -100,14 +100,14 @@ export function DraftTab() {
   return (
     <Stack gap="md">
       {caseQuery.data?.draftOutOfDate && (
-        <Alert color="yellow">The analysis changed after this draft was written. Draft again from the Run tab to update it.</Alert>
+        <Alert color="amber">The analysis changed after this draft was written. Draft again from the Run tab to update it.</Alert>
       )}
 
       <Group justify="space-between" align="flex-end">
         <Stack gap={4}>
           <Title order={3}>Demand letter</Title>
           <Text size="xs" c="dimmed">
-            Click a number to see its source. Yellow sentences have no citation; purple placeholders must be filled in.
+            Click a number to see its source. Underlined sentences have no citation. Fill in each [BRACKETED] placeholder before sending.
           </Text>
         </Stack>
         <ExportMenu caseId={caseId} openItems={openItems} />
@@ -160,7 +160,7 @@ function ExportMenu({ caseId, openItems }: { caseId: string; openItems: number }
   return (
     <Group gap="sm">
       {openItems > 0 && (
-        <Badge color="orange" variant="light">
+        <Badge color="amber" variant="light">
           {openItems} review {openItems === 1 ? 'item' : 'items'} open
         </Badge>
       )}
@@ -205,7 +205,7 @@ export function ReviewChecklist({ caseId, items, loading, onSelectCitation, show
       queryClient.setQueryData<ReviewItem[]>(caseKeys.review(caseId), (current) =>
         current?.map((item) => (item.id === updated.id ? updated : item)),
       ),
-    onError: (error) => notifications.show({ color: 'red', title: 'Could not update the review item', message: error.message }),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Could not update the review item', message: error.message }),
   })
 
   if (loading || !items) {

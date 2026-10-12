@@ -1,5 +1,5 @@
-import { Anchor, AppShell, Container, Group, Stack, Text, Title } from '@mantine/core'
-import { IconFileDescription } from '@tabler/icons-react'
+import { Anchor, AppShell, Container, Group, Stack, Text, ThemeIcon, Title } from '@mantine/core'
+import { IconDocuments } from './components/icons'
 import { Link, Navigate, Outlet, Route, Routes } from 'react-router'
 import { AnalysisTab } from './pages/AnalysisTab'
 import { CasePage } from './pages/CasePage'
@@ -29,12 +29,14 @@ export function App() {
 function Layout() {
   return (
     <AppShell header={{ height: 56 }} padding="md">
-      <AppShell.Header>
+      <AppShell.Header className="mra-glass">
         <Container size="xl" h="100%">
           <Group h="100%">
             <Anchor component={Link} to="/" underline="never" c="inherit">
               <Group gap="xs">
-                <IconFileDescription size={22} />
+                <ThemeIcon size={30} radius="md">
+                  <IconDocuments size={18} />
+                </ThemeIcon>
                 <Text fw={700}>Medical Record Analysis</Text>
               </Group>
             </Anchor>

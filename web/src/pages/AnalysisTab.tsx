@@ -25,7 +25,7 @@ export function AnalysisTab() {
   }
 
   if (analysis.isError) {
-    return <Alert color="red" title="Could not load the analysis">{analysis.error.message}</Alert>
+    return <Alert color="brick" title="Could not load the analysis">{analysis.error.message}</Alert>
   }
 
   if (!analysis.data) {
@@ -50,7 +50,7 @@ export function AnalysisTab() {
   return (
     <Stack gap="md">
       {caseQuery.data?.analysisOutOfDate && (
-        <Alert color="yellow">Documents changed since this analysis was made. Run ingest again to update it.</Alert>
+        <Alert color="amber">Documents changed since this analysis was made. Run ingest again to update it.</Alert>
       )}
       <Grid gap="md">
         <Grid.Col span={selected && wide ? 7 : 12}>
@@ -91,7 +91,7 @@ function AnalysisSections({ analysis, selected, onSelect }: AnalysisSectionsProp
           <Group gap="xs">
             <Badge variant="light">{new Set(summaryCitations.map(citationKey)).size} sources cited</Badge>
             {unsupported.length > 0 && (
-              <Badge variant="light" color="yellow">
+              <Badge variant="light" color="amber">
                 {unsupported.length} {unsupported.length === 1 ? 'sentence' : 'sentences'} without a citation
               </Badge>
             )}
@@ -120,7 +120,7 @@ function AnalysisSections({ analysis, selected, onSelect }: AnalysisSectionsProp
       <Stack gap="xs">
         <Group gap="xs" align="baseline">
           <Title order={3}>Contradictions</Title>
-          <Badge variant="light" color={analysis.contradictions.length > 0 ? 'red' : 'green'}>
+          <Badge variant="light" color={analysis.contradictions.length > 0 ? 'brick' : 'sage'}>
             {analysis.contradictions.length}
           </Badge>
         </Group>
@@ -138,7 +138,7 @@ function AnalysisSections({ analysis, selected, onSelect }: AnalysisSectionsProp
       <Stack gap="xs">
         <Title order={3}>Documents</Title>
         {analysis.skippedFiles.length > 0 && (
-          <Alert color="orange" title={`${analysis.skippedFiles.length} ${analysis.skippedFiles.length === 1 ? 'document was' : 'documents were'} skipped`}>
+          <Alert color="amber" title={`${analysis.skippedFiles.length} ${analysis.skippedFiles.length === 1 ? 'document was' : 'documents were'} skipped`}>
             <Stack gap={4}>
               {analysis.skippedFiles.map((skipped) => (
                 <Text key={skipped.filePath} size="sm">

@@ -2,7 +2,7 @@ import { Alert, Group, Paper, Stack, Text } from '@mantine/core'
 import { Dropzone, type FileRejection } from '@mantine/dropzone'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
-import { IconFileUpload, IconUpload, IconX } from '@tabler/icons-react'
+import { IconClose, IconUpload } from '../components/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router'
 import { api } from '../api/client'
@@ -37,15 +37,15 @@ export function RecordsTab() {
     onSuccess: async (records, files) => {
       queryClient.setQueryData<CaseDetail>(caseKeys.detail(caseId), (current) => (current ? { ...current, records } : current))
       await refresh()
-      notifications.show({ color: 'green', message: `Uploaded ${files.length} ${files.length === 1 ? 'document' : 'documents'}.` })
+      notifications.show({ color: 'sage', message: `Uploaded ${files.length} ${files.length === 1 ? 'document' : 'documents'}.` })
     },
-    onError: (error) => notifications.show({ color: 'red', title: 'Upload failed', message: error.message }),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Upload failed', message: error.message }),
   })
 
   const remove = useMutation({
     mutationFn: (fileName: string) => api.deleteRecord(caseId, fileName),
     onSuccess: refresh,
-    onError: (error) => notifications.show({ color: 'red', title: 'Could not delete the document', message: error.message }),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Could not delete the document', message: error.message }),
   })
 
   if (!caseQuery.data) {
@@ -60,22 +60,22 @@ export function RecordsTab() {
       title: `Delete ${record.name}?`,
       children: <Text size="sm">The document is removed from this case. Run ingest again to update the analysis.</Text>,
       labels: { confirm: 'Delete document', cancel: 'Keep it' },
-      confirmProps: { color: 'red' },
+      confirmProps: { color: 'brick' },
       onConfirm: () => remove.mutate(record.name),
     })
 
   const reject = (rejections: FileRejection[]) =>
     notifications.show({
-      color: 'red',
+      color: 'brick',
       title: 'Some files were not added',
       message: rejections.map((rejection) => `${rejection.file.name}: ${rejection.errors[0]?.message}`).join('\n'),
     })
 
   return (
     <Stack gap="md">
-      {jobActive && <Alert color="blue">Documents can't be changed while a job is running.</Alert>}
+      {jobActive && <Alert color="slate">Documents can't be changed while a job is running.</Alert>}
       {detail.analysisOutOfDate && !jobActive && (
-        <Alert color="yellow">Documents changed since the last ingest. Run ingest again to update the analysis.</Alert>
+        <Alert color="amber">Documents changed since the last ingest. Run ingest again to update the analysis.</Alert>
       )}
 
       <Dropzone
@@ -91,10 +91,10 @@ export function RecordsTab() {
             <IconUpload size={40} stroke={1.5} />
           </Dropzone.Accept>
           <Dropzone.Reject>
-            <IconX size={40} stroke={1.5} />
+            <IconClose size={40} stroke={1.5} />
           </Dropzone.Reject>
           <Dropzone.Idle>
-            <IconFileUpload size={40} stroke={1.5} />
+            <IconUpload size={40} stroke={1.5} />
           </Dropzone.Idle>
           <Stack gap={4}>
             <Text size="lg">Drag documents here or click to choose files</Text>

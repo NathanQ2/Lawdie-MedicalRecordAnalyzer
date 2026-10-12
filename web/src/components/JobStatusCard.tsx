@@ -1,5 +1,5 @@
 import { Alert, Badge, Button, Card, Group, Progress, Stack, Text } from '@mantine/core'
-import { IconPlayerStop } from '@tabler/icons-react'
+import { IconStop } from './icons'
 import type { JobStatus } from '../api/types'
 import { formatDateTime, formatDuration, isJobActive, jobProgress, jobStateColors, stageLabel } from '../lib/format'
 
@@ -30,9 +30,9 @@ export function JobStatusCard({ job, onCancel, cancelling = false, now }: JobSta
           {active && onCancel && (
             <Button
               variant="light"
-              color="red"
+              color="brick"
               size="xs"
-              leftSection={<IconPlayerStop size={14} />}
+              leftSection={<IconStop size={14} />}
               onClick={onCancel}
               loading={cancelling}
             >
@@ -59,11 +59,11 @@ export function JobStatusCard({ job, onCancel, cancelling = false, now }: JobSta
         )}
 
         {job.state === 'Failed' && (
-          <Alert color="red" title="The job failed">
+          <Alert color="brick" title="The job failed">
             {job.error ?? 'No details were reported.'}
           </Alert>
         )}
-        {job.state === 'Cancelled' && job.error && <Alert color="orange">{job.error}</Alert>}
+        {job.state === 'Cancelled' && job.error && <Alert color="amber">{job.error}</Alert>}
 
         <Text size="xs" c="dimmed">
           {started === null

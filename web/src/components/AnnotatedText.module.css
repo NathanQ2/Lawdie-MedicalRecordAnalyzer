@@ -1,11 +1,13 @@
 .text {
+  font-family: var(--mra-font-reading);
+  font-size: 1.05em;
   line-height: 1.7;
   white-space: pre-wrap;
 }
 
 .unsupported {
-  background-color: var(--mantine-color-yellow-2);
-  border-bottom: 2px dotted var(--mantine-color-yellow-7);
+  background-color: var(--mantine-color-amber-1);
+  border-bottom: 2px dotted var(--mantine-color-amber-7);
   border-radius: 2px;
   padding: 0 1px;
 }
@@ -17,8 +19,8 @@
 }
 
 .placeholder {
-  background-color: var(--mantine-color-grape-1);
-  color: var(--mantine-color-grape-9);
+  background-color: var(--mantine-color-slate-1);
+  color: var(--mantine-color-slate-8);
   font-weight: 600;
   border-radius: 2px;
   padding: 0 2px;
@@ -35,22 +37,22 @@
   font-weight: 600;
   text-align: center;
   border-radius: var(--mantine-radius-sm);
-  color: var(--mantine-color-indigo-7);
-  background-color: var(--mantine-color-indigo-0);
+  color: var(--mantine-color-slate-7);
+  background-color: var(--mantine-color-slate-0);
 
   &:hover {
-    background-color: var(--mantine-color-indigo-1);
+    background-color: var(--mantine-color-slate-1);
   }
 
   &[data-selected] {
     color: var(--mantine-color-white);
-    background-color: var(--mantine-color-indigo-6);
+    background-color: var(--mantine-color-slate-6);
   }
 }
 
 .highlighted {
-  background-color: var(--mantine-color-orange-1);
-  outline: 2px solid var(--mantine-color-orange-4);
+  background-color: var(--mantine-color-sage-1);
+  outline: 2px solid var(--mantine-color-sage-4);
   border-radius: 2px;
   color: inherit;
 }

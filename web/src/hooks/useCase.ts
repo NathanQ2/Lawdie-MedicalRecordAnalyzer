@@ -86,10 +86,10 @@ export function setCaseJob(queryClient: ReturnType<typeof useQueryClient>, caseI
 function announceFinishedJob(job: JobStatus) {
   const name = job.kind === 'Ingest' ? 'Ingest' : 'Draft'
   if (job.state === 'Succeeded') {
-    notifications.show({ color: 'green', title: `${name} finished`, message: job.kind === 'Ingest' ? 'The documents were analyzed.' : 'The demand letter draft is ready.' })
+    notifications.show({ color: 'sage', title: `${name} finished`, message: job.kind === 'Ingest' ? 'The documents were analyzed.' : 'The demand letter draft is ready.' })
   } else if (job.state === 'Failed') {
-    notifications.show({ color: 'red', title: `${name} failed`, message: job.error ?? 'The job failed.', autoClose: false })
+    notifications.show({ color: 'brick', title: `${name} failed`, message: job.error ?? 'The job failed.', autoClose: false })
   } else if (job.state === 'Cancelled') {
-    notifications.show({ color: 'orange', title: `${name} cancelled`, message: job.error ?? 'The job was cancelled.' })
+    notifications.show({ color: 'amber', title: `${name} cancelled`, message: job.error ?? 'The job was cancelled.' })
   }
 }

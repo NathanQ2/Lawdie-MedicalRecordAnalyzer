@@ -1,7 +1,7 @@
 import { Alert, Anchor, Badge, Button, Center, Group, Loader, Stack, Tabs, Text, Title, Tooltip } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
-import { IconArrowLeft, IconTrash } from '@tabler/icons-react'
+import { IconBack, IconTrash } from '../components/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router'
 import { api } from '../api/client'
@@ -27,10 +27,10 @@ export function CasePage() {
     mutationFn: () => api.deleteCase(caseId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: caseKeys.all })
-      notifications.show({ color: 'green', message: 'Case deleted.' })
+      notifications.show({ color: 'sage', message: 'Case deleted.' })
       navigate('/')
     },
-    onError: (error) => notifications.show({ color: 'red', title: 'Could not delete the case', message: error.message }),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Could not delete the case', message: error.message }),
   })
 
   if (caseQuery.isPending) {
@@ -45,7 +45,7 @@ export function CasePage() {
     return (
       <Stack>
         <BackLink />
-        <Alert color="red" title="Could not load the case">
+        <Alert color="brick" title="Could not load the case">
           {caseQuery.error.message}
         </Alert>
       </Stack>
@@ -59,7 +59,7 @@ export function CasePage() {
       title: `Delete "${detail.name}"?`,
       children: <Text size="sm">This permanently deletes the case, its uploaded documents, and all results. It cannot be undone.</Text>,
       labels: { confirm: 'Delete case', cancel: 'Keep it' },
-      confirmProps: { color: 'red' },
+      confirmProps: { color: 'brick' },
       onConfirm: () => remove.mutate(),
     })
 
@@ -81,7 +81,7 @@ export function CasePage() {
           </Group>
         </Stack>
         <Tooltip label="Wait for the current job to finish" disabled={!jobActive}>
-          <Button variant="subtle" color="red" leftSection={<IconTrash size={16} />} onClick={confirmDelete} disabled={jobActive}>
+          <Button variant="subtle" color="brick" leftSection={<IconTrash size={16} />} onClick={confirmDelete} disabled={jobActive}>
             Delete case
           </Button>
         </Tooltip>
@@ -106,7 +106,7 @@ function BackLink() {
   return (
     <Anchor component={Link} to="/" size="sm">
       <Group gap={4}>
-        <IconArrowLeft size={14} />
+        <IconBack size={14} />
         All cases
       </Group>
     </Anchor>

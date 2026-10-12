@@ -1,7 +1,7 @@
 import { Alert, Button, Card, Group, Stack, Text, Title } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
-import { IconPlayerPlay } from '@tabler/icons-react'
+import { IconRun } from '../components/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
@@ -20,13 +20,13 @@ export function RunTab() {
   const start = useMutation({
     mutationFn: (kind: JobKind) => (kind === 'Ingest' ? api.startIngest(caseId) : api.startDraft(caseId)),
     onSuccess: (job) => setCaseJob(queryClient, caseId, job),
-    onError: (error) => notifications.show({ color: 'red', title: 'Could not start the job', message: error.message }),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Could not start the job', message: error.message }),
   })
 
   const cancel = useMutation({
     mutationFn: () => api.cancelJob(caseId),
     onSettled: () => queryClient.invalidateQueries({ queryKey: caseKeys.detail(caseId) }),
-    onError: (error) => notifications.show({ color: 'red', title: 'Could not cancel the job', message: error.message }),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Could not cancel the job', message: error.message }),
   })
 
   if (!caseQuery.data) {
@@ -58,10 +58,10 @@ export function RunTab() {
             summary with citations. Documents that haven't changed since the last ingest are reused instead of summarized again.
           </Text>
           <Text size="sm">Last ingest: {formatDateTime(detail.analysisUpdatedAt)}</Text>
-          {detail.analysisOutOfDate && <Alert color="yellow">Documents changed since the last ingest.</Alert>}
+          {detail.analysisOutOfDate && <Alert color="amber">Documents changed since the last ingest.</Alert>}
           <Group>
             <Button
-              leftSection={<IconPlayerPlay size={16} />}
+              leftSection={<IconRun size={16} />}
               onClick={confirmIngest}
               disabled={jobActive || detail.records.length === 0}
               loading={start.isPending && start.variables === 'Ingest'}
@@ -85,10 +85,10 @@ export function RunTab() {
             for every fact.
           </Text>
           <Text size="sm">Last draft: {formatDateTime(detail.draftUpdatedAt)}</Text>
-          {detail.draftOutOfDate && <Alert color="yellow">The analysis has changed since this draft was written.</Alert>}
+          {detail.draftOutOfDate && <Alert color="amber">The analysis has changed since this draft was written.</Alert>}
           <Group>
             <Button
-              leftSection={<IconPlayerPlay size={16} />}
+              leftSection={<IconRun size={16} />}
               onClick={confirmDraft}
               disabled={jobActive || !detail.analysisUpdatedAt}
               loading={start.isPending && start.variables === 'Draft'}

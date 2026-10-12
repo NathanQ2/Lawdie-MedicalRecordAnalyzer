@@ -43,10 +43,10 @@ export function stageLabel(stage: PipelineStage | null): string {
 
 export const jobStateColors: Record<JobState, string> = {
   Queued: 'gray',
-  Running: 'blue',
-  Succeeded: 'green',
-  Failed: 'red',
-  Cancelled: 'orange',
+  Running: 'slate',
+  Succeeded: 'sage',
+  Failed: 'brick',
+  Cancelled: 'amber',
 }
 
 /**
@@ -77,9 +77,9 @@ export const recordStatusLabels: Record<RecordStatus, string> = {
 
 export const recordStatusColors: Record<RecordStatus, string> = {
   NotIngested: 'gray',
-  Summarized: 'green',
-  Skipped: 'orange',
-  Changed: 'yellow',
+  Summarized: 'sage',
+  Skipped: 'amber',
+  Changed: 'amber',
 }
 
 /**

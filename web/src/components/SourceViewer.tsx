@@ -1,6 +1,6 @@
 import { ActionIcon, Alert, Anchor, Blockquote, Box, Button, Center, Group, Loader, Mark, Paper, ScrollArea, Stack, Text, Title, Tooltip } from '@mantine/core'
 import { useElementSize } from '@mantine/hooks'
-import { IconChevronLeft, IconChevronRight, IconExternalLink, IconX } from '@tabler/icons-react'
+import { IconChevronLeft, IconChevronRight, IconClose, IconOpen } from './icons'
 import { useQuery } from '@tanstack/react-query'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
@@ -45,17 +45,17 @@ export function SourceViewer({ caseId, citation, onClose }: SourceViewerProps) {
               )}
               <Anchor href={url} target="_blank" rel="noreferrer" size="sm">
                 <Group gap={4}>
-                  Open original <IconExternalLink size={14} />
+                  Open original <IconOpen size={14} />
                 </Group>
               </Anchor>
             </Group>
           </Stack>
           <ActionIcon variant="subtle" color="gray" onClick={onClose} aria-label="Close source">
-            <IconX size={18} />
+            <IconClose size={18} />
           </ActionIcon>
         </Group>
 
-        <Blockquote p="xs" radius="sm" color="yellow" styles={{ root: { fontSize: 'var(--mantine-font-size-sm)' } }}>
+        <Blockquote p="xs" radius="sm" color="sage" styles={{ root: { fontSize: 'var(--mantine-font-size-sm)' } }}>
           “{citation.citedText.replace(/\s+/g, ' ').trim()}”
         </Blockquote>
         {citation.claim && (
@@ -64,7 +64,7 @@ export function SourceViewer({ caseId, citation, onClose }: SourceViewerProps) {
           </Text>
         )}
         {ocrNote && (
-          <Alert color="blue" p="xs" styles={{ message: { fontSize: 'var(--mantine-font-size-xs)' } }}>
+          <Alert color="slate" p="xs" styles={{ message: { fontSize: 'var(--mantine-font-size-xs)' } }}>
             {ocrNote}
           </Alert>
         )}
@@ -186,7 +186,7 @@ function TextSource({ url, citation }: { url: string; citation: Citation }) {
     )
   }
   if (text.isError) {
-    return <Alert color="red">{text.error.message}</Alert>
+    return <Alert color="brick">{text.error.message}</Alert>
   }
 
   const range = locateInText(text.data, citation)
@@ -201,7 +201,7 @@ function TextSource({ url, citation }: { url: string; citation: Citation }) {
         {range ? (
           <>
             {text.data.slice(0, range.start)}
-            <Mark ref={highlight} color="yellow">
+            <Mark ref={highlight} color="sage.2">
               {text.data.slice(range.start, range.end)}
             </Mark>
             {text.data.slice(range.end)}

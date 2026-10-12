@@ -1,5 +1,5 @@
 import { Menu } from '@mantine/core'
-import { IconChartBar, IconDownload, IconFileText, IconFolderOpen, IconPencil, IconTrash, IconWritingSign } from '@tabler/icons-react'
+import { IconAnalyze, IconDocuments, IconDownload, IconLetter, IconMatter, IconPencil, IconTrash } from './icons'
 import type { ReactNode } from 'react'
 import { api } from '../api/client'
 import type { CaseListItem } from '../api/types'
@@ -26,16 +26,16 @@ export function CaseActionsMenu({ item, target, opened, onChange, onAction }: Ca
     <Menu opened={opened} onChange={onChange} position="bottom-end" withinPortal shadow="md" width={220}>
       <Menu.Target>{target}</Menu.Target>
       <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
-        <Menu.Item leftSection={<IconFolderOpen size={16} />} onClick={() => onAction('open')}>
+        <Menu.Item leftSection={<IconMatter size={16} />} onClick={() => onAction('open')}>
           Open
         </Menu.Item>
-        <Menu.Item leftSection={<IconFileText size={16} />} onClick={() => onAction('documents')}>
+        <Menu.Item leftSection={<IconDocuments size={16} />} onClick={() => onAction('documents')}>
           Documents
         </Menu.Item>
-        <Menu.Item leftSection={<IconChartBar size={16} />} disabled={!item.hasAnalysis} onClick={() => onAction('analysis')}>
+        <Menu.Item leftSection={<IconAnalyze size={16} />} disabled={!item.hasAnalysis} onClick={() => onAction('analysis')}>
           Analysis
         </Menu.Item>
-        <Menu.Item leftSection={<IconWritingSign size={16} />} disabled={!item.hasDraft} onClick={() => onAction('draft')}>
+        <Menu.Item leftSection={<IconLetter size={16} />} disabled={!item.hasDraft} onClick={() => onAction('draft')}>
           Draft
         </Menu.Item>
         {item.hasDraft && (
@@ -48,7 +48,7 @@ export function CaseActionsMenu({ item, target, opened, onChange, onAction }: Ca
           Rename…
         </Menu.Item>
         <Menu.Item
-          color="red"
+          color="brick"
           leftSection={<IconTrash size={16} />}
           disabled={jobActive}
           title={jobActive ? 'Wait for the current job to finish' : undefined}

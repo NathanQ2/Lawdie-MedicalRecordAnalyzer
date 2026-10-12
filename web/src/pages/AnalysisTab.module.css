@@ -9,7 +9,7 @@
   width: 100%;
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
   border: 1px solid var(--mantine-color-gray-3);
-  border-left: 3px solid var(--mantine-color-red-4);
+  border-left: 3px solid var(--mantine-color-brick-4);
   border-radius: var(--mantine-radius-sm);
   background-color: var(--mantine-color-gray-0);
 
@@ -18,8 +18,8 @@
   }
 
   &[data-selected] {
-    border-color: var(--mantine-color-indigo-5);
-    border-left-color: var(--mantine-color-indigo-6);
-    background-color: var(--mantine-color-indigo-0);
+    border-color: var(--mantine-color-sage-5);
+    border-left-color: var(--mantine-color-sage-6);
+    background-color: var(--mantine-color-sage-0);
   }
 }

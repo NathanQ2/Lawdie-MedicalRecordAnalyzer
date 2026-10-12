@@ -1,5 +1,5 @@
 import { ActionIcon, Anchor, Badge, Group, Table, Text, Tooltip } from '@mantine/core'
-import { IconTrash } from '@tabler/icons-react'
+import { IconTrash } from './icons'
 import type { RecordInfo } from '../api/types'
 import { formatBytes, formatDateTime, recordStatusColors, recordStatusLabels } from '../lib/format'
 
@@ -57,7 +57,7 @@ export function RecordsTable({ records, recordUrl, onDelete, disabled = false }:
                   <Tooltip label={disabled ? 'Wait for the current job to finish' : 'Delete document'}>
                     <ActionIcon
                       variant="subtle"
-                      color="red"
+                      color="brick"
                       aria-label={`Delete ${record.name}`}
                       disabled={disabled}
                       onClick={() => onDelete(record)}

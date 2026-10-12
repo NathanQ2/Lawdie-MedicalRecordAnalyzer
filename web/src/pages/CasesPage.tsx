@@ -2,7 +2,7 @@ import { ActionIcon, Alert, Badge, Box, Button, Center, Group, Loader, Modal, Pa
 import { useDisclosure } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
-import { IconDotsVertical, IconPlus } from '@tabler/icons-react'
+import { IconMore, IconPlus } from '../components/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router'
@@ -25,9 +25,9 @@ export function CasesPage() {
     mutationFn: (item: CaseListItem) => api.deleteCase(item.id),
     onSuccess: async (_, item) => {
       await queryClient.invalidateQueries({ queryKey: caseKeys.all })
-      notifications.show({ color: 'green', message: `Deleted "${item.name}".` })
+      notifications.show({ color: 'sage', message: `Deleted "${item.name}".` })
     },
-    onError: (error) => notifications.show({ color: 'red', title: 'Could not delete the case', message: error.message }),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Could not delete the case', message: error.message }),
   })
 
   const runAction = (item: CaseListItem, action: CaseAction) => {
@@ -53,7 +53,7 @@ export function CasesPage() {
           title: `Delete "${item.name}"?`,
           children: <Text size="sm">This permanently deletes the case, its uploaded documents, and all results. It cannot be undone.</Text>,
           labels: { confirm: 'Delete case', cancel: 'Keep it' },
-          confirmProps: { color: 'red' },
+          confirmProps: { color: 'brick' },
           onConfirm: () => remove.mutate(item),
         })
         break
@@ -79,7 +79,7 @@ export function CasesPage() {
           <Loader />
         </Center>
       )}
-      {cases.isError && <Alert color="red" title="Could not load cases">{cases.error.message}</Alert>}
+      {cases.isError && <Alert color="brick" title="Could not load cases">{cases.error.message}</Alert>}
 
       {cases.data && cases.data.length === 0 && (
         <Paper withBorder p="xl" radius="md">
@@ -123,8 +123,8 @@ export function CasesPage() {
                           {item.job.kind} {item.job.state.toLowerCase()}
                         </Badge>
                       )}
-                      {item.hasAnalysis && <Badge variant="light" color="teal">Analyzed</Badge>}
-                      {item.hasDraft && <Badge variant="light" color="violet">Drafted</Badge>}
+                      {item.hasAnalysis && <Badge variant="light" color="sage">Analyzed</Badge>}
+                      {item.hasDraft && <Badge variant="light" color="slate">Drafted</Badge>}
                       {!item.hasAnalysis && !isJobActive(item.job) && <Badge variant="light" color="gray">New</Badge>}
                     </Group>
                   </Table.Td>
@@ -135,7 +135,7 @@ export function CasesPage() {
                       onAction={(action) => runAction(item, action)}
                       target={
                         <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${item.name}`}>
-                          <IconDotsVertical size={18} />
+                          <IconMore size={18} />
                         </ActionIcon>
                       }
                     />
@@ -203,7 +203,7 @@ function NewCaseModal({ opened, onClose, onCreated }: NewCaseModalProps) {
             data-autofocus
             required
           />
-          {create.isError && <Alert color="red">{create.error.message}</Alert>}
+          {create.isError && <Alert color="brick">{create.error.message}</Alert>}
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>
               Cancel
@@ -258,7 +258,7 @@ function RenameCaseForm({ item, onClose }: { item: CaseListItem; onClose: () => 
           data-autofocus
           required
         />
-        {rename.isError && <Alert color="red">{rename.error.message}</Alert>}
+        {rename.isError && <Alert color="brick">{rename.error.message}</Alert>}
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>
             Cancel

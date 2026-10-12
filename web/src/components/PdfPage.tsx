@@ -143,7 +143,7 @@ export default function PdfPage({ url, pageNumber, width, quote, onPageCount }: 
 
   return (
     <Box>
-      {state === 'error' && <Alert color="red" title="The PDF could not be displayed">{error}</Alert>}
+      {state === 'error' && <Alert color="brick" title="The PDF could not be displayed">{error}</Alert>}
       {state === 'ready' && !quoteFound && (
         <Text size="xs" c="dimmed" mb="xs">
           The quote could not be located on this page's text, so it is not highlighted.

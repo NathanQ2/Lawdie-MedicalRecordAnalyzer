@@ -1,14 +1,14 @@
 import { Badge, Button, Card, Group, Stack, Text, Textarea, UnstyledButton } from '@mantine/core'
-import { IconArrowBackUp, IconCheck, IconFocus2, IconX } from '@tabler/icons-react'
+import { IconCheck, IconClose, IconLocate, IconUndo } from './icons'
 import { useState } from 'react'
 import type { Citation, ReviewItem, ReviewItemKind, ReviewStatus } from '../api/types'
 import { citationKey, hasTwoQuotes, pageLabel, recordName } from '../lib/citations'
 
 const kindLabels: Record<ReviewItemKind, { label: string; color: string }> = {
-  Contradiction: { label: 'Contradiction', color: 'red' },
-  UnsupportedStatement: { label: 'Uncited statement', color: 'yellow' },
-  Placeholder: { label: 'Placeholder', color: 'grape' },
-  RecognizedQuote: { label: 'Scanned text', color: 'blue' },
+  Contradiction: { label: 'Contradiction', color: 'brick' },
+  UnsupportedStatement: { label: 'Uncited statement', color: 'amber' },
+  Placeholder: { label: 'Placeholder', color: 'slate' },
+  RecognizedQuote: { label: 'Scanned text', color: 'slate' },
 }
 
 interface ReviewItemCardProps {
@@ -48,7 +48,7 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
             )}
           </Group>
           {!open && (
-            <Badge size="sm" variant="outline" color={item.status === 'Resolved' ? 'green' : 'gray'}>
+            <Badge size="sm" variant="outline" color={item.status === 'Resolved' ? 'sage' : 'gray'}>
               {item.status}
             </Badge>
           )}
@@ -58,7 +58,7 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
 
         {item.citations.map((citation) => (
           <UnstyledButton key={citationKey(citation)} onClick={() => onSelectCitation(citation)}>
-            <Text size="xs" c="indigo">
+            <Text size="xs" c="slate">
               {recordName(citation.filePath)}
               {pageLabel(citation) && ` · ${pageLabel(citation)}`}: “{citation.citedText.replace(/\s+/g, ' ').trim()}”
             </Text>
@@ -70,9 +70,9 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
             <Button
               size="compact-xs"
               variant={shownInDraft ? 'filled' : 'light'}
-              color="orange"
+              color="amber"
               w="fit-content"
-              leftSection={<IconFocus2 size={12} />}
+              leftSection={<IconLocate size={12} />}
               onClick={() => onShowInDraft(item)}
             >
               {shownInDraft ? 'Shown in letter' : `Show in letter (${places} ${places === 1 ? 'place' : 'places'})`}
@@ -98,10 +98,10 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
         <Group gap="xs" justify="flex-end">
           {open ? (
             <>
-              <Button size="compact-xs" variant="light" color="gray" leftSection={<IconX size={12} />} loading={saving} onClick={() => onUpdate('Dismissed', note.trim() || null)}>
+              <Button size="compact-xs" variant="light" color="gray" leftSection={<IconClose size={12} />} loading={saving} onClick={() => onUpdate('Dismissed', note.trim() || null)}>
                 Dismiss
               </Button>
-              <Button size="compact-xs" variant="light" color="green" leftSection={<IconCheck size={12} />} loading={saving} onClick={() => onUpdate('Resolved', note.trim() || null)}>
+              <Button size="compact-xs" variant="light" color="sage" leftSection={<IconCheck size={12} />} loading={saving} onClick={() => onUpdate('Resolved', note.trim() || null)}>
                 Resolve
               </Button>
             </>
@@ -112,7 +112,7 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
                   Save note
                 </Button>
               )}
-              <Button size="compact-xs" variant="subtle" leftSection={<IconArrowBackUp size={12} />} loading={saving} onClick={() => onUpdate('Open', note.trim() || null)}>
+              <Button size="compact-xs" variant="subtle" leftSection={<IconUndo size={12} />} loading={saving} onClick={() => onUpdate('Open', note.trim() || null)}>
                 Reopen
               </Button>
             </>

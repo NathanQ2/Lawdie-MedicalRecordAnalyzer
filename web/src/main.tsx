@@ -1,3 +1,5 @@
+import '@fontsource-variable/public-sans'
+import '@fontsource-variable/source-serif-4'
 import '@mantine/core/styles.css'
 import '@mantine/dropzone/styles.css'
 import '@mantine/notifications/styles.css'
@@ -11,7 +13,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { App } from './App'
-import { theme } from './theme'
+import { cssVariablesResolver, theme } from './theme'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,7 +23,7 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <MantineProvider theme={theme} forceColorScheme="light">
+    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver} forceColorScheme="light">
       <QueryClientProvider client={queryClient}>
         <ModalsProvider>
           <Notifications position="top-right" />

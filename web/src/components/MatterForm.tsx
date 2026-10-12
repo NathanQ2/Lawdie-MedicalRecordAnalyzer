@@ -2,6 +2,7 @@ import { Alert, Button, Group, Select, SimpleGrid, Stack, TextInput } from '@man
 import { useState, type FormEvent } from 'react'
 import type { MatterInput } from '../api/types'
 import { US_JURISDICTIONS } from '../lib/jurisdictions'
+import { LabelWithHelp } from './HelpTip'
 
 interface MatterFormProps {
   initial?: MatterInput
@@ -50,7 +51,7 @@ export function MatterForm({ initial = EMPTY, today, submitLabel, pending, error
         />
         <SimpleGrid cols={{ base: 1, sm: 3 }}>
           <TextInput
-            label="Date of loss"
+            label={<LabelWithHelp label="Date of loss" help="The date of the incident. The letter uses it in its heading and first paragraph." />}
             type="date"
             value={dateOfLoss}
             max={today}
@@ -58,7 +59,7 @@ export function MatterForm({ initial = EMPTY, today, submitLabel, pending, error
             required
           />
           <Select
-            label="Jurisdiction"
+            label={<LabelWithHelp label="Jurisdiction" help="The state whose law applies to the claim." />}
             placeholder="State"
             data={US_JURISDICTIONS}
             value={jurisdiction}
@@ -68,7 +69,7 @@ export function MatterForm({ initial = EMPTY, today, submitLabel, pending, error
             // Typing a state and pressing Enter picks it, instead of submitting the form.
             selectFirstOptionOnChange
           />
-          <TextInput label="County" placeholder="King" value={county} onChange={(event) => setCounty(event.currentTarget.value)} maxLength={100} />
+          <TextInput label={<LabelWithHelp label="County" help="The county where the claim would be filed." />} placeholder="King" value={county} onChange={(event) => setCounty(event.currentTarget.value)} maxLength={100} />
         </SimpleGrid>
         {error && <Alert color="brick">{error}</Alert>}
         <Group justify="flex-end">

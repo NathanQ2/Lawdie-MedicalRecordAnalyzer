@@ -1,4 +1,4 @@
-import { Alert, Badge, Box, Button, Card, Center, Drawer, Grid, Group, Loader, Menu, Paper, SegmentedControl, Stack, Text, Title } from '@mantine/core'
+import { Alert, Badge, Box, Button, Card, Center, Drawer, Grid, Group, Loader, Menu, Paper, SegmentedControl, Stack, Text, Title, Tooltip } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { useMediaQuery } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
@@ -198,15 +198,19 @@ function ExportMenu({ caseId, openItems }: { caseId: string; openItems: number }
   return (
     <Group gap="sm">
       {openItems > 0 && (
-        <Badge color="amber" variant="light">
-          {openItems} review {openItems === 1 ? 'item' : 'items'} open
-        </Badge>
+        <Tooltip label="Items to check before you send the letter. They are listed beside it.">
+          <Badge color="amber" variant="light">
+            {openItems} review {openItems === 1 ? 'item' : 'items'} open
+          </Badge>
+        </Tooltip>
       )}
       <Menu position="bottom-end">
         <Menu.Target>
-          <Button leftSection={<IconDownload size={16} />} variant="light">
-            Export
-          </Button>
+          <Tooltip label="Download the letter. The file ends with the review items, for the attorney.">
+            <Button leftSection={<IconDownload size={16} />} variant="light">
+              Export
+            </Button>
+          </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item component="a" href={api.draftExportUrl(caseId, 'docx')} download>

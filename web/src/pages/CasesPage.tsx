@@ -1,4 +1,4 @@
-import { ActionIcon, Alert, Badge, Box, Button, Center, Group, Loader, Modal, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core'
+import { ActionIcon, Alert, Badge, Box, Button, Center, Group, Loader, Modal, Paper, Stack, Table, Text, TextInput, Title, Tooltip } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
@@ -103,7 +103,7 @@ export function CasesPage() {
                 <Table.Th>Documents</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Updated</Table.Th>
-                <Table.Th aria-label="Actions" w={48} />
+                <Table.Th aria-label="Options" w={48} />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -137,9 +137,11 @@ export function CasesPage() {
                       item={item}
                       onAction={(action) => runAction(item, action)}
                       target={
-                        <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${item.name}`}>
-                          <IconMore size={18} />
-                        </ActionIcon>
+                        <Tooltip label="Options">
+                          <ActionIcon variant="subtle" color="gray" aria-label={`Options for ${item.name}`}>
+                            <IconMore size={18} />
+                          </ActionIcon>
+                        </Tooltip>
                       }
                     />
                   </Table.Td>

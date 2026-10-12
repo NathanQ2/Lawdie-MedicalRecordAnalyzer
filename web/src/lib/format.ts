@@ -100,6 +100,14 @@ export const recordStatusLabels: Record<RecordStatus, string> = {
   Changed: 'Changed',
 }
 
+/** What each document status means, shown as its tooltip. */
+export const recordStatusHints: Record<RecordStatus, string> = {
+  NotIngested: 'Added after the last analysis. Analyze to include it.',
+  Summarized: 'Included in the current analysis.',
+  Skipped: "This document couldn't be read.",
+  Changed: 'Replaced after the last analysis. Analyze again to include the changes.',
+}
+
 export const recordStatusColors: Record<RecordStatus, string> = {
   NotIngested: 'gray',
   Summarized: 'sage',

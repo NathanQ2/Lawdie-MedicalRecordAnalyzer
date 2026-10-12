@@ -24,7 +24,10 @@ export const theme = createTheme({
   radius: { md: '10px', lg: '16px' },
   components: {
     Modal: Modal.extend({ defaultProps: { overlayProps: { backgroundOpacity: 0.25, blur: 6 }, radius: 'lg' } }),
-    Tooltip: Tooltip.extend({ defaultProps: { multiline: true, maw: 280, withArrow: true, openDelay: 300, color: 'slate' } }),
+    // Tooltips also open on keyboard focus and on tap, so they work without a mouse.
+    Tooltip: Tooltip.extend({
+      defaultProps: { multiline: true, maw: 280, withArrow: true, openDelay: 300, color: 'slate', events: { hover: true, focus: true, touch: true } },
+    }),
   },
 })
 

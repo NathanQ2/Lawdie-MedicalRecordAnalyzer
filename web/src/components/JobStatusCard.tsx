@@ -1,4 +1,4 @@
-import { Alert, Badge, Button, Card, Group, Progress, Stack, Text } from '@mantine/core'
+import { Alert, Badge, Button, Card, Group, Progress, Stack, Text, Tooltip } from '@mantine/core'
 import { IconStop } from './icons'
 import type { JobStatus } from '../api/types'
 import { formatDateTime, formatDuration, isJobActive, jobKindLabels, jobProgress, jobStateColors, stageLabel } from '../lib/format'
@@ -28,16 +28,24 @@ export function JobStatusCard({ job, onCancel, cancelling = false, now }: JobSta
             </Badge>
           </Group>
           {active && onCancel && (
-            <Button
-              variant="light"
-              color="brick"
-              size="xs"
-              leftSection={<IconStop size={14} />}
-              onClick={onCancel}
-              loading={cancelling}
+            <Tooltip
+              label={
+                job.kind === 'Ingest'
+                  ? 'Stop the analysis. Documents already read are kept, so the next analysis skips them.'
+                  : 'Stop drafting. The current letter stays as it is.'
+              }
             >
-              Cancel
-            </Button>
+              <Button
+                variant="light"
+                color="brick"
+                size="xs"
+                leftSection={<IconStop size={14} />}
+                onClick={onCancel}
+                loading={cancelling}
+              >
+                Cancel
+              </Button>
+            </Tooltip>
           )}
         </Group>
 

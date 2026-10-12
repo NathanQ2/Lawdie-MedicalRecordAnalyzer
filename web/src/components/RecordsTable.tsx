@@ -1,7 +1,7 @@
 import { ActionIcon, Anchor, Badge, Group, Table, Text, Tooltip } from '@mantine/core'
 import { IconTrash } from './icons'
 import type { RecordInfo } from '../api/types'
-import { formatBytes, formatDateTime, recordStatusColors, recordStatusLabels } from '../lib/format'
+import { formatBytes, formatDateTime, recordStatusColors, recordStatusHints, recordStatusLabels } from '../lib/format'
 
 interface RecordsTableProps {
   records: RecordInfo[]
@@ -39,7 +39,7 @@ export function RecordsTable({ records, recordUrl, onDelete, disabled = false }:
               </Anchor>
             </Table.Td>
             <Table.Td>
-              <Tooltip label={record.reason} disabled={!record.reason} multiline w={320}>
+              <Tooltip label={record.reason ?? recordStatusHints[record.status]} w={320}>
                 <Badge color={recordStatusColors[record.status]} variant="light">
                   {recordStatusLabels[record.status]}
                 </Badge>
@@ -54,7 +54,7 @@ export function RecordsTable({ records, recordUrl, onDelete, disabled = false }:
             <Table.Td>
               {onDelete && (
                 <Group justify="flex-end">
-                  <Tooltip label={disabled ? 'Wait for the current job to finish' : 'Delete document'}>
+                  <Tooltip label={disabled ? 'Wait until the analysis or draft finishes.' : 'Delete document'}>
                     <ActionIcon
                       variant="subtle"
                       color="brick"

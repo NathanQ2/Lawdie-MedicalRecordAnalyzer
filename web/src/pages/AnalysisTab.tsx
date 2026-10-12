@@ -1,4 +1,4 @@
-import { Accordion, Alert, Anchor, Badge, Box, Card, Center, Drawer, Grid, Group, Loader, Paper, SimpleGrid, Stack, Text, Title, UnstyledButton } from '@mantine/core'
+import { Accordion, Alert, Anchor, Badge, Box, Card, Center, Drawer, Grid, Group, Loader, Paper, SimpleGrid, Stack, Text, Title, Tooltip, UnstyledButton } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
@@ -89,11 +89,15 @@ function AnalysisSections({ analysis, selected, onSelect }: AnalysisSectionsProp
         <Group justify="space-between" align="baseline">
           <Title order={3}>Case summary</Title>
           <Group gap="xs">
-            <Badge variant="light">{new Set(summaryCitations.map(citationKey)).size} sources cited</Badge>
+            <Tooltip label="The number of different quotes the summary cites.">
+              <Badge variant="light">{new Set(summaryCitations.map(citationKey)).size} sources cited</Badge>
+            </Tooltip>
             {unsupported.length > 0 && (
-              <Badge variant="light" color="amber">
-                {unsupported.length} {unsupported.length === 1 ? 'sentence' : 'sentences'} without a citation
-              </Badge>
+              <Tooltip label="No quote supports these sentences. They are highlighted below.">
+                <Badge variant="light" color="amber">
+                  {unsupported.length} {unsupported.length === 1 ? 'sentence' : 'sentences'} without a citation
+                </Badge>
+              </Tooltip>
             )}
           </Group>
         </Group>

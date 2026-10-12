@@ -43,11 +43,13 @@ export function SourceViewer({ caseId, citation, onClose }: SourceViewerProps) {
                   {pageLabel(citation)}
                 </Text>
               )}
-              <Anchor href={url} target="_blank" rel="noreferrer" size="sm">
-                <Group gap={4}>
-                  Open original <IconOpen size={14} />
-                </Group>
-              </Anchor>
+              <Tooltip label="Open the whole document in a new tab.">
+                <Anchor href={url} target="_blank" rel="noreferrer" size="sm">
+                  <Group gap={4}>
+                    Open original <IconOpen size={14} />
+                  </Group>
+                </Anchor>
+              </Tooltip>
             </Group>
           </Stack>
           <ActionIcon variant="subtle" color="gray" onClick={onClose} aria-label="Close source">

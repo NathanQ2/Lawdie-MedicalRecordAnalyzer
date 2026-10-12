@@ -21,6 +21,14 @@ const contradiction: ReviewItem = {
 }
 
 describe('ReviewItemCard', () => {
+  it('explains what kind of item it is on hover', async () => {
+    renderWithMantine(<ReviewItemCard item={contradiction} onUpdate={() => {}} onSelectCitation={() => {}} />)
+
+    fireEvent.mouseMove(screen.getByText('Contradiction'))
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Two documents disagree. Decide which is right, or keep both versions in the letter.')
+  })
+
   it('resolves an open item with the typed note', () => {
     const onUpdate = vi.fn()
     renderWithMantine(<ReviewItemCard item={contradiction} onUpdate={onUpdate} onSelectCitation={() => {}} />)

@@ -51,7 +51,7 @@ export function CaseActionsMenu({ item, target, opened, onChange, onAction }: Ca
           color="brick"
           leftSection={<IconTrash size={16} />}
           disabled={jobActive}
-          title={jobActive ? 'Wait for the current job to finish' : undefined}
+          title={jobActive ? 'Wait until the analysis or draft finishes.' : undefined}
           onClick={() => onAction('delete')}
         >
           Delete…

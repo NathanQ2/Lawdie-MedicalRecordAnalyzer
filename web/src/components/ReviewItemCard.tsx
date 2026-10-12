@@ -1,14 +1,14 @@
-import { Badge, Button, Card, Group, Stack, Text, Textarea, UnstyledButton } from '@mantine/core'
+import { Badge, Button, Card, Group, Stack, Text, Textarea, Tooltip, UnstyledButton } from '@mantine/core'
 import { IconCheck, IconClose, IconLocate, IconUndo } from './icons'
 import { useState } from 'react'
 import type { Citation, ReviewItem, ReviewItemKind, ReviewStatus } from '../api/types'
 import { citationKey, hasTwoQuotes, pageLabel, recordName } from '../lib/citations'
 
-const kindLabels: Record<ReviewItemKind, { label: string; color: string }> = {
-  Contradiction: { label: 'Contradiction', color: 'brick' },
-  UnsupportedStatement: { label: 'Uncited statement', color: 'amber' },
-  Placeholder: { label: 'Placeholder', color: 'slate' },
-  RecognizedQuote: { label: 'Scanned text', color: 'slate' },
+const kindLabels: Record<ReviewItemKind, { label: string; color: string; hint: string }> = {
+  Contradiction: { label: 'Contradiction', color: 'brick', hint: 'Two documents disagree. Decide which is right, or keep both versions in the letter.' },
+  UnsupportedStatement: { label: 'Uncited statement', color: 'amber', hint: 'No quote supports this sentence. Check it, or take it out of the letter.' },
+  Placeholder: { label: 'Placeholder', color: 'slate', hint: "The documents don't give this detail. Fill it in before you send the letter." },
+  RecognizedQuote: { label: 'Scanned text', color: 'slate', hint: 'This quote was read from a scan or photo. Check it against the original page.' },
 }
 
 interface ReviewItemCardProps {
@@ -38,13 +38,17 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
       <Stack gap="xs">
         <Group justify="space-between">
           <Group gap={4}>
-            <Badge size="sm" variant="light" color={kindLabels[item.kind].color}>
-              {kindLabels[item.kind].label}
-            </Badge>
-            {unverified && (
-              <Badge size="sm" variant="light" color="gray">
-                Unverified
+            <Tooltip label={kindLabels[item.kind].hint}>
+              <Badge size="sm" variant="light" color={kindLabels[item.kind].color}>
+                {kindLabels[item.kind].label}
               </Badge>
+            </Tooltip>
+            {unverified && (
+              <Tooltip label="Only one quote supports this, so it may not be a real conflict.">
+                <Badge size="sm" variant="light" color="gray">
+                  Unverified
+                </Badge>
+              </Tooltip>
             )}
           </Group>
           {!open && (
@@ -98,12 +102,16 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
         <Group gap="xs" justify="flex-end">
           {open ? (
             <>
-              <Button size="compact-xs" variant="light" color="gray" leftSection={<IconClose size={12} />} loading={saving} onClick={() => onUpdate('Dismissed', note.trim() || null)}>
-                Dismiss
-              </Button>
-              <Button size="compact-xs" variant="light" color="sage" leftSection={<IconCheck size={12} />} loading={saving} onClick={() => onUpdate('Resolved', note.trim() || null)}>
-                Resolve
-              </Button>
+              <Tooltip label="The letter needs no change for this.">
+                <Button size="compact-xs" variant="light" color="gray" leftSection={<IconClose size={12} />} loading={saving} onClick={() => onUpdate('Dismissed', note.trim() || null)}>
+                  Dismiss
+                </Button>
+              </Tooltip>
+              <Tooltip label="You fixed or confirmed this. Add a note to record how.">
+                <Button size="compact-xs" variant="light" color="sage" leftSection={<IconCheck size={12} />} loading={saving} onClick={() => onUpdate('Resolved', note.trim() || null)}>
+                  Resolve
+                </Button>
+              </Tooltip>
             </>
           ) : (
             <>
@@ -112,9 +120,11 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
                   Save note
                 </Button>
               )}
-              <Button size="compact-xs" variant="subtle" leftSection={<IconUndo size={12} />} loading={saving} onClick={() => onUpdate('Open', note.trim() || null)}>
-                Reopen
-              </Button>
+              <Tooltip label="Move this back to the open items.">
+                <Button size="compact-xs" variant="subtle" leftSection={<IconUndo size={12} />} loading={saving} onClick={() => onUpdate('Open', note.trim() || null)}>
+                  Reopen
+                </Button>
+              </Tooltip>
             </>
           )}
         </Group>

@@ -1,7 +1,7 @@
 import { Alert, Badge, Button, Card, Group, Progress, Stack, Text } from '@mantine/core'
 import { IconStop } from './icons'
 import type { JobStatus } from '../api/types'
-import { formatDateTime, formatDuration, isJobActive, jobProgress, jobStateColors, stageLabel } from '../lib/format'
+import { formatDateTime, formatDuration, isJobActive, jobKindLabels, jobProgress, jobStateColors, stageLabel } from '../lib/format'
 
 interface JobStatusCardProps {
   job: JobStatus
@@ -22,7 +22,7 @@ export function JobStatusCard({ job, onCancel, cancelling = false, now }: JobSta
       <Stack gap="sm">
         <Group justify="space-between">
           <Group gap="sm">
-            <Text fw={600}>{job.kind === 'Ingest' ? 'Ingest' : 'Draft'}</Text>
+            <Text fw={600}>{jobKindLabels[job.kind]}</Text>
             <Badge color={jobStateColors[job.state]} variant="light">
               {job.state}
             </Badge>

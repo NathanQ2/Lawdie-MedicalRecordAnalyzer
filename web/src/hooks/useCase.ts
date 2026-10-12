@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { api } from '../api/client'
 import type { CaseDetail, JobStatus } from '../api/types'
-import { isJobActive } from '../lib/format'
+import { isJobActive, jobKindLabels } from '../lib/format'
 
 const POLL_INTERVAL_MS = 1500
 
@@ -84,9 +84,9 @@ export function setCaseJob(queryClient: ReturnType<typeof useQueryClient>, caseI
 }
 
 function announceFinishedJob(job: JobStatus) {
-  const name = job.kind === 'Ingest' ? 'Ingest' : 'Draft'
+  const name = jobKindLabels[job.kind]
   if (job.state === 'Succeeded') {
-    notifications.show({ color: 'sage', title: `${name} finished`, message: job.kind === 'Ingest' ? 'The documents were analyzed.' : 'The demand letter draft is ready.' })
+    notifications.show({ color: 'sage', title: `${name} finished`, message: job.kind === 'Ingest' ? 'The documents are analyzed.' : 'The demand letter is ready to review.' })
   } else if (job.state === 'Failed') {
     notifications.show({ color: 'brick', title: `${name} failed`, message: job.error ?? 'The job failed.', autoClose: false })
   } else if (job.state === 'Cancelled') {

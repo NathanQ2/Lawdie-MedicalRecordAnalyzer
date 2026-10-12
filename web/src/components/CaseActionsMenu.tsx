@@ -5,7 +5,7 @@ import { api } from '../api/client'
 import type { CaseListItem } from '../api/types'
 import { isJobActive } from '../lib/format'
 
-export type CaseAction = 'open' | 'documents' | 'analysis' | 'draft' | 'rename' | 'delete'
+export type CaseAction = 'open' | 'documents' | 'review' | 'letter' | 'rename' | 'delete'
 
 interface CaseActionsMenuProps {
   item: CaseListItem
@@ -32,15 +32,15 @@ export function CaseActionsMenu({ item, target, opened, onChange, onAction }: Ca
         <Menu.Item leftSection={<IconDocuments size={16} />} onClick={() => onAction('documents')}>
           Documents
         </Menu.Item>
-        <Menu.Item leftSection={<IconAnalyze size={16} />} disabled={!item.hasAnalysis} onClick={() => onAction('analysis')}>
-          Analysis
+        <Menu.Item leftSection={<IconAnalyze size={16} />} disabled={!item.hasAnalysis} onClick={() => onAction('review')}>
+          Review
         </Menu.Item>
-        <Menu.Item leftSection={<IconLetter size={16} />} disabled={!item.hasDraft} onClick={() => onAction('draft')}>
-          Draft
+        <Menu.Item leftSection={<IconLetter size={16} />} disabled={!item.hasDraft} onClick={() => onAction('letter')}>
+          Letter
         </Menu.Item>
         {item.hasDraft && (
           <Menu.Item leftSection={<IconDownload size={16} />} component="a" href={api.draftExportUrl(item.id, 'docx')} download>
-            Download draft (Word)
+            Download letter (Word)
           </Menu.Item>
         )}
         <Menu.Divider />

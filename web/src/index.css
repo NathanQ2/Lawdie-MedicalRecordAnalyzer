@@ -5,6 +5,8 @@
 body {
   margin: 0;
   min-height: 100vh;
+  /* Step pages slide in from the side; clip (unlike hidden) keeps sticky panels working. */
+  overflow-x: clip;
   background-color: var(--mra-page);
   background-image:
     radial-gradient(40vw 40vw at 0% 0%, rgba(143, 175, 136, 0.45), transparent 70%),

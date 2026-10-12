@@ -1,4 +1,4 @@
-import type { JobState, JobStatus, PipelineStage, RecordInfo, RecordStatus } from '../api/types'
+import type { JobKind, JobState, JobStatus, PipelineStage, RecordInfo, RecordStatus } from '../api/types'
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) {
@@ -20,6 +20,25 @@ export function formatDateTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—'
 }
 
+/**
+ * A calendar date such as a date of loss (YYYY-MM-DD), shown in the reader's format. It is read as a local date,
+ * because parsing it as UTC would show the previous day west of Greenwich.
+ */
+export function formatDateOnly(date: string | null): string {
+  if (!date) {
+    return '—'
+  }
+
+  const [year, month, day] = date.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, { dateStyle: 'medium' })
+}
+
+/** A date as YYYY-MM-DD in the reader's time zone, the format date inputs use. */
+export function isoDate(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
 export function formatDuration(milliseconds: number): string {
   const seconds = Math.max(0, Math.round(milliseconds / 1000))
   const minutes = Math.floor(seconds / 60)
@@ -28,6 +47,12 @@ export function formatDuration(milliseconds: number): string {
 
 export function isJobActive(job: JobStatus | null | undefined): boolean {
   return job?.state === 'Queued' || job?.state === 'Running'
+}
+
+/** What a job is called in the interface. */
+export const jobKindLabels: Record<JobKind, string> = {
+  Ingest: 'Analysis',
+  Draft: 'Letter draft',
 }
 
 const stageLabels: Record<PipelineStage, string> = {

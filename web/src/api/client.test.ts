@@ -13,12 +13,13 @@ describe('api client', () => {
   it('sends the client header the API requires', async () => {
     const fetchMock = mockFetch(new Response(JSON.stringify({ id: 'abc' }), { status: 201 }))
 
-    await api.createCase('Ellis')
+    const matter = { name: 'Ellis', dateOfLoss: '2026-01-09', jurisdiction: 'Washington', county: null }
+    await api.createCase(matter)
 
     const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(path).toBe('/api/cases')
     expect(new Headers(init.headers).get(CLIENT_HEADER)).toBe('web')
-    expect(init.body).toBe(JSON.stringify({ name: 'Ellis' }))
+    expect(init.body).toBe(JSON.stringify(matter))
   })
 
   it('raises the API error message', async () => {

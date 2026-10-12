@@ -34,9 +34,9 @@ export function AnalysisTab() {
         <Stack align="center" gap="xs">
           <Text fw={500}>This case has not been analyzed yet</Text>
           <Text size="sm" c="dimmed">
-            Upload the documents, then{' '}
-            <Anchor component={Link} to={`/cases/${caseId}/run`}>
-              run ingest
+            Add the documents, then{' '}
+            <Anchor component={Link} to={`/cases/${caseId}/analyze`}>
+              analyze them
             </Anchor>
             .
           </Text>
@@ -50,7 +50,7 @@ export function AnalysisTab() {
   return (
     <Stack gap="md">
       {caseQuery.data?.analysisOutOfDate && (
-        <Alert color="amber">Documents changed since this analysis was made. Run ingest again to update it.</Alert>
+        <Alert color="amber">Documents changed after this analysis. Analyze them again to update it.</Alert>
       )}
       <Grid gap="md">
         <Grid.Col span={selected && wide ? 7 : 12}>

@@ -2,11 +2,12 @@ import { Anchor, AppShell, Container, Group, Stack, Text, ThemeIcon, Title } fro
 import { IconDocuments } from './components/icons'
 import { Link, Navigate, Outlet, Route, Routes } from 'react-router'
 import { AnalysisTab } from './pages/AnalysisTab'
-import { CasePage } from './pages/CasePage'
+import { AnalyzeTab } from './pages/AnalyzeTab'
+import { CasePage, FirstStepRedirect } from './pages/CasePage'
 import { CasesPage } from './pages/CasesPage'
 import { DraftTab } from './pages/DraftTab'
+import { MatterTab } from './pages/MatterTab'
 import { RecordsTab } from './pages/RecordsTab'
-import { RunTab } from './pages/RunTab'
 
 export function App() {
   return (
@@ -14,11 +15,16 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<CasesPage />} />
         <Route path="cases/:caseId" element={<CasePage />}>
-          <Route index element={<Navigate to="records" replace />} />
+          <Route index element={<FirstStepRedirect />} />
+          <Route path="matter" element={<MatterTab />} />
           <Route path="records" element={<RecordsTab />} />
-          <Route path="run" element={<RunTab />} />
-          <Route path="analysis" element={<AnalysisTab />} />
-          <Route path="draft" element={<DraftTab />} />
+          <Route path="analyze" element={<AnalyzeTab />} />
+          <Route path="review" element={<AnalysisTab />} />
+          <Route path="letter" element={<DraftTab />} />
+          {/* Earlier names for the steps, kept so old links still work. */}
+          <Route path="run" element={<Navigate to="../analyze" replace />} />
+          <Route path="analysis" element={<Navigate to="../review" replace />} />
+          <Route path="draft" element={<Navigate to="../letter" replace />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>

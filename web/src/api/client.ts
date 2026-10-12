@@ -1,4 +1,4 @@
-import type { CaseAnalysis, CaseDetail, CaseListItem, DemandDraft, JobStatus, RecordInfo, ReviewItem, ReviewStatus } from './types'
+import type { CaseAnalysis, CaseDetail, CaseListItem, DemandDraft, JobStatus, MatterInput, RecordInfo, ReviewItem, ReviewStatus } from './types'
 
 // The API rejects changes without this header; other websites cannot send it to a local server.
 export const CLIENT_HEADER = 'X-MRA-Client'
@@ -43,9 +43,10 @@ const casePath = (caseId: string) => `/api/cases/${encodeURIComponent(caseId)}`
 
 export const api = {
   listCases: () => request<CaseListItem[]>('/api/cases'),
-  createCase: (name: string) => request<CaseDetail>('/api/cases', json('POST', { name })),
+  createCase: (matter: MatterInput) => request<CaseDetail>('/api/cases', json('POST', matter)),
   getCase: (caseId: string) => request<CaseDetail>(casePath(caseId)),
   renameCase: (caseId: string, name: string) => request<CaseDetail>(casePath(caseId), json('PATCH', { name })),
+  updateMatter: (caseId: string, matter: MatterInput) => request<CaseDetail>(`${casePath(caseId)}/matter`, json('PUT', matter)),
   deleteCase: (caseId: string) => request<null>(casePath(caseId), { method: 'DELETE' }),
 
   uploadRecords: (caseId: string, files: File[]) => {
@@ -63,6 +64,7 @@ export const api = {
   cancelJob: (caseId: string) => request<null>(`${casePath(caseId)}/jobs/cancel`, { method: 'POST' }),
 
   /** The case's analysis, or null if it has not been ingested yet. */
+  markAnalysisReviewed: (caseId: string) => request<CaseDetail>(`${casePath(caseId)}/analysis/reviewed`, { method: 'POST' }),
   getAnalysis: (caseId: string) => orNullIfMissing(request<CaseAnalysis>(`${casePath(caseId)}/analysis`)),
   /** The case's draft, or null if it has not been drafted yet. */
   getDraft: (caseId: string) => orNullIfMissing(request<DemandDraft>(`${casePath(caseId)}/draft`)),

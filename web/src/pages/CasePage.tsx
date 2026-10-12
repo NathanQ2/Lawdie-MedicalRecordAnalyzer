@@ -1,37 +1,24 @@
-import { Alert, Anchor, Badge, Button, Center, Group, Loader, Stack, Tabs, Text, Title, Tooltip } from '@mantine/core'
-import { modals } from '@mantine/modals'
+import { Alert, Anchor, Badge, Center, Group, Loader, Stack, Text, Title } from '@mantine/core'
+import { IconBack } from '../components/icons'
+import { StepProgress } from '../components/StepProgress'
 import { notifications } from '@mantine/notifications'
-import { IconBack, IconTrash } from '../components/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Link, Navigate, Outlet, useLocation, useParams } from 'react-router'
 import { api } from '../api/client'
+import type { CaseDetail } from '../api/types'
 import { caseKeys, useCase } from '../hooks/useCase'
-import { isJobActive, jobStateColors } from '../lib/format'
-
-const tabs = [
-  { value: 'records', label: 'Documents' },
-  { value: 'run', label: 'Run' },
-  { value: 'analysis', label: 'Analysis' },
-  { value: 'draft', label: 'Draft' },
-]
+import { formatDateOnly, isJobActive, jobKindLabels, jobStateColors } from '../lib/format'
+import { caseSteps, firstOpenStep, STEP_IDS, stepFromPath, type StepId } from '../lib/steps'
+import classes from './CasePage.module.css'
 
 export function CasePage() {
   const { caseId = '' } = useParams()
   const caseQuery = useCase(caseId)
-  const navigate = useNavigate()
   const location = useLocation()
-  const queryClient = useQueryClient()
-  const activeTab = tabs.find((tab) => location.pathname.endsWith(`/${tab.value}`))?.value ?? 'records'
-
-  const remove = useMutation({
-    mutationFn: () => api.deleteCase(caseId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: caseKeys.all })
-      notifications.show({ color: 'sage', message: 'Case deleted.' })
-      navigate('/')
-    },
-    onError: (error) => notifications.show({ color: 'brick', title: 'Could not delete the case', message: error.message }),
-  })
+  const current = stepFromPath(location.pathname)
+  const direction = useStepDirection(current)
+  useMarkReviewedOnAdvance(caseId, current, caseQuery.data)
 
   if (caseQuery.isPending) {
     return (
@@ -54,52 +41,85 @@ export function CasePage() {
 
   const detail = caseQuery.data
   const jobActive = isJobActive(detail.job)
-  const confirmDelete = () =>
-    modals.openConfirmModal({
-      title: `Delete "${detail.name}"?`,
-      children: <Text size="sm">This permanently deletes the case, its uploaded documents, and all results. It cannot be undone.</Text>,
-      labels: { confirm: 'Delete case', cancel: 'Keep it' },
-      confirmProps: { color: 'brick' },
-      onConfirm: () => remove.mutate(),
-    })
+  const steps = caseSteps(detail)
 
   return (
     <Stack gap="md">
       <BackLink />
-      <Group justify="space-between" align="flex-start">
-        <Stack gap={4}>
-          <Title order={2}>{detail.name}</Title>
-          <Group gap="xs">
-            <Text size="sm" c="dimmed">
-              {detail.records.length} {detail.records.length === 1 ? 'document' : 'documents'}
-            </Text>
-            {jobActive && detail.job && (
-              <Badge color={jobStateColors[detail.job.state]} variant="light">
-                {detail.job.kind} {detail.job.state.toLowerCase()}
-              </Badge>
-            )}
-          </Group>
-        </Stack>
-        <Tooltip label="Wait for the current job to finish" disabled={!jobActive}>
-          <Button variant="subtle" color="brick" leftSection={<IconTrash size={16} />} onClick={confirmDelete} disabled={jobActive}>
-            Delete case
-          </Button>
-        </Tooltip>
-      </Group>
+      <Stack gap={4}>
+        <Title order={2}>{detail.name}</Title>
+        <Group gap="xs">
+          <Text size="sm" c="dimmed">
+            {matterLine(detail)}
+          </Text>
+          {jobActive && detail.job && (
+            <Badge color={jobStateColors[detail.job.state]} variant="light">
+              {jobKindLabels[detail.job.kind]} {detail.job.state.toLowerCase()}
+            </Badge>
+          )}
+        </Group>
+      </Stack>
 
-      <Tabs value={activeTab} onChange={(value) => value && navigate(`/cases/${caseId}/${value}`)}>
-        <Tabs.List>
-          {tabs.map((tab) => (
-            <Tabs.Tab key={tab.value} value={tab.value}>
-              {tab.label}
-            </Tabs.Tab>
-          ))}
-        </Tabs.List>
-      </Tabs>
+      {current && <StepProgress caseId={caseId} steps={steps} current={current} job={detail.job} />}
 
-      <Outlet />
+      {/* Keyed by step so each step's page plays its entrance, sliding in from the side it was reached from. */}
+      <div key={current} className={classes.view} style={{ '--from': `${direction * 24}px` } as CSSProperties}>
+        <Outlet />
+      </div>
     </Stack>
   )
+}
+
+/**
+ * Which way the last step change went: 1 forward, -1 back, or 0 when the page first opens. It is worked out while
+ * rendering, by remembering the previous step in state, so the new page's first frame already slides the right way.
+ */
+function useStepDirection(current: StepId | null): number {
+  const [previous, setPrevious] = useState({ step: current, direction: 0 })
+  if (previous.step !== current) {
+    const from = previous.step ? STEP_IDS.indexOf(previous.step) : -1
+    const to = current ? STEP_IDS.indexOf(current) : -1
+    const direction = from < 0 || to < 0 ? 0 : Math.sign(to - from)
+    setPrevious({ step: current, direction })
+    return direction
+  }
+  return previous.direction
+}
+
+/**
+ * Records that the analysis was reviewed when the attorney moves on from the review step to the letter, however
+ * they get there. A later analysis needs reviewing again.
+ */
+function useMarkReviewedOnAdvance(caseId: string, current: StepId | null, detail: CaseDetail | undefined) {
+  const queryClient = useQueryClient()
+  const previous = useRef(current)
+  const { mutate } = useMutation({
+    mutationFn: () => api.markAnalysisReviewed(caseId),
+    onSuccess: (updated) => queryClient.setQueryData(caseKeys.detail(caseId), updated),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Could not mark the review as done', message: error.message }),
+  })
+  const needsReview = detail !== undefined && detail.analysisUpdatedAt !== null && !detail.analysisReviewed
+
+  useEffect(() => {
+    if (previous.current === 'review' && current === 'letter' && needsReview) {
+      mutate()
+    }
+    previous.current = current
+  }, [current, needsReview, mutate])
+}
+
+/** Opens a case on its first unfinished step. */
+export function FirstStepRedirect() {
+  const { caseId = '' } = useParams()
+  const caseQuery = useCase(caseId)
+  return caseQuery.data ? <Navigate to={`/cases/${caseId}/${firstOpenStep(caseSteps(caseQuery.data))}`} replace /> : null
+}
+
+function matterLine(detail: CaseDetail): string {
+  const documents = `${detail.records.length} ${detail.records.length === 1 ? 'document' : 'documents'}`
+  const place = [detail.county && `${detail.county} County`, detail.jurisdiction].filter(Boolean).join(', ')
+  const loss = detail.dateOfLoss ? `Date of loss ${formatDateOnly(detail.dateOfLoss)}` : 'No date of loss yet'
+  return [loss, place, documents].filter(Boolean).join(' · ')
 }
 
 function BackLink() {

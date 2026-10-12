@@ -7,10 +7,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { api } from '../api/client'
-import type { CaseListItem } from '../api/types'
+import type { CaseListItem, MatterInput } from '../api/types'
 import { CaseActionsMenu, type CaseAction } from '../components/CaseActionsMenu'
+import { MatterForm } from '../components/MatterForm'
 import { caseKeys, useCases } from '../hooks/useCase'
-import { formatDateTime, isJobActive, jobStateColors } from '../lib/format'
+import { formatDateOnly, formatDateTime, isJobActive, isoDate, jobKindLabels, jobStateColors } from '../lib/format'
 
 export function CasesPage() {
   const cases = useCases()
@@ -39,11 +40,11 @@ export function CasesPage() {
       case 'documents':
         navigate(`/cases/${item.id}/records`)
         break
-      case 'analysis':
-        navigate(`/cases/${item.id}/analysis`)
+      case 'review':
+        navigate(`/cases/${item.id}/review`)
         break
-      case 'draft':
-        navigate(`/cases/${item.id}/draft`)
+      case 'letter':
+        navigate(`/cases/${item.id}/letter`)
         break
       case 'rename':
         setRenaming(item)
@@ -86,7 +87,7 @@ export function CasesPage() {
           <Stack align="center" gap="xs">
             <Text fw={500}>No cases yet</Text>
             <Text c="dimmed" size="sm">
-              Create a case, upload its medical documents, and run ingest to analyze them.
+              Start a case, add its medical documents, and analyze them to draft a demand letter.
             </Text>
           </Stack>
         </Paper>
@@ -98,6 +99,7 @@ export function CasesPage() {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Case</Table.Th>
+                <Table.Th>Date of loss</Table.Th>
                 <Table.Th>Documents</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Updated</Table.Th>
@@ -115,12 +117,13 @@ export function CasesPage() {
                   <Table.Td>
                     <Text fw={500}>{item.name}</Text>
                   </Table.Td>
+                  <Table.Td>{formatDateOnly(item.dateOfLoss)}</Table.Td>
                   <Table.Td>{item.recordCount}</Table.Td>
                   <Table.Td>
                     <Group gap="xs">
                       {isJobActive(item.job) && item.job && (
                         <Badge color={jobStateColors[item.job.state]} variant="light">
-                          {item.job.kind} {item.job.state.toLowerCase()}
+                          {jobKindLabels[item.job.kind]} {item.job.state.toLowerCase()}
                         </Badge>
                       )}
                       {item.hasAnalysis && <Badge variant="light" color="sage">Analyzed</Badge>}
@@ -172,48 +175,29 @@ interface NewCaseModalProps {
 
 function NewCaseModal({ opened, onClose, onCreated }: NewCaseModalProps) {
   const queryClient = useQueryClient()
-  const [name, setName] = useState('')
+  const [today] = useState(() => isoDate(new Date()))
   const create = useMutation({
-    mutationFn: api.createCase,
+    mutationFn: (matter: MatterInput) => api.createCase(matter),
     onSuccess: async (created) => {
       await queryClient.invalidateQueries({ queryKey: caseKeys.all })
-      setName('')
       onClose()
       onCreated(created.id)
     },
   })
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    if (name.trim()) {
-      create.mutate(name.trim())
-    }
-  }
-
   return (
-    <Modal opened={opened} onClose={onClose} title="New case">
-      <form onSubmit={submit}>
-        <Stack>
-          <TextInput
-            label="Case name"
-            placeholder="e.g. Ellis v. Cascade Freight"
-            value={name}
-            onChange={(event) => setName(event.currentTarget.value)}
-            maxLength={200}
-            data-autofocus
-            required
-          />
-          {create.isError && <Alert color="brick">{create.error.message}</Alert>}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={create.isPending} disabled={!name.trim()}>
-              Create
-            </Button>
-          </Group>
-        </Stack>
-      </form>
+    <Modal opened={opened} onClose={onClose} title="New case" size="lg">
+      {/* Mounted only while open, so each new matter starts from an empty form. */}
+      {opened && (
+        <MatterForm
+          today={today}
+          submitLabel="Create"
+          pending={create.isPending}
+          error={create.isError ? create.error.message : null}
+          onSubmit={(matter) => create.mutate(matter)}
+          onCancel={onClose}
+        />
+      )}
     </Modal>
   )
 }

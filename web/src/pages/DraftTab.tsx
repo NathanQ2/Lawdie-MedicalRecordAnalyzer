@@ -1,17 +1,21 @@
-import { Alert, Anchor, Badge, Box, Button, Center, Drawer, Grid, Group, Loader, Menu, Paper, SegmentedControl, Stack, Text, Title } from '@mantine/core'
+import { Alert, Badge, Box, Button, Card, Center, Drawer, Grid, Group, Loader, Menu, Paper, SegmentedControl, Stack, Text, Title } from '@mantine/core'
+import { modals } from '@mantine/modals'
 import { useMediaQuery } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
-import { IconDownload } from '../components/icons'
+import { IconDownload, IconRun } from '../components/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
 import { api } from '../api/client'
 import type { Citation, ReviewItem, ReviewStatus } from '../api/types'
 import { AnnotatedText } from '../components/AnnotatedText'
+import { JobStatusCard } from '../components/JobStatusCard'
 import { ReviewItemCard } from '../components/ReviewItemCard'
 import { SourceViewer } from '../components/SourceViewer'
 import { caseKeys, useCase, useDraft, useReview } from '../hooks/useCase'
+import { useJobActions, useNow } from '../hooks/useJob'
 import { citationKey, citationNumbering } from '../lib/citations'
+import { isJobActive } from '../lib/format'
 import classes from './AnalysisTab.module.css'
 
 type Panel = 'review' | 'source'
@@ -25,6 +29,8 @@ export function DraftTab() {
   const [panel, setPanel] = useState<Panel>('review')
   const [shownItem, setShownItem] = useState<ReviewItem | null>(null)
   const wide = useMediaQuery('(min-width: 75em)')
+  const { start, cancel } = useJobActions(caseId)
+  const now = useNow(isJobActive(caseQuery.data?.job))
 
   if (caseQuery.isPending || draft.isPending) {
     return (
@@ -38,20 +44,44 @@ export function DraftTab() {
     return <Alert color="brick" title="Could not load the draft">{draft.error.message}</Alert>
   }
 
+  const job = caseQuery.data?.job ?? null
+  const drafting = job?.kind === 'Draft' && isJobActive(job)
+  const confirmDraft = () =>
+    modals.openConfirmModal({
+      title: draft.data ? 'Draft the letter again?' : 'Draft the demand letter?',
+      children: (
+        <Text size="sm">
+          This writes the letter from the parts of the documents most relevant to each section. It takes a minute or two.
+          {draft.data && ' The current draft is replaced, but your review decisions are kept.'}
+        </Text>
+      ),
+      labels: { confirm: 'Draft', cancel: 'Not now' },
+      onConfirm: () => start.mutate('Draft'),
+    })
+  // Shown while a draft is being written, or when the last attempt failed or was cancelled.
+  const jobCard = job?.kind === 'Draft' && job.state !== 'Succeeded' && (
+    <JobStatusCard job={job} onCancel={() => cancel.mutate()} cancelling={cancel.isPending} now={now} />
+  )
+
   if (!draft.data) {
     return (
-      <Paper withBorder p="xl" radius="md">
-        <Stack align="center" gap="xs">
-          <Text fw={500}>No demand letter draft yet</Text>
-          <Text size="sm" c="dimmed">
-            After ingest,{' '}
-            <Anchor component={Link} to={`/cases/${caseId}/run`}>
-              draft the demand letter
-            </Anchor>
-            .
-          </Text>
-        </Stack>
-      </Paper>
+      <Stack gap="md">
+        <Card withBorder padding="lg" radius="lg">
+          <Stack gap="sm">
+            <Title order={3}>Draft the demand letter</Title>
+            <Text size="sm" c="dimmed">
+              Writes the letter from the parts of the documents most relevant to each section, citing a document for every
+              fact. Anything the documents don't state, such as the claim number, is left as a placeholder for you to fill in.
+            </Text>
+            <Group>
+              <Button leftSection={<IconRun size={16} />} onClick={confirmDraft} disabled={isJobActive(job)} loading={start.isPending}>
+                Draft
+              </Button>
+            </Group>
+          </Stack>
+        </Card>
+        {jobCard}
+      </Stack>
     )
   }
 
@@ -99,9 +129,17 @@ export function DraftTab() {
 
   return (
     <Stack gap="md">
-      {caseQuery.data?.draftOutOfDate && (
-        <Alert color="amber">The analysis changed after this draft was written. Draft again from the Run tab to update it.</Alert>
+      {caseQuery.data?.draftOutOfDate && !drafting && (
+        <Alert color="amber">
+          <Group justify="space-between" gap="sm">
+            <Text size="sm">The analysis changed after this letter was drafted.</Text>
+            <Button size="xs" variant="light" color="amber" leftSection={<IconRun size={14} />} onClick={confirmDraft} disabled={isJobActive(job)}>
+              Draft again
+            </Button>
+          </Group>
+        </Alert>
       )}
+      {jobCard}
 
       <Group justify="space-between" align="flex-end">
         <Stack gap={4}>

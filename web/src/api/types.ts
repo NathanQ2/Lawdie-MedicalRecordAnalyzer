@@ -30,6 +30,8 @@ export interface RecordInfo {
 export interface CaseListItem {
   id: string
   name: string
+  /** The date of loss as YYYY-MM-DD, or null if it hasn't been entered. */
+  dateOfLoss: string | null
   createdAt: string
   updatedAt: string
   recordCount: number
@@ -41,14 +43,28 @@ export interface CaseListItem {
 export interface CaseDetail {
   id: string
   name: string
+  /** The date of loss as YYYY-MM-DD, or null if it hasn't been entered. */
+  dateOfLoss: string | null
+  jurisdiction: string | null
+  county: string | null
   createdAt: string
   updatedAt: string
   records: RecordInfo[]
   analysisUpdatedAt: string | null
   analysisOutOfDate: boolean
+  /** Whether the attorney finished reviewing the current analysis (moved on from it to the letter). */
+  analysisReviewed: boolean
   draftUpdatedAt: string | null
   draftOutOfDate: boolean
   job: JobStatus | null
+}
+
+/** The name and intake details sent when creating a case or editing its matter details. */
+export interface MatterInput {
+  name: string
+  dateOfLoss: string | null
+  jurisdiction: string | null
+  county: string | null
 }
 
 // The ingest analysis (PICase). File paths are absolute paths on the API server; the record name is the last

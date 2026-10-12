@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobStatus, RecordInfo } from '../api/types'
-import { formatBytes, formatDuration, isJobActive, jobProgress, recordsNeedingSummaries, stageLabel } from './format'
+import { formatBytes, formatDateOnly, formatDuration, isJobActive, jobProgress, recordsNeedingSummaries, stageLabel } from './format'
 
 const job = (overrides: Partial<JobStatus>): JobStatus => ({
   id: 'job',
@@ -57,5 +57,12 @@ describe('recordsNeedingSummaries', () => {
   it('counts records that are new or changed', () => {
     const record = (status: RecordInfo['status']): RecordInfo => ({ name: status, size: 1, modifiedAt: '', status, reason: null })
     expect(recordsNeedingSummaries([record('NotIngested'), record('Changed'), record('Summarized'), record('Skipped')])).toBe(2)
+  })
+})
+
+describe('formatDateOnly', () => {
+  it('shows the calendar date without shifting it across time zones', () => {
+    expect(formatDateOnly('2026-01-09')).toBe(new Date(2026, 0, 9).toLocaleDateString(undefined, { dateStyle: 'medium' }))
+    expect(formatDateOnly(null)).toBe('—')
   })
 })

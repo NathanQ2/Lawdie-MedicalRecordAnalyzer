@@ -7,6 +7,7 @@ import { CaseActionsMenu } from './CaseActionsMenu'
 const item: CaseListItem = {
   id: 'abc123def456',
   name: 'Ellis v. Cascade Freight',
+  dateOfLoss: '2026-01-09',
   createdAt: '2026-10-10T12:00:00Z',
   updatedAt: '2026-10-10T12:00:00Z',
   recordCount: 24,
@@ -31,18 +32,18 @@ describe('CaseActionsMenu', () => {
     expect(onAction.mock.calls.map(([action]) => action)).toEqual(['open', 'rename', 'delete'])
   })
 
-  it('only offers the draft and its download once the case is drafted', () => {
+  it('only offers the letter and its download once the case is drafted', () => {
     open()
 
-    expect(screen.getByRole('menuitem', { name: 'Analysis' })).not.toBeDisabled()
-    expect(screen.getByRole('menuitem', { name: 'Draft' })).toBeDisabled()
-    expect(screen.queryByRole('menuitem', { name: 'Download draft (Word)' })).not.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Review' })).not.toBeDisabled()
+    expect(screen.getByRole('menuitem', { name: 'Letter' })).toBeDisabled()
+    expect(screen.queryByRole('menuitem', { name: 'Download letter (Word)' })).not.toBeInTheDocument()
   })
 
   it('links the Word download for a drafted case', () => {
     open({ hasDraft: true })
 
-    expect(screen.getByRole('menuitem', { name: 'Download draft (Word)' })).toHaveAttribute('href', '/api/cases/abc123def456/draft/export?format=docx')
+    expect(screen.getByRole('menuitem', { name: 'Download letter (Word)' })).toHaveAttribute('href', '/api/cases/abc123def456/draft/export?format=docx')
   })
 
   it('disables delete while a job is running', () => {

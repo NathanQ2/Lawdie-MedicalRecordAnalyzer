@@ -19,12 +19,24 @@ public class AnthropicProvider : ILLMProvider
     private const int MaxTokens = 32000;
     private const string DefaultModel = "claude-haiku-5-5";
 
+    /**
+     * How generated summaries should read (see docs/writing-style.md). It only shapes wording: facts still come only
+     * from the cited documents. The letter prompt leaves it out, because in testing on Case_Ellis it left more of the
+     * letter's sentences uncited.
+     */
+    private const string WritingStyle =
+        " Write plainly and keep sentences short, but keep each fact in the same sentence as the quote that supports " +
+        "it, and do not write lead-in sentences that only announce a topic. Do not use em dashes. Do not " +
+        "use words that inflate or editorialize, such as crucial, significant, notably, underscores, highlights, or " +
+        "testament. Do not frame a point as \"not X but Y\", and do not end a paragraph with a summary or a one-line " +
+        "remark.";
+
     private const string DocumentSummarizationSystemPrompt =
         "You are a legal intake assistant for a personal injury law firm. Extract from the " +
         "provided medical record only facts that are explicitly supported by the document, " +
         "including injuries, diagnoses, treatment dates, providers, and causal statements. " +
         "Never infer, assume, or invent information. Cite the document for every fact you " +
-        "state. Respond with a plain-prose summary only: no preamble, headings, or JSON.";
+        "state. Respond with a plain-prose summary only: no preamble, headings, or JSON." + WritingStyle;
 
     private const string DocumentSummarizationInstruction =
         "Summarize the case-relevant facts in this medical record, citing the record for each fact.";
@@ -36,7 +48,7 @@ public class AnthropicProvider : ILLMProvider
         "the client's medical records. State only facts supported by these quotes and cite them for " +
         "every fact; never add facts that are not present. Where the records disagree, present each " +
         "record's version with its citation and do not choose between them. Respond with plain " +
-        "prose only: no preamble, headings, or JSON.";
+        "prose only: no preamble, headings, or JSON." + WritingStyle;
 
     private const string DemandDraftSystemPrompt =
         "You are a drafting assistant for a personal injury law firm. Write the body of a demand letter " +

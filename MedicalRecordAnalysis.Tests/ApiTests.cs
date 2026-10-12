@@ -143,6 +143,71 @@ public sealed class ApiTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
 
+    [Fact]
+    public async Task SavesIntakeDetails()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+
+        HttpResponseMessage response = await client.PostAsJsonAsync("/api/cases",
+            new CreateCaseRequest("Ellis v. Cascade Freight", new DateOnly(2026, 1, 9), " Washington ", "   "));
+        CaseDto created = (await response.Content.ReadFromJsonAsync<CaseDto>(Json))!;
+        CaseListItemDto listed = Assert.Single((await client.GetFromJsonAsync<CaseListItemDto[]>("/api/cases", Json))!);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal((new DateOnly(2026, 1, 9), "Washington", (string?)null), (created.DateOfLoss, created.Jurisdiction, created.County));
+        Assert.Equal(new DateOnly(2026, 1, 9), listed.DateOfLoss);
+    }
+
+    [Fact]
+    public async Task UpdatesIntakeDetails()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+        string path = $"/api/cases/{created.Id}/matter";
+
+        HttpResponseMessage updated = await client.PutAsJsonAsync(path, new UpdateMatterRequest("Ellis v. Cascade Freight", new DateOnly(2026, 1, 9), "Washington", "King"));
+        HttpResponseMessage cleared = await client.PutAsJsonAsync(path, new UpdateMatterRequest("Ellis v. Cascade Freight", new DateOnly(2026, 1, 9), "Washington", null));
+        HttpResponseMessage future = await client.PutAsJsonAsync(path, new UpdateMatterRequest("Ellis", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10)), null, null));
+        HttpResponseMessage tooLong = await client.PutAsJsonAsync(path, new UpdateMatterRequest("Ellis", null, new string('x', 101), null));
+        HttpResponseMessage blankName = await client.PutAsJsonAsync(path, new UpdateMatterRequest(" ", null, null, null));
+        HttpResponseMessage missing = await client.PutAsJsonAsync("/api/cases/zzzzzzzzzzzz/matter", new UpdateMatterRequest("Ellis", null, null, null));
+
+        Assert.Equal("King", (await updated.Content.ReadFromJsonAsync<CaseDto>(Json))!.County);
+        CaseDto current = (await client.GetFromJsonAsync<CaseDto>($"/api/cases/{created.Id}", Json))!;
+        Assert.Equal(("Ellis v. Cascade Freight", new DateOnly(2026, 1, 9), "Washington", (string?)null),
+            (current.Name, current.DateOfLoss, current.Jurisdiction, current.County));
+        Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, future.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, blankName.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+    }
+
+    [Fact]
+    public async Task FillsTheDateOfLossInTheServedDraft()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+        await client.PostAsync($"/api/cases/{created.Id}/records", Files(("note.txt", Text("Neck pain after collision."))));
+        await client.PostAsync($"/api/cases/{created.Id}/ingest", null);
+        await WaitForJobToFinish(client, created.Id);
+        await client.PostAsync($"/api/cases/{created.Id}/draft", null);
+        await WaitForJobToFinish(client, created.Id);
+
+        DemandDraft before = (await client.GetFromJsonAsync<DemandDraft>($"/api/cases/{created.Id}/draft", Json))!;
+        await client.PutAsJsonAsync($"/api/cases/{created.Id}/matter", new UpdateMatterRequest(created.Name, new DateOnly(2026, 1, 9), null, null));
+        DemandDraft after = (await client.GetFromJsonAsync<DemandDraft>($"/api/cases/{created.Id}/draft", Json))!;
+        ReviewItem[] review = (await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!;
+        string markdown = await client.GetStringAsync($"/api/cases/{created.Id}/draft/export?format=md");
+
+        Assert.Contains(DemandLetterTemplate.DateOfLossPlaceholder, before.Narrative);
+        Assert.DoesNotContain(DemandLetterTemplate.DateOfLossPlaceholder, after.Narrative);
+        Assert.Contains("Date of Loss: January 9, 2026", after.Narrative);
+        Assert.Contains("January 9, 2026", markdown);
+        Assert.DoesNotContain(review, item => item.Text == DemandLetterTemplate.DateOfLossPlaceholder);
+        Assert.Contains(review, item => item.Text == "[CLAIM NUMBER]");
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
@@ -279,6 +344,28 @@ public sealed class ApiTests : IDisposable
         }
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/api/cases/{created.Id}/draft/export?format=pdf")).StatusCode);
+    }
+
+    [Fact]
+    public async Task MarksTheAnalysisReviewedUntilItIsRedone()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+        string reviewed = $"/api/cases/{created.Id}/analysis/reviewed";
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsync(reviewed, null)).StatusCode);
+
+        await client.PostAsync($"/api/cases/{created.Id}/records", Files(("note.txt", Text("Neck pain after collision."))));
+        await client.PostAsync($"/api/cases/{created.Id}/ingest", null);
+        await WaitForJobToFinish(client, created.Id);
+        Assert.False((await client.GetFromJsonAsync<CaseDto>($"/api/cases/{created.Id}", Json))!.AnalysisReviewed);
+
+        HttpResponseMessage marked = await client.PostAsync(reviewed, null);
+        Assert.True((await marked.Content.ReadFromJsonAsync<CaseDto>(Json))!.AnalysisReviewed);
+
+        await client.PostAsync($"/api/cases/{created.Id}/ingest", null);
+        await WaitForJobToFinish(client, created.Id);
+        Assert.False((await client.GetFromJsonAsync<CaseDto>($"/api/cases/{created.Id}", Json))!.AnalysisReviewed);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/api/cases/zzzzzzzzzzzz/analysis/reviewed", null)).StatusCode);
     }
 
     [Fact]

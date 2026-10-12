@@ -10,7 +10,7 @@ namespace MedicalRecordAnalysis.Api.Cases;
  */
 public interface ICaseStore
 {
-    public Task<CaseMeta> Create(string name, CancellationToken cancellationToken = default);
+    public Task<CaseMeta> Create(string name, MatterDetails? matter = null, CancellationToken cancellationToken = default);
     public Task<IReadOnlyList<CaseMeta>> List(CancellationToken cancellationToken = default);
     public Task<CaseMeta?> Get(string caseId, CancellationToken cancellationToken = default);
 

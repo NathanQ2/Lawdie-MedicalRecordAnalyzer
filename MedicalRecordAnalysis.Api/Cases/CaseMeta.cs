@@ -62,11 +62,19 @@ public class CaseMeta
 {
     public required string Id { get; set; }
     public required string Name { get; set; }
+    /** Intake details entered by the attorney. Cases created before intake existed have none. */
+    public DateOnly? DateOfLoss { get; set; }
+    public string? Jurisdiction { get; set; }
+    public string? County { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? RecordsChangedAt { get; set; }
     public DateTimeOffset? AnalysisUpdatedAt { get; set; }
+    /** When the attorney last finished reviewing the analysis; earlier than AnalysisUpdatedAt after a new analysis. */
+    public DateTimeOffset? AnalysisReviewedAt { get; set; }
     public DateTimeOffset? DraftUpdatedAt { get; set; }
     public JobStatus? CurrentJob { get; set; }
     public Dictionary<string, ReviewState> Review { get; set; } = [];
+
+    public MatterDetails Matter() => new MatterDetails(DateOfLoss, Jurisdiction, County);
 }

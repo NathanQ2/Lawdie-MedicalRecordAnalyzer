@@ -52,13 +52,16 @@ public sealed partial class FileCaseStore : ICaseStore
             && !fileName.Contains('\\');
     }
 
-    public async Task<CaseMeta> Create(string name, CancellationToken cancellationToken = default)
+    public async Task<CaseMeta> Create(string name, MatterDetails? matter = null, CancellationToken cancellationToken = default)
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;
         CaseMeta meta = new CaseMeta()
         {
             Id = Guid.NewGuid().ToString("N")[..12],
             Name = name.Trim(),
+            DateOfLoss = matter?.DateOfLoss,
+            Jurisdiction = matter?.Jurisdiction,
+            County = matter?.County,
             CreatedAt = now,
             UpdatedAt = now,
         };

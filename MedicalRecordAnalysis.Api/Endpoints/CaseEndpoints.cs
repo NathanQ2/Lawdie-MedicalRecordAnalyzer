@@ -7,6 +7,7 @@ namespace MedicalRecordAnalysis.Api.Endpoints;
 public static class CaseEndpoints
 {
     private const int MaxCaseNameLength = 200;
+    private const int MaxDetailLength = 100;
 
     public static void MapCaseEndpoints(this IEndpointRouteBuilder app)
     {
@@ -16,6 +17,7 @@ public static class CaseEndpoints
         cases.MapPost("/", CreateCase);
         cases.MapGet("/{caseId}", GetCase);
         cases.MapPatch("/{caseId}", RenameCase);
+        cases.MapPut("/{caseId}/matter", UpdateMatter);
         cases.MapDelete("/{caseId}", DeleteCase);
 
         cases.MapGet("/{caseId}/records", ListRecords);
@@ -32,6 +34,7 @@ public static class CaseEndpoints
         cases.MapPost("/{caseId}/jobs/cancel", CancelJob);
 
         cases.MapGet("/{caseId}/analysis", GetAnalysis);
+        cases.MapPost("/{caseId}/analysis/reviewed", MarkAnalysisReviewed);
         cases.MapGet("/{caseId}/draft", GetDraft);
         cases.MapGet("/{caseId}/draft/export", ExportDraft);
 
@@ -42,7 +45,7 @@ public static class CaseEndpoints
     private static async Task<IResult> ListCases(ICaseStore store, IJobQueue jobs, CancellationToken cancellationToken)
     {
         IReadOnlyList<CaseMeta> cases = await store.List(cancellationToken);
-        return Results.Ok(cases.Select(meta => new CaseListItemDto(meta.Id, meta.Name, meta.CreatedAt, meta.UpdatedAt,
+        return Results.Ok(cases.Select(meta => new CaseListItemDto(meta.Id, meta.Name, meta.DateOfLoss, meta.CreatedAt, meta.UpdatedAt,
             store.ListRecords(meta.Id).Count, meta.AnalysisUpdatedAt is not null, meta.DraftUpdatedAt is not null, jobs.CurrentJob(meta))));
     }
 
@@ -54,7 +57,13 @@ public static class CaseEndpoints
             return Error(StatusCodes.Status400BadRequest, $"A case name of 1 to {MaxCaseNameLength} characters is required.");
         }
 
-        CaseMeta meta = await store.Create(name, cancellationToken);
+        (MatterDetails? matter, string? error) = ValidateMatter(request.DateOfLoss, request.Jurisdiction, request.County);
+        if (matter is null)
+        {
+            return Error(StatusCodes.Status400BadRequest, error!);
+        }
+
+        CaseMeta meta = await store.Create(name, matter, cancellationToken);
         return Results.Created($"/api/cases/{meta.Id}", await ToCaseDto(meta, store, jobs, cancellationToken));
     }
 
@@ -75,6 +84,53 @@ public static class CaseEndpoints
 
         CaseMeta? meta = await store.Update(caseId, current => current.Name = name, cancellationToken);
         return meta is null ? CaseNotFound() : Results.Ok(await ToCaseDto(meta, store, jobs, cancellationToken));
+    }
+
+    private static async Task<IResult> UpdateMatter(string caseId, UpdateMatterRequest request, ICaseStore store, IJobQueue jobs,
+        CancellationToken cancellationToken)
+    {
+        string name = request.Name?.Trim() ?? "";
+        if (name.Length == 0 || name.Length > MaxCaseNameLength)
+        {
+            return Error(StatusCodes.Status400BadRequest, $"A case name of 1 to {MaxCaseNameLength} characters is required.");
+        }
+
+        (MatterDetails? matter, string? error) = ValidateMatter(request.DateOfLoss, request.Jurisdiction, request.County);
+        if (matter is null)
+        {
+            return Error(StatusCodes.Status400BadRequest, error!);
+        }
+
+        CaseMeta? meta = await store.Update(caseId, current =>
+        {
+            current.Name = name;
+            current.DateOfLoss = matter.DateOfLoss;
+            current.Jurisdiction = matter.Jurisdiction;
+            current.County = matter.County;
+        }, cancellationToken);
+        return meta is null ? CaseNotFound() : Results.Ok(await ToCaseDto(meta, store, jobs, cancellationToken));
+    }
+
+    /**
+     * Trims the intake details, treating blank text as not given. Returns an error message instead when a detail
+     * is too long or the date of loss is in the future.
+     */
+    private static (MatterDetails? Matter, string? Error) ValidateMatter(DateOnly? dateOfLoss, string? jurisdiction, string? county)
+    {
+        jurisdiction = string.IsNullOrWhiteSpace(jurisdiction) ? null : jurisdiction.Trim();
+        county = string.IsNullOrWhiteSpace(county) ? null : county.Trim();
+        if (jurisdiction?.Length > MaxDetailLength || county?.Length > MaxDetailLength)
+        {
+            return (null, $"The jurisdiction and county can be at most {MaxDetailLength} characters.");
+        }
+
+        // A day of leeway, since the attorney's time zone may be ahead of the server's.
+        if (dateOfLoss > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)))
+        {
+            return (null, "The date of loss can't be in the future.");
+        }
+
+        return (new MatterDetails(dateOfLoss, jurisdiction, county), null);
     }
 
     private static async Task<IResult> DeleteCase(string caseId, ICaseStore store, CancellationToken cancellationToken)
@@ -241,14 +297,32 @@ public static class CaseEndpoints
         return analysis is null ? Error(StatusCodes.Status404NotFound, "This case has not been ingested yet.") : Results.Ok(analysis);
     }
 
-    private static async Task<IResult> GetDraft(string caseId, ICaseStore store, CancellationToken cancellationToken)
+    private static async Task<IResult> MarkAnalysisReviewed(string caseId, ICaseStore store, IJobQueue jobs, CancellationToken cancellationToken)
     {
-        if (await store.Get(caseId, cancellationToken) is null)
+        CaseMeta? meta = await store.Get(caseId, cancellationToken);
+        if (meta is null)
         {
             return CaseNotFound();
         }
 
-        DemandDraft? draft = await store.LoadDraft(caseId, cancellationToken);
+        if (meta.AnalysisUpdatedAt is null)
+        {
+            return Error(StatusCodes.Status409Conflict, "There is no analysis to review yet.");
+        }
+
+        meta = await store.Update(caseId, current => current.AnalysisReviewedAt = DateTimeOffset.UtcNow, cancellationToken);
+        return Results.Ok(await ToCaseDto(meta!, store, jobs, cancellationToken));
+    }
+
+    private static async Task<IResult> GetDraft(string caseId, ICaseStore store, CancellationToken cancellationToken)
+    {
+        CaseMeta? meta = await store.Get(caseId, cancellationToken);
+        if (meta is null)
+        {
+            return CaseNotFound();
+        }
+
+        DemandDraft? draft = await LoadDraft(meta, store, cancellationToken);
         return draft is null ? Error(StatusCodes.Status404NotFound, "This case has not been drafted yet.") : Results.Ok(draft);
     }
 
@@ -272,7 +346,7 @@ public static class CaseEndpoints
             return Error(StatusCodes.Status400BadRequest, "The format must be 'md', 'txt', or 'docx'.");
         }
 
-        DemandDraft? draft = await store.LoadDraft(caseId, cancellationToken);
+        DemandDraft? draft = await LoadDraft(meta, store, cancellationToken);
         PICase? analysis = await store.LoadAnalysis(caseId, cancellationToken);
         if (draft is null || analysis is null)
         {
@@ -322,16 +396,28 @@ public static class CaseEndpoints
     private static async Task<IReadOnlyList<ReviewItem>> BuildReview(CaseMeta meta, ICaseStore store, CancellationToken cancellationToken)
     {
         PICase? analysis = await store.LoadAnalysis(meta.Id, cancellationToken);
-        DemandDraft? draft = await store.LoadDraft(meta.Id, cancellationToken);
+        DemandDraft? draft = await LoadDraft(meta, store, cancellationToken);
         return ReviewItems.Build(analysis, draft, meta.Review);
+    }
+
+    /**
+     * The saved draft with the intake details filled in, so the letter, its export and the review checklist all
+     * reflect the current details without drafting again.
+     */
+    private static async Task<DemandDraft?> LoadDraft(CaseMeta meta, ICaseStore store, CancellationToken cancellationToken)
+    {
+        DemandDraft? draft = await store.LoadDraft(meta.Id, cancellationToken);
+        return draft is null ? null : DemandLetterTemplate.Fill(draft, meta.Matter());
     }
 
     private static async Task<CaseDto> ToCaseDto(CaseMeta meta, ICaseStore store, IJobQueue jobs, CancellationToken cancellationToken)
     {
         bool analysisOutOfDate = meta.AnalysisUpdatedAt is not null && meta.RecordsChangedAt > meta.AnalysisUpdatedAt;
         bool draftOutOfDate = meta.DraftUpdatedAt is not null && meta.AnalysisUpdatedAt > meta.DraftUpdatedAt;
-        return new CaseDto(meta.Id, meta.Name, meta.CreatedAt, meta.UpdatedAt, await ToRecordDtos(meta, store, cancellationToken),
-            meta.AnalysisUpdatedAt, analysisOutOfDate, meta.DraftUpdatedAt, draftOutOfDate, jobs.CurrentJob(meta));
+        bool analysisReviewed = meta.AnalysisUpdatedAt is not null && meta.AnalysisReviewedAt >= meta.AnalysisUpdatedAt;
+        return new CaseDto(meta.Id, meta.Name, meta.DateOfLoss, meta.Jurisdiction, meta.County, meta.CreatedAt, meta.UpdatedAt,
+            await ToRecordDtos(meta, store, cancellationToken),
+            meta.AnalysisUpdatedAt, analysisOutOfDate, analysisReviewed, meta.DraftUpdatedAt, draftOutOfDate, jobs.CurrentJob(meta));
     }
 
     private static async Task<IReadOnlyList<RecordDto>> ToRecordDtos(CaseMeta meta, ICaseStore store, CancellationToken cancellationToken)

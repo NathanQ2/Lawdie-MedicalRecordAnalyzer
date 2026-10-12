@@ -1,3 +1,4 @@
+using System.Globalization;
 using MedicalRecordAnalysis.LLM;
 
 namespace MedicalRecordAnalysis;
@@ -52,6 +53,33 @@ public static class DemandLetterTemplate
         "[LAW FIRM NAME]\n" +
         "\n" +
         "Enclosures: [LIST OF ENCLOSURES]";
+
+    public const string DateOfLossPlaceholder = "[DATE OF LOSS]";
+
+    /**
+     * Replaces the placeholders the attorney's intake details can answer. This runs each time the letter is shown
+     * or exported rather than when it is drafted, so correcting a detail never requires drafting again. Unanswered
+     * placeholders are left in place for review.
+     */
+    public static DemandDraft Fill(DemandDraft draft, MatterDetails matter)
+    {
+        if (matter.DateOfLoss is not DateOnly dateOfLoss)
+        {
+            return draft;
+        }
+
+        string date = dateOfLoss.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        return new DemandDraft()
+        {
+            Segments = draft.Segments.Select(segment => new DraftSegment()
+            {
+                Text = segment.Text.Replace(DateOfLossPlaceholder, date),
+                Citations = segment.Citations,
+            }).ToArray(),
+            // Uncited statements are matched against the letter's text, so they must be filled the same way.
+            UnsupportedStatements = draft.UnsupportedStatements.Select(statement => statement.Replace(DateOfLossPlaceholder, date)).ToArray(),
+        };
+    }
 
     /**
      * The full letter: the opening, the generated body, and the closing. Uncited statements are those of the

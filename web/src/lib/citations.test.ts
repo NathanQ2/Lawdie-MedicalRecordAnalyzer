@@ -26,10 +26,10 @@ describe('labels', () => {
   it('warns about quotes read from scanned pages', () => {
     expect(recognitionNote(citation({}))).toBeNull()
     expect(recognitionNote(citation({ recognized: true }))).toBe(
-      'This quote was read from a scanned page. Check it against the original before relying on it.',
+      'This quote was read from a scanned page. Check it against the original before you use it.',
     )
     expect(recognitionNote(citation({ recognized: true, handwritten: true, lowConfidence: true }))).toContain(
-      '(it is handwritten; some words were hard to read)',
+      'It is handwritten. Some words were hard to read.',
     )
   })
 

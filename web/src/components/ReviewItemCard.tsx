@@ -60,7 +60,7 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
           <UnstyledButton key={citationKey(citation)} onClick={() => onSelectCitation(citation)}>
             <Text size="xs" c="slate">
               {recordName(citation.filePath)}
-              {pageLabel(citation) && ` · ${pageLabel(citation)}`}: “{citation.citedText.replace(/\s+/g, ' ').trim()}”
+              {pageLabel(citation) && ` · ${pageLabel(citation)}`}: "{citation.citedText.replace(/\s+/g, ' ').trim()}"
             </Text>
           </UnstyledButton>
         ))}
@@ -80,14 +80,14 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
           ) : (
             item.kind === 'Contradiction' && (
               <Text size="xs" c="dimmed">
-                No cited sentence in the letter relies on these quotes. Check the letter for uncited mentions.
+                No cited sentence in the letter uses these quotes. Check the letter for other mentions.
               </Text>
             )
           ))}
 
         <Textarea
           size="xs"
-          placeholder="Note (optional), e.g. how it was resolved"
+          placeholder="Add a note, such as how you resolved it"
           autosize
           minRows={1}
           value={note}

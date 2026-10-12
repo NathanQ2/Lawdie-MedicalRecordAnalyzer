@@ -14,7 +14,7 @@ export function RecordsTable({ records, recordUrl, onDelete, disabled = false }:
   if (records.length === 0) {
     return (
       <Text c="dimmed" ta="center" py="lg">
-        No documents yet. Upload PDFs or text files above.
+        No documents yet. Add them above.
       </Text>
     )
   }

@@ -30,6 +30,6 @@ describe('ContradictionCard', () => {
     renderWithMantine(<ContradictionCard contradiction={unverified} selectedKey={null} onSelect={vi.fn()} />)
 
     expect(screen.getByText('Unverified')).toBeInTheDocument()
-    expect(screen.getByText(/No quote from the documents supports this contradiction/)).toBeInTheDocument()
+    expect(screen.getByText(/No quote supports this/)).toBeInTheDocument()
   })
 })

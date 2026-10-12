@@ -80,7 +80,7 @@ public sealed class CaseJobQueue : BackgroundService, IJobQueue
 
         if (conflict)
         {
-            throw new JobConflictException("This case already has a job queued or running.");
+            throw new JobConflictException("This case is already being analyzed or drafted.");
         }
 
         await m_channel.Writer.WriteAsync((caseId, job.Id), cancellationToken);
@@ -215,7 +215,7 @@ public sealed class CaseJobQueue : BackgroundService, IJobQueue
         IReadOnlyList<FileInfo> records = m_store.ListRecords(caseId);
         if (records.Count == 0)
         {
-            throw new InvalidOperationException("Upload at least one document before running ingest.");
+            throw new InvalidOperationException("Add at least one document before analyzing.");
         }
 
         PICase piCase = await analyzer.Ingest(records, m_store.DocumentCache(caseId), progress, cancellationToken);
@@ -226,7 +226,7 @@ public sealed class CaseJobQueue : BackgroundService, IJobQueue
     private async Task RunDraft(string caseId, MedicalRecordAnalyzer analyzer, Progress progress, CancellationToken cancellationToken)
     {
         PICase piCase = await m_store.LoadAnalysis(caseId, cancellationToken)
-            ?? throw new InvalidOperationException("Run ingest before drafting.");
+            ?? throw new InvalidOperationException("Analyze the documents before drafting.");
 
         DemandDraft draft = await analyzer.Draft(piCase, progress, cancellationToken);
         await m_store.SaveDraft(caseId, draft, CancellationToken.None);

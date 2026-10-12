@@ -243,12 +243,12 @@ public static class CaseEndpoints
 
         if (kind == JobKind.Ingest && store.ListRecords(caseId).Count == 0)
         {
-            return Error(StatusCodes.Status400BadRequest, "Upload at least one document before running ingest.");
+            return Error(StatusCodes.Status400BadRequest, "Add at least one document before analyzing.");
         }
 
         if (kind == JobKind.Draft && meta.AnalysisUpdatedAt is null)
         {
-            return Error(StatusCodes.Status409Conflict, "Run ingest before drafting.");
+            return Error(StatusCodes.Status409Conflict, "Analyze the documents before drafting.");
         }
 
         try
@@ -294,7 +294,7 @@ public static class CaseEndpoints
         }
 
         PICase? analysis = await store.LoadAnalysis(caseId, cancellationToken);
-        return analysis is null ? Error(StatusCodes.Status404NotFound, "This case has not been ingested yet.") : Results.Ok(analysis);
+        return analysis is null ? Error(StatusCodes.Status404NotFound, "This case has not been analyzed yet.") : Results.Ok(analysis);
     }
 
     private static async Task<IResult> MarkAnalysisReviewed(string caseId, ICaseStore store, IJobQueue jobs, CancellationToken cancellationToken)

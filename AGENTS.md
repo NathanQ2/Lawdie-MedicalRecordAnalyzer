@@ -106,9 +106,10 @@ npm run dev --prefix web
 - **Data:**
   - All API calls go through `web/src/api/client.ts`, which adds the required `X-MRA-Client` header. Types in `api/types.ts` mirror the API's camelCase JSON, with enums as strings.
   - Server state uses TanStack Query with the keys in `caseKeys`. Analysis and draft queries are keyed by their `updatedAt` timestamps.
-- **UI wording:**
-  - Call uploaded files "documents", not "records" (code identifiers and URLs still say `records`).
+- **UI wording:** follow [docs/writing-style.md](docs/writing-style.md). In short:
+  - Call uploaded files "documents", not "records" (code identifiers and URLs still say `records`), and say "analyze", not "ingest".
   - Don't mention Anthropic, LLM APIs or cost to end users.
+  - Use no em dashes or curly quotes.
   - Long-running actions still ask for confirmation.
 
 ## Security and privacy

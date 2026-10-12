@@ -44,12 +44,12 @@ describe('jobs', () => {
 
   it('reports per-record progress while summarizing', () => {
     const progress = jobProgress(job({ stage: 'SummarizingDocuments', completed: 7, total: 23, currentFile: 'ed.pdf' }))
-    expect(progress).toEqual({ percent: 30, detail: '7 of 23 documents — ed.pdf' })
+    expect(progress).toEqual({ percent: 30, detail: '7 of 23 documents · ed.pdf' })
   })
 
   it('shows indeterminate progress for single-call stages', () => {
     expect(jobProgress(job({ stage: 'FindingContradictions', total: 1 }))).toEqual({ percent: null, detail: '' })
-    expect(stageLabel('FindingContradictions')).toBe('Checking documents for contradictions')
+    expect(stageLabel('FindingContradictions')).toBe('Looking for contradictions')
   })
 })
 
@@ -63,6 +63,6 @@ describe('recordsNeedingSummaries', () => {
 describe('formatDateOnly', () => {
   it('shows the calendar date without shifting it across time zones', () => {
     expect(formatDateOnly('2026-01-09')).toBe(new Date(2026, 0, 9).toLocaleDateString(undefined, { dateStyle: 'medium' }))
-    expect(formatDateOnly(null)).toBe('—')
+    expect(formatDateOnly(null)).toBe('Not entered')
   })
 })

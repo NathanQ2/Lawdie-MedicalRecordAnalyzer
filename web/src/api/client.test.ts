@@ -23,9 +23,9 @@ describe('api client', () => {
   })
 
   it('raises the API error message', async () => {
-    mockFetch(new Response(JSON.stringify({ error: 'Run ingest before drafting.' }), { status: 409 }))
+    mockFetch(new Response(JSON.stringify({ error: 'Analyze the documents before drafting.' }), { status: 409 }))
 
-    await expect(api.startDraft('abc')).rejects.toEqual(new ApiError(409, 'Run ingest before drafting.'))
+    await expect(api.startDraft('abc')).rejects.toEqual(new ApiError(409, 'Analyze the documents before drafting.'))
   })
 
   it('falls back to a generic message without a JSON body', async () => {

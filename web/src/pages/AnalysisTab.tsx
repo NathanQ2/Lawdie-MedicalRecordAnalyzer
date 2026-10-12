@@ -50,7 +50,7 @@ export function AnalysisTab() {
   return (
     <Stack gap="md">
       {caseQuery.data?.analysisOutOfDate && (
-        <Alert color="amber">Documents changed after this analysis. Analyze them again to update it.</Alert>
+        <Alert color="amber">You changed the documents after this analysis. Analyze again to include the changes.</Alert>
       )}
       <Grid gap="md">
         <Grid.Col span={selected && wide ? 7 : 12}>
@@ -98,8 +98,8 @@ function AnalysisSections({ analysis, selected, onSelect }: AnalysisSectionsProp
           </Group>
         </Group>
         <Text size="xs" c="dimmed">
-          Click a number to see the quote in its source document. Highlighted sentences have no citation; check them against the
-          documents before relying on them.
+          Click a number to see its quote in the document. Highlighted sentences have no citation. Check them against the
+          documents before you use them.
         </Text>
         <Paper withBorder p="lg" radius="md">
           {analysis.summary ? (
@@ -126,7 +126,7 @@ function AnalysisSections({ analysis, selected, onSelect }: AnalysisSectionsProp
         </Group>
         {analysis.contradictions.length === 0 ? (
           <Text c="dimmed" size="sm">
-            No contradictions were found between or within the documents.
+            No contradictions were found.
           </Text>
         ) : (
           analysis.contradictions.map((contradiction, index) => (
@@ -172,12 +172,12 @@ export function ContradictionCard({ contradiction, selectedKey, onSelect }: Cont
         <Text size="sm">{contradiction.summary}</Text>
         {!contradiction.isVerified && contradiction.citations.length > 0 && (
           <Text size="xs" c="dimmed">
-            Only one quote supports this, so the documents don't show a conflict. Check it against the documents before relying on it.
+            Only one quote supports this, so it may not be a real conflict. Check the documents before you use it.
           </Text>
         )}
         {contradiction.citations.length === 0 ? (
           <Text size="xs" c="dimmed">
-            No quote from the documents supports this contradiction. Check it against the documents before relying on it.
+            No quote supports this. Check the documents before you use it.
           </Text>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: Math.min(contradiction.citations.length, 2) }} spacing="sm">
@@ -203,7 +203,7 @@ function QuoteButton({ citation, selected, onSelect }: { citation: Citation; sel
         {recordName(citation.filePath)}
         {pageLabel(citation) && ` · ${pageLabel(citation)}`}
       </Text>
-      <Text size="sm">“{citation.citedText.replace(/\s+/g, ' ').trim()}”</Text>
+      <Text size="sm">"{citation.citedText.replace(/\s+/g, ' ').trim()}"</Text>
     </UnstyledButton>
   )
 }

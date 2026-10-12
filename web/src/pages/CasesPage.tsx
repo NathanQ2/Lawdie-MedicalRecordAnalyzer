@@ -52,7 +52,7 @@ export function CasesPage() {
       case 'delete':
         modals.openConfirmModal({
           title: `Delete "${item.name}"?`,
-          children: <Text size="sm">This permanently deletes the case, its uploaded documents, and all results. It cannot be undone.</Text>,
+          children: <Text size="sm">This deletes the case, its documents and all results. You can't undo this.</Text>,
           labels: { confirm: 'Delete case', cancel: 'Keep it' },
           confirmProps: { color: 'brick' },
           onConfirm: () => remove.mutate(item),
@@ -87,7 +87,7 @@ export function CasesPage() {
           <Stack align="center" gap="xs">
             <Text fw={500}>No cases yet</Text>
             <Text c="dimmed" size="sm">
-              Start a case, add its medical documents, and analyze them to draft a demand letter.
+              Create a case, then add its medical documents.
             </Text>
           </Stack>
         </Paper>

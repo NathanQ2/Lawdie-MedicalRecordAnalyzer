@@ -56,7 +56,7 @@ export function SourceViewer({ caseId, citation, onClose }: SourceViewerProps) {
         </Group>
 
         <Blockquote p="xs" radius="sm" color="sage" styles={{ root: { fontSize: 'var(--mantine-font-size-sm)' } }}>
-          “{citation.citedText.replace(/\s+/g, ' ').trim()}”
+          "{citation.citedText.replace(/\s+/g, ' ').trim()}"
         </Blockquote>
         {citation.claim && (
           <Text size="xs" c="dimmed">
@@ -149,7 +149,7 @@ function ImageSource({ url, name }: { url: string; name: string }) {
   if (!DISPLAYABLE_IMAGE.test(name)) {
     return (
       <Text size="sm" c="dimmed">
-        This image type can't be shown here. Use “Open original” to view it.
+        This image type can't be shown here. Click Open original to see it.
       </Text>
     )
   }

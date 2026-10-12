@@ -62,7 +62,7 @@ describe('ReviewItemCard', () => {
       <ReviewItemCard item={{ ...contradiction, draftRanges: [] }} onUpdate={() => {}} onSelectCitation={() => {}} onShowInDraft={() => {}} />,
     )
 
-    expect(screen.getByText(/No cited sentence in the letter relies on these quotes/)).toBeInTheDocument()
+    expect(screen.getByText(/No cited sentence in the letter uses these quotes/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Show in letter/ })).not.toBeInTheDocument()
   })
 

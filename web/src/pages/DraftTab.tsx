@@ -51,8 +51,8 @@ export function DraftTab() {
       title: draft.data ? 'Draft the letter again?' : 'Draft the demand letter?',
       children: (
         <Text size="sm">
-          This writes the letter from the parts of the documents most relevant to each section. It takes a minute or two.
-          {draft.data && ' The current draft is replaced, but your review decisions are kept.'}
+          Drafting takes a minute or two.
+          {draft.data && ' This replaces the current letter. Your review decisions stay.'}
         </Text>
       ),
       labels: { confirm: 'Draft', cancel: 'Not now' },
@@ -70,8 +70,8 @@ export function DraftTab() {
           <Stack gap="sm">
             <Title order={3}>Draft the demand letter</Title>
             <Text size="sm" c="dimmed">
-              Writes the letter from the parts of the documents most relevant to each section, citing a document for every
-              fact. Anything the documents don't state, such as the claim number, is left as a placeholder for you to fill in.
+              Each fact in the letter cites a document. Details the documents don't give, such as the claim number, appear as
+              [PLACEHOLDERS] for you to fill in.
             </Text>
             <Group>
               <Button leftSection={<IconRun size={16} />} onClick={confirmDraft} disabled={isJobActive(job)} loading={start.isPending}>

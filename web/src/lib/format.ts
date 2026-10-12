@@ -17,7 +17,7 @@ export function formatBytes(bytes: number): string {
 }
 
 export function formatDateTime(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—'
+  return iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not yet'
 }
 
 /**
@@ -26,7 +26,7 @@ export function formatDateTime(iso: string | null): string {
  */
 export function formatDateOnly(date: string | null): string {
   if (!date) {
-    return '—'
+    return 'Not entered'
   }
 
   const [year, month, day] = date.split('-').map(Number)
@@ -56,8 +56,8 @@ export const jobKindLabels: Record<JobKind, string> = {
 }
 
 const stageLabels: Record<PipelineStage, string> = {
-  SummarizingDocuments: 'Summarizing documents',
-  FindingContradictions: 'Checking documents for contradictions',
+  SummarizingDocuments: 'Reading documents',
+  FindingContradictions: 'Looking for contradictions',
   SummarizingCase: 'Writing the case summary',
   Drafting: 'Drafting the demand letter',
 }
@@ -83,7 +83,7 @@ export function jobProgress(job: JobStatus): { percent: number | null; detail: s
   }
 
   if (job.stage === 'SummarizingDocuments' && job.total > 0) {
-    const current = job.completed < job.total ? ` — ${job.currentFile ?? ''}` : ''
+    const current = job.completed < job.total && job.currentFile ? ` · ${job.currentFile}` : ''
     return {
       percent: Math.round((job.completed / job.total) * 100),
       detail: `${job.completed} of ${job.total} documents${current}`,
@@ -94,8 +94,8 @@ export function jobProgress(job: JobStatus): { percent: number | null; detail: s
 }
 
 export const recordStatusLabels: Record<RecordStatus, string> = {
-  NotIngested: 'Not ingested',
-  Summarized: 'Summarized',
+  NotIngested: 'Not analyzed',
+  Summarized: 'Analyzed',
   Skipped: 'Skipped',
   Changed: 'Changed',
 }

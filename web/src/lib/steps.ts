@@ -31,19 +31,19 @@ export function caseSteps(detail: CaseDetail): CaseStep[] {
   })
 
   return [
-    step('matter', 'Matter', 'The case name, date of loss, jurisdiction and county. The date of loss fills in the letter.', detail.dateOfLoss ? 'done' : 'todo', ''),
-    step('records', 'Documents', 'Medical records, bills and letters for this matter.', hasRecords ? 'done' : 'todo', ''),
+    step('matter', 'Matter', 'The case name, date of loss, jurisdiction and county.', detail.dateOfLoss ? 'done' : 'todo', ''),
+    step('records', 'Documents', 'The medical records, bills and letters for this case.', hasRecords ? 'done' : 'todo', ''),
     step(
       'analyze',
       'Analyze',
-      'Reads each document, pulls out quotes with page numbers, and checks the documents against each other.',
+      'Find the quote behind each fact, and where the documents disagree.',
       !hasRecords ? 'locked' : analyzed && !detail.analysisOutOfDate ? 'done' : 'todo',
       'Add documents first.',
     ),
     step(
       'review',
       'Review',
-      'Check the case summary and any contradictions before drafting.',
+      'Check the case summary and contradictions before you draft.',
       // A letter drafted from the current analysis means it was reviewed, including for cases older than the flag.
       !analyzed ? 'locked' : detail.analysisReviewed || (drafted && !detail.draftOutOfDate) ? 'done' : 'todo',
       'Analyze the documents first.',
@@ -51,7 +51,7 @@ export function caseSteps(detail: CaseDetail): CaseStep[] {
     step(
       'letter',
       'Letter',
-      'Draft the demand letter, work through the review items, and export it.',
+      'Draft the letter, clear the review items, and export it.',
       !analyzed ? 'locked' : drafted && !detail.draftOutOfDate ? 'done' : 'todo',
       'Analyze the documents first.',
     ),

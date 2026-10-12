@@ -36,8 +36,8 @@ export function MatterTab() {
         <Stack gap={4}>
           <Title order={3}>Matter details</Title>
           <Text size="sm" c="dimmed">
-            The date of loss goes into the letter's heading and opening paragraph. Changing it here updates the letter without
-            drafting it again.
+            The letter uses the date of loss in its heading and first paragraph. When you change it here, the letter updates.
+            You don't need to draft it again.
           </Text>
         </Stack>
         {/* Keyed by case so polling while a job runs never resets what is being typed. */}

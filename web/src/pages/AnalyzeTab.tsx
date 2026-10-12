@@ -27,12 +27,11 @@ export function AnalyzeTab() {
         <Stack gap="sm">
           <Title order={3}>Analyze the documents</Title>
           <Text size="sm" c="dimmed">
-            Reads each document and pulls out quotes with their page numbers. Then it checks the documents against each other
-            for contradictions and writes a case summary that cites them. Documents that haven't changed since the last
-            analysis aren't read again.
+            The analysis finds the quote and page behind each fact, and lists the places where the documents disagree.
+            Documents you haven't changed are not read again.
           </Text>
           <Text size="sm">Last analyzed: {formatDateTime(detail.analysisUpdatedAt)}</Text>
-          {detail.analysisOutOfDate && <Alert color="amber">Documents changed after the last analysis.</Alert>}
+          {detail.analysisOutOfDate && <Alert color="amber">You changed the documents after the last analysis. Analyze again to include the changes.</Alert>}
           <Group>
             <Button
               leftSection={<IconRun size={16} />}
@@ -60,8 +59,8 @@ function confirmAnalysis(detail: CaseDetail, onConfirm: () => void) {
     children: (
       <Stack gap="xs">
         <Text size="sm">
-          This reads {toRead === 0 ? 'no new documents' : `up to ${toRead} new or changed ${toRead === 1 ? 'document' : 'documents'}`}, then
-          checks every document for contradictions and writes the case summary.
+          The analysis reads {toRead === 0 ? 'no new documents' : `up to ${toRead} new or changed ${toRead === 1 ? 'document' : 'documents'}`}.
+          Then it compares all the documents and writes the case summary again.
         </Text>
         <Text size="sm" c="dimmed">
           Large cases can take several minutes. You can leave this page while it runs.

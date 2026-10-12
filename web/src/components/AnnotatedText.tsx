@@ -51,7 +51,7 @@ export function AnnotatedText({
     <Text component="div" className={classes.text} ref={container}>
       {segments.map((segment, index) => {
         const content = segment.unsupported ? (
-          <Tooltip label="No citation supports this sentence. Check it against the documents." multiline w={260}>
+          <Tooltip label="No citation supports this sentence. Check it against the documents before you use it." multiline w={260}>
             <Mark className={classes.unsupported}>{show(segment.text)}</Mark>
           </Tooltip>
         ) : (
@@ -91,7 +91,7 @@ interface CitationMarkerProps {
 
 export function CitationMarker({ citation, number, selected, onSelect }: CitationMarkerProps) {
   return (
-    <Tooltip label={`${describeCitation(citation)}: “${citation.citedText.replace(/\s+/g, ' ').trim()}”`} multiline w={340}>
+    <Tooltip label={`${describeCitation(citation)}: "${citation.citedText.replace(/\s+/g, ' ').trim()}"`} multiline w={340}>
       <UnstyledButton
         className={classes.marker}
         data-selected={selected || undefined}

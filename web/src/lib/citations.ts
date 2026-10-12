@@ -41,9 +41,8 @@ export function recognitionNote(citation: Citation): string | null {
   if (!citation.recognized) {
     return null
   }
-  const details = [citation.handwritten && 'it is handwritten', citation.lowConfidence && 'some words were hard to read'].filter(Boolean)
-  const reason = details.length > 0 ? ` (${details.join('; ')})` : ''
-  return `This quote was read from a scanned page${reason}. Check it against the original before relying on it.`
+  const details = [citation.handwritten && 'It is handwritten.', citation.lowConfidence && 'Some words were hard to read.'].filter(Boolean)
+  return ['This quote was read from a scanned page.', ...details, 'Check it against the original before you use it.'].join(' ')
 }
 
 export function describeCitation(citation: Citation): string {

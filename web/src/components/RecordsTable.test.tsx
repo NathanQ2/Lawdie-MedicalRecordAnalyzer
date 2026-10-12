@@ -14,7 +14,7 @@ describe('RecordsTable', () => {
     renderWithMantine(<RecordsTable records={records} recordUrl={(name) => `/files/${name}`} />)
 
     expect(screen.getByRole('link', { name: '02_ED_Record.pdf' })).toHaveAttribute('href', '/files/02_ED_Record.pdf')
-    expect(screen.getByText('Summarized')).toBeInTheDocument()
+    expect(screen.getByText('Analyzed')).toBeInTheDocument()
     expect(screen.getByText('Skipped')).toBeInTheDocument()
     expect(screen.getByText('771 KB')).toBeInTheDocument()
   })

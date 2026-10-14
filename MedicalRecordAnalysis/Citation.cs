@@ -24,4 +24,24 @@ public class Citation
     public bool Handwritten { get; set; }
     public bool LowConfidence { get; set; }
     public int CitationLength => CitedText.Length;
+
+    /**
+     * A copy of this citation linked to the statement as it now reads, such as a letter sentence whose placeholders
+     * were filled in or which the attorney edited, so the source stays attached to it.
+     */
+    public Citation WithClaim(string? claim)
+    {
+        return new Citation()
+        {
+            FilePath = FilePath,
+            CitedText = CitedText,
+            StartPosition = StartPosition,
+            Claim = claim,
+            PageNumber = PageNumber,
+            EndPageNumber = EndPageNumber,
+            Recognized = Recognized,
+            Handwritten = Handwritten,
+            LowConfidence = LowConfidence,
+        };
+    }
 }

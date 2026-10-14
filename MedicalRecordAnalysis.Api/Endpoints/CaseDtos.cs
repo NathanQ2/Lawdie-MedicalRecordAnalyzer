@@ -42,4 +42,16 @@ public record RenameCaseRequest(string Name);
 
 public record UpdateReviewRequest(ReviewStatus Status, string? Note);
 
+/**
+ * A placeholder in the letter and what fills it: the value entered for this case, else the firm's profile. The
+ * date of loss comes from the intake details instead. Placeholders nothing fills stay in the letter for review.
+ */
+public record LetterPlaceholderDto(string Placeholder, string? Value, string? FirmValue, bool FromMatter);
+
+/**
+ * Sets values for the letter's placeholders, by placeholder. An empty value clears that placeholder's value;
+ * placeholders not listed keep theirs.
+ */
+public record UpdatePlaceholdersRequest(Dictionary<string, string?> Values);
+
 public record ErrorResponse(string Error);

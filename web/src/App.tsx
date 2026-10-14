@@ -5,6 +5,7 @@ import { IconDocuments } from './components/icons'
 import { Link, Navigate, Outlet, Route, Routes } from 'react-router'
 import { CasePage } from './pages/CasePage'
 import { CasesPage } from './pages/CasesPage'
+import { FirmPage } from './pages/FirmPage'
 import { ChronologyPage } from './pages/ChronologyPage'
 import { DocumentsPage } from './pages/DocumentsPage'
 import { IssuesPage } from './pages/IssuesPage'
@@ -16,6 +17,7 @@ export function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<CasesPage />} />
+        <Route path="firm" element={<FirmPage />} />
         <Route path="cases/:caseId" element={<CasePage />}>
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<OverviewPage />} />

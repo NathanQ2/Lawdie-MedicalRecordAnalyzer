@@ -1,13 +1,14 @@
 import { Alert, Badge, Box, Button, Card, Center, Drawer, Grid, Group, Loader, Menu, Paper, SegmentedControl, Stack, Text, Title, Tooltip } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { useMediaQuery } from '@mantine/hooks'
-import { IconDownload, IconRun } from '../components/icons'
+import { IconDownload, IconPencil, IconRun } from '../components/icons'
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { api } from '../api/client'
 import type { Citation, ReviewItem } from '../api/types'
 import { AnnotatedText } from '../components/AnnotatedText'
 import { JobStatusCard } from '../components/JobStatusCard'
+import { LetterDetailsModal } from '../components/LetterDetailsModal'
 import { ReviewItemCard } from '../components/ReviewItemCard'
 import { SourceViewer } from '../components/SourceViewer'
 import { useCase, useDraft, useReview, useReviewUpdate } from '../hooks/useCase'
@@ -27,6 +28,9 @@ export function LetterPage() {
   const [selected, setSelected] = useState<Citation | null>(null)
   const [panel, setPanel] = useState<Panel>('review')
   const [shownItem, setShownItem] = useState<ReviewItem | null>(null)
+  // The letter details dialog: closed, open, or open at the placeholder a review item asks to fill in.
+  const [details, setDetails] = useState<{ focus: string | null } | null>(null)
+  const fillIn = (placeholder: string) => setDetails({ focus: placeholder })
   const wide = useMediaQuery('(min-width: 75em)')
   const { start, cancel } = useJobActions(caseId)
   const now = useNow(isJobActive(caseQuery.data?.job))
@@ -51,7 +55,7 @@ export function LetterPage() {
       children: (
         <Text size="sm">
           Drafting may take a couple of minutes.
-          {draft.data && ' This replaces the current letter. Your review decisions stay.'}
+          {draft.data && ' This replaces the current letter. Your review decisions and letter details stay.'}
         </Text>
       ),
       labels: { confirm: 'Draft', cancel: 'Not now' },
@@ -122,6 +126,7 @@ export function LetterPage() {
                 onSelectCitation={select}
                 shownItemId={shown?.id ?? null}
                 onShowInDraft={showInDraft}
+                onFillIn={fillIn}
               />
         )}
       </Box>
@@ -150,7 +155,14 @@ export function LetterPage() {
             Click a number to see its source. Underlined sentences have no citation. Fill in each [BRACKETED] placeholder before sending.
           </Text>
         </Stack>
-        <ExportMenu caseId={caseId} issues={openIssues} letterItems={openLetterItems} />
+        <Group gap="sm">
+          <Tooltip label="Fill in the claim number, adjuster and other details the documents don't give.">
+            <Button variant="default" leftSection={<IconPencil size={16} />} onClick={() => setDetails({ focus: null })}>
+              Letter details
+            </Button>
+          </Tooltip>
+          <ExportMenu caseId={caseId} issues={openIssues} letterItems={openLetterItems} />
+        </Group>
       </Group>
 
       <Grid gap="md">
@@ -176,6 +188,7 @@ export function LetterPage() {
                 onSelectCitation={select}
                 shownItemId={shown?.id ?? null}
                 onShowInDraft={showInDraft}
+                onFillIn={fillIn}
               />
             </Box>
           )}
@@ -192,6 +205,8 @@ export function LetterPage() {
           {selected && <SourceViewer caseId={caseId} citation={selected} onClose={() => setPanel('review')} />}
         </Drawer>
       )}
+
+      <LetterDetailsModal caseId={caseId} opened={details !== null} focus={details?.focus} onClose={() => setDetails(null)} />
     </Stack>
   )
 }
@@ -244,9 +259,11 @@ interface ReviewChecklistProps {
   onSelectCitation: (citation: Citation) => void
   shownItemId?: string | null
   onShowInDraft?: (item: ReviewItem) => void
+  /** Opens the letter details at a placeholder, so a placeholder item can be filled in from its card. */
+  onFillIn?: (placeholder: string) => void
 }
 
-export function ReviewChecklist({ caseId, items, loading, onSelectCitation, shownItemId = null, onShowInDraft }: ReviewChecklistProps) {
+export function ReviewChecklist({ caseId, items, loading, onSelectCitation, shownItemId = null, onShowInDraft, onFillIn }: ReviewChecklistProps) {
   const [filter, setFilter] = useState<'open' | 'all'>('open')
   const update = useReviewUpdate(caseId)
 
@@ -295,6 +312,13 @@ export function ReviewChecklist({ caseId, items, loading, onSelectCitation, show
               onSelectCitation={onSelectCitation}
               onShowInDraft={onShowInDraft}
               shownInDraft={shownItemId === item.id}
+              actions={
+                item.kind === 'Placeholder' && onFillIn ? (
+                  <Button size="compact-xs" variant="light" leftSection={<IconPencil size={12} />} onClick={() => onFillIn(item.text)}>
+                    Fill in
+                  </Button>
+                ) : undefined
+              }
             />
           ))
         )}

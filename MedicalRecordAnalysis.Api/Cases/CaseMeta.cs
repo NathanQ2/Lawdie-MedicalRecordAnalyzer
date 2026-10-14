@@ -75,6 +75,11 @@ public class CaseMeta
     public DateTimeOffset? DraftUpdatedAt { get; set; }
     public JobStatus? CurrentJob { get; set; }
     public Dictionary<string, ReviewState> Review { get; set; } = [];
+    /**
+     * Values the attorney filled in for the letter's placeholders, by placeholder (such as "[CLAIM NUMBER]"). They
+     * override the firm's profile for this case.
+     */
+    public Dictionary<string, string> LetterValues { get; set; } = [];
 
     public MatterDetails Matter() => new MatterDetails(DateOfLoss, Jurisdiction, County);
 }

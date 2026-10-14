@@ -210,6 +210,82 @@ public sealed class ApiTests : IDisposable
         Assert.Contains(review, item => item.Text == "[CLAIM NUMBER]");
     }
 
+    [Fact]
+    public async Task SavesTheFirmProfile()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+
+        FirmProfile empty = (await client.GetFromJsonAsync<FirmProfile>("/api/firm", Json))!;
+        HttpResponseMessage saved = await client.PutAsJsonAsync("/api/firm", new FirmProfile(" Reyes Law ", "1 Main St\r\nSeattle, WA", "", null, "Dana Reyes"));
+        FirmProfile loaded = (await client.GetFromJsonAsync<FirmProfile>("/api/firm", Json))!;
+        HttpResponseMessage blankLine = await client.PutAsJsonAsync("/api/firm", new FirmProfile("Reyes Law", "1 Main St\n\nSeattle", null, null, null));
+        HttpResponseMessage tooLong = await client.PutAsJsonAsync("/api/firm", new FirmProfile(new string('x', 301), null, null, null, null));
+
+        Assert.Equal(FirmProfile.Empty, empty);
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        Assert.Equal(new FirmProfile("Reyes Law", "1 Main St\nSeattle, WA", null, null, "Dana Reyes"), loaded);
+        Assert.Equal(HttpStatusCode.BadRequest, blankLine.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+    }
+
+    [Fact]
+    public async Task FillsPlaceholdersFromTheFirmProfileAndTheCasesValues()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+        string path = $"/api/cases/{created.Id}/letter/placeholders";
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(path)).StatusCode);
+
+        await client.PostAsync($"/api/cases/{created.Id}/records", Files(("note.txt", Text("Neck pain after collision."))));
+        await client.PostAsync($"/api/cases/{created.Id}/ingest", null);
+        await WaitForJobToFinish(client, created.Id);
+        await client.PostAsync($"/api/cases/{created.Id}/draft", null);
+        await WaitForJobToFinish(client, created.Id);
+
+        await client.PutAsJsonAsync("/api/firm", new FirmProfile("Reyes Law", null, null, null, "Dana Reyes"));
+        HttpResponseMessage updated = await client.PutAsJsonAsync(path, new UpdatePlaceholdersRequest(new Dictionary<string, string?>()
+        {
+            ["[CLAIM NUMBER]"] = " CL-2026-0042 ",
+            ["[ATTORNEY NAME]"] = "Sam Ortiz",
+        }));
+        LetterPlaceholderDto[] placeholders = (await updated.Content.ReadFromJsonAsync<LetterPlaceholderDto[]>(Json))!;
+        DemandDraft draft = (await client.GetFromJsonAsync<DemandDraft>($"/api/cases/{created.Id}/draft", Json))!;
+        ReviewItem[] review = (await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!;
+        string markdown = await client.GetStringAsync($"/api/cases/{created.Id}/draft/export?format=md");
+
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        Assert.Contains(new LetterPlaceholderDto("[CLAIM NUMBER]", "CL-2026-0042", null, false), placeholders);
+        Assert.Contains(new LetterPlaceholderDto("[ATTORNEY NAME]", "Sam Ortiz", "Dana Reyes", false), placeholders);
+        Assert.Contains(new LetterPlaceholderDto("[LAW FIRM NAME]", null, "Reyes Law", false), placeholders);
+        Assert.Contains(new LetterPlaceholderDto(DemandLetterTemplate.DateOfLossPlaceholder, null, null, true), placeholders);
+        // The case's own value overrides the firm's, and filled placeholders leave the review checklist.
+        Assert.StartsWith("Reyes Law\n", draft.Narrative);
+        Assert.Contains("Claim No.: CL-2026-0042", draft.Narrative);
+        Assert.Contains("Sam Ortiz\nReyes Law", draft.Narrative);
+        Assert.Contains("Claim No.: CL-2026-0042", markdown);
+        Assert.DoesNotContain(review, item => item.Text is "[CLAIM NUMBER]" or "[LAW FIRM NAME]" or "[ATTORNEY NAME]");
+        Assert.Contains(review, item => item.Text == "[CLIENT NAME]");
+
+        HttpResponseMessage cleared = await client.PutAsJsonAsync(path, new UpdatePlaceholdersRequest(new Dictionary<string, string?>() { ["[CLAIM NUMBER]"] = "" }));
+        Assert.Contains(new LetterPlaceholderDto("[CLAIM NUMBER]", null, null, false), (await cleared.Content.ReadFromJsonAsync<LetterPlaceholderDto[]>(Json))!);
+    }
+
+    [Theory]
+    [InlineData("CLAIM NUMBER", "CL-1")]
+    [InlineData("[Claim number]", "CL-1")]
+    [InlineData("[DATE OF LOSS]", "January 9, 2026")]
+    [InlineData("[CLAIM NUMBER]", "Line one\n\nLine two")]
+    public async Task RejectsInvalidPlaceholderValues(string placeholder, string value)
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+
+        HttpResponseMessage response = await client.PutAsJsonAsync($"/api/cases/{created.Id}/letter/placeholders",
+            new UpdatePlaceholdersRequest(new Dictionary<string, string?>() { [placeholder] = value }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

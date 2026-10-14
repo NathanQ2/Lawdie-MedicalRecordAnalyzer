@@ -268,6 +268,16 @@ export function IconMore(props: IconProps) {
   return <Svg {...props}><path d="M12 5.5h.01M12 12h.01M12 18.5h.01" strokeWidth={2.6} /></Svg>
 }
 
+export function IconFirm(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3.5 9.5h17L12 4z" />
+      <path d="M6.5 9.5v9M10.5 9.5v9M13.5 9.5v9M17.5 9.5v9" />
+      <path d="M4 20h16" />
+    </Svg>
+  )
+}
+
 export function IconSidebar(props: IconProps) {
   return (
     <Svg {...props}>

@@ -156,6 +156,26 @@ export interface DemandDraft {
   unsupportedStatements: string[]
 }
 
+/** The firm's details for the letterhead and signature, shared by every case. */
+export interface FirmProfile {
+  firmName: string | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  attorneyName: string | null
+}
+
+/**
+ * A placeholder in the letter, such as "[CLAIM NUMBER]", and what fills it: this case's value, else the firm's
+ * profile. The date of loss comes from the matter details instead.
+ */
+export interface LetterPlaceholder {
+  placeholder: string
+  value: string | null
+  firmValue: string | null
+  fromMatter: boolean
+}
+
 export type ReviewItemKind = 'Contradiction' | 'UnsupportedStatement' | 'Placeholder' | 'RecognizedQuote' | 'IntakeMismatch'
 export type ReviewStatus = 'Open' | 'Resolved' | 'Dismissed'
 

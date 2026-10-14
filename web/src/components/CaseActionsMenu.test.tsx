@@ -2,7 +2,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { CaseListItem } from '../api/types'
 import { renderWithMantine } from '../test/render'
-import { CaseActionsMenu } from './CaseActionsMenu'
+import { CaseActionsMenu, CaseContextMenu } from './CaseActionsMenu'
 
 const item: CaseListItem = {
   id: 'abc123def456',
@@ -53,5 +53,18 @@ describe('CaseActionsMenu', () => {
     })
 
     expect(screen.getByRole('menuitem', { name: 'Delete…' })).toBeDisabled()
+  })
+})
+
+describe('CaseContextMenu', () => {
+  it('runs the chosen action and closes', () => {
+    const onClose = vi.fn()
+    const onAction = vi.fn()
+    renderWithMantine(<CaseContextMenu point={{ item, x: 40, y: 200 }} onClose={onClose} onAction={onAction} />)
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Issues' }))
+
+    expect(onAction).toHaveBeenCalledWith('issues')
+    expect(onClose).toHaveBeenCalled()
   })
 })

@@ -1,14 +1,17 @@
-import { AppShell, Loader, ScrollArea, Text, ThemeIcon, Tooltip } from '@mantine/core'
+import { ActionIcon, AppShell, Loader, ScrollArea, Text, ThemeIcon, Tooltip } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
-import type { ReactNode } from 'react'
+import { useState, type MouseEvent, type ReactNode } from 'react'
 import { Link, useLocation, useMatch, useNavigate } from 'react-router'
-import type { CaseDetail, ReviewItem } from '../api/types'
+import type { CaseDetail, CaseListItem, ReviewItem } from '../api/types'
 import { useAnalysis, useCase, useCases, useReview } from '../hooks/useCase'
+import { useCaseActions } from '../hooks/useCaseActions'
 import { isJobActive } from '../lib/format'
 import { openIssueCount, openLetterItemCount, sectionFromPath, sectionLabels, type SectionId } from '../lib/workspace'
 import classes from './AppSidebar.module.css'
-import { IconChronology, IconConflict, IconDocuments, IconLetter, IconMatter, IconOverview, IconPlus } from './icons'
+import { CaseActionsMenu, CaseContextMenu, type CaseAction, type CaseMenuPoint } from './CaseActionsMenu'
+import { IconChronology, IconConflict, IconDocuments, IconLetter, IconMatter, IconMore, IconOverview, IconPlus } from './icons'
 import { NewCaseModal } from './NewCaseModal'
+import { RenameCaseModal } from './RenameCaseModal'
 
 interface SidebarCount {
   value: number
@@ -36,7 +39,8 @@ interface AppSidebarProps {
 }
 
 /**
- * The app's sidebar: a new case, the case list, the open case's pages with their counts, and recent cases.
+ * The app's sidebar: a new case, the case list, the open case's pages with their counts, and recent cases with their
+ * options.
  */
 export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const caseId = useMatch('/cases/:caseId/*')?.params.caseId ?? null
@@ -44,6 +48,9 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const navigate = useNavigate()
   const cases = useCases()
   const [creating, { open, close }] = useDisclosure(false)
+  const { run, renaming, closeRename } = useCaseActions(onNavigate)
+  // A right-click on a recent case opens its menu at the cursor.
+  const [contextMenu, setContextMenu] = useState<CaseMenuPoint | null>(null)
 
   return (
     <AppShell.Navbar className={classes.sidebar}>
@@ -71,18 +78,18 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
           <div className={classes.heading}>Recent cases</div>
           <ScrollArea className={classes.recent} type="hover" scrollbarSize={6}>
             {cases.data.slice(0, RECENT_CASES).map((item) => (
-              <Link
+              <RecentCase
                 key={item.id}
-                to={`/cases/${item.id}`}
-                className={classes.item}
-                data-current={item.id === caseId || undefined}
-                title={item.name}
-                onClick={onNavigate}
-              >
-                <span className={classes.dot} />
-                <span className={classes.label}>{item.name}</span>
-                {isJobActive(item.job) && <Loader size={12} color="slate" aria-label="Analysis or draft running" />}
-              </Link>
+                item={item}
+                current={item.id === caseId}
+                menuOpened={contextMenu?.item.id === item.id}
+                onNavigate={onNavigate}
+                onAction={(action) => run(item, action)}
+                onContextMenu={(event) => {
+                  event.preventDefault()
+                  setContextMenu({ item, x: event.clientX, y: event.clientY })
+                }}
+              />
             ))}
           </ScrollArea>
         </>
@@ -96,7 +103,50 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
           navigate(`/cases/${newCaseId}/records`)
         }}
       />
+      {contextMenu && (
+        <CaseContextMenu point={contextMenu} onClose={() => setContextMenu(null)} onAction={(action) => run(contextMenu.item, action)} />
+      )}
+      <RenameCaseModal item={renaming} onClose={closeRename} />
     </AppShell.Navbar>
+  )
+}
+
+interface RecentCaseProps {
+  item: CaseListItem
+  current: boolean
+  /** Whether the case's right-click menu is open, which keeps the row highlighted like its ⋮ menu does. */
+  menuOpened: boolean
+  onNavigate: () => void
+  onAction: (action: CaseAction) => void
+  onContextMenu: (event: MouseEvent) => void
+}
+
+/**
+ * A recent case, with the case list's options menu behind a ⋮ button that shows on hover, or at the cursor on a
+ * right-click. The button sits beside the link rather than inside it, since a link can't hold another control.
+ */
+function RecentCase({ item, current, menuOpened, onNavigate, onAction, onContextMenu }: RecentCaseProps) {
+  const [buttonMenuOpened, setButtonMenuOpened] = useState(false)
+
+  return (
+    <div className={classes.row} data-menu-opened={buttonMenuOpened || menuOpened || undefined} onContextMenu={onContextMenu}>
+      <Link to={`/cases/${item.id}`} className={classes.item} data-current={current || undefined} title={item.name} onClick={onNavigate}>
+        <span className={classes.dot} />
+        <span className={classes.label}>{item.name}</span>
+        {isJobActive(item.job) && <Loader size={12} color="slate" aria-label="Analysis or draft running" />}
+      </Link>
+      <CaseActionsMenu
+        item={item}
+        opened={buttonMenuOpened}
+        onChange={setButtonMenuOpened}
+        onAction={onAction}
+        target={
+          <ActionIcon className={classes.more} variant="subtle" color="gray" size="sm" aria-label={`Options for ${item.name}`}>
+            <IconMore size={16} />
+          </ActionIcon>
+        }
+      />
+    </div>
   )
 }
 

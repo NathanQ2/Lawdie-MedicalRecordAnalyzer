@@ -1,4 +1,4 @@
-import { Menu } from '@mantine/core'
+import { Box, Menu, type MenuProps } from '@mantine/core'
 import { IconChronology, IconConflict, IconDocuments, IconDownload, IconLetter, IconOverview, IconPencil, IconTrash } from './icons'
 import type { ReactNode } from 'react'
 import { api } from '../api/client'
@@ -14,16 +14,17 @@ interface CaseActionsMenuProps {
   opened?: boolean
   onChange?: (opened: boolean) => void
   onAction: (action: CaseAction) => void
+  position?: MenuProps['position']
 }
 
 /**
  * The actions for one case, shared by the row's right-click menu and its ⋮ button.
  */
-export function CaseActionsMenu({ item, target, opened, onChange, onAction }: CaseActionsMenuProps) {
+export function CaseActionsMenu({ item, target, opened, onChange, onAction, position = 'bottom-end' }: CaseActionsMenuProps) {
   const jobActive = isJobActive(item.job)
 
   return (
-    <Menu opened={opened} onChange={onChange} position="bottom-end" withinPortal shadow="md" width={220}>
+    <Menu opened={opened} onChange={onChange} position={position} withinPortal shadow="md" width={220}>
       <Menu.Target>{target}</Menu.Target>
       <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
         <Menu.Item leftSection={<IconOverview size={16} />} onClick={() => onAction('open')}>
@@ -61,5 +62,36 @@ export function CaseActionsMenu({ item, target, opened, onChange, onAction }: Ca
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>
+  )
+}
+
+/** Where a right-click opened a case's menu. */
+export interface CaseMenuPoint {
+  item: CaseListItem
+  x: number
+  y: number
+}
+
+interface CaseContextMenuProps {
+  point: CaseMenuPoint
+  onClose: () => void
+  onAction: (action: CaseAction) => void
+}
+
+/**
+ * A case's menu opened by a right-click, below and to the right of the cursor like a system context menu. Keyed by
+ * the point, so a second right-click moves the menu rather than closing it.
+ */
+export function CaseContextMenu({ point, onClose, onAction }: CaseContextMenuProps) {
+  return (
+    <CaseActionsMenu
+      key={`${point.item.id}-${point.x}-${point.y}`}
+      item={point.item}
+      opened
+      onChange={(opened) => !opened && onClose()}
+      onAction={onAction}
+      position="bottom-start"
+      target={<Box pos="fixed" left={point.x} top={point.y} w={1} h={1} />}
+    />
   )
 }

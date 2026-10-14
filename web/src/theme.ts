@@ -42,6 +42,10 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     '--mra-glass': 'rgba(247, 248, 245, 0.55)',
     '--mra-glass-edge': 'rgba(255, 255, 255, 0.6)',
     '--mra-shadow': 'rgba(30, 42, 38, 0.10)',
+    // The sidebar is a lighter pane of the same glass, and its selected row a solid card on it.
+    '--mra-sidebar': 'rgba(247, 248, 245, 0.8)',
+    '--mra-sidebar-hover': 'rgba(30, 42, 38, 0.05)',
+    '--mra-sidebar-active': '#FFFFFF',
   },
   dark: {},
 })

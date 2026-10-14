@@ -1,37 +1,22 @@
 /*
- * The case workspace: the page menu, the current page, and the source panel docked on the right while a source is
- * open. On narrow screens the menu becomes a row above the page and the source opens in a drawer.
+ * The case workspace: the current page, and the source panel docked on the right while a source is open. On narrow
+ * screens the source opens in a drawer instead. Sticky parts sit below the header, which only narrow screens show.
  */
 .workspace {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--mantine-spacing-lg);
   align-items: start;
 }
 
 .workspace[data-docked] {
-  grid-template-columns: 200px minmax(0, 1fr) minmax(360px, 36%);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 40%);
 }
 
-.menu,
 .panel {
   position: sticky;
-  top: calc(var(--app-shell-header-height, 56px) + var(--mantine-spacing-md));
-}
-
-.panel {
-  height: calc(100vh - var(--app-shell-header-height, 56px) - 2 * var(--mantine-spacing-md));
-}
-
-@media (max-width: 62em) {
-  .workspace,
-  .workspace[data-docked] {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .menu {
-    position: static;
-  }
+  top: calc(var(--app-shell-header-offset, 0px) + var(--mantine-spacing-md));
+  height: calc(100vh - var(--app-shell-header-offset, 0px) - 2 * var(--mantine-spacing-md));
 }
 
 /* Each page enters with a short fade, so moving between pages reads as one workspace. */

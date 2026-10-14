@@ -1,5 +1,5 @@
 .viewer {
   position: sticky;
-  top: calc(var(--app-shell-header-height, 56px) + var(--mantine-spacing-md));
-  height: calc(100vh - var(--app-shell-header-height, 56px) - 2 * var(--mantine-spacing-md));
+  top: calc(var(--app-shell-header-offset, 0px) + var(--mantine-spacing-md));
+  height: calc(100vh - var(--app-shell-header-offset, 0px) - 2 * var(--mantine-spacing-md));
 }

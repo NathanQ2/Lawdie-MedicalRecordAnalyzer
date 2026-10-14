@@ -7,11 +7,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { api } from '../api/client'
-import type { CaseListItem, MatterInput } from '../api/types'
+import type { CaseListItem } from '../api/types'
 import { CaseActionsMenu, type CaseAction } from '../components/CaseActionsMenu'
-import { MatterForm } from '../components/MatterForm'
+import { NewCaseModal } from '../components/NewCaseModal'
 import { caseKeys, useCases } from '../hooks/useCase'
-import { formatDateOnly, formatDateTime, isJobActive, isoDate, jobKindLabels, jobStateColors } from '../lib/format'
+import { formatDateOnly, formatDateTime, isJobActive, jobKindLabels, jobStateColors } from '../lib/format'
 
 export function CasesPage() {
   const cases = useCases()
@@ -169,41 +169,6 @@ export function CasesPage() {
       <NewCaseModal opened={creating} onClose={close} onCreated={(caseId) => navigate(`/cases/${caseId}/records`)} />
       <RenameCaseModal item={renaming} onClose={() => setRenaming(null)} />
     </Stack>
-  )
-}
-
-interface NewCaseModalProps {
-  opened: boolean
-  onClose: () => void
-  onCreated: (caseId: string) => void
-}
-
-function NewCaseModal({ opened, onClose, onCreated }: NewCaseModalProps) {
-  const queryClient = useQueryClient()
-  const [today] = useState(() => isoDate(new Date()))
-  const create = useMutation({
-    mutationFn: (matter: MatterInput) => api.createCase(matter),
-    onSuccess: async (created) => {
-      await queryClient.invalidateQueries({ queryKey: caseKeys.all })
-      onClose()
-      onCreated(created.id)
-    },
-  })
-
-  return (
-    <Modal opened={opened} onClose={onClose} title="New case" size="lg">
-      {/* Mounted only while open, so each new matter starts from an empty form. */}
-      {opened && (
-        <MatterForm
-          today={today}
-          submitLabel="Create"
-          pending={create.isPending}
-          error={create.isError ? create.error.message : null}
-          onSubmit={(matter) => create.mutate(matter)}
-          onCancel={onClose}
-        />
-      )}
-    </Modal>
   )
 }
 

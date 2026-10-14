@@ -56,7 +56,7 @@ function Layout() {
       padding="md"
       withBorder={false}
     >
-      <AppShell.Header className="mra-glass">
+      <AppShell.Header className="mra-glass" hiddenFrom="md">
         <Group h="100%" px="md" gap="sm">
           <Burger opened={opened} onClick={toggle} size="sm" aria-label={opened ? 'Close the menu' : 'Open the menu'} />
           <Anchor component={Link} to="/" underline="never" c="inherit" onClick={close}>

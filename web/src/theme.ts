@@ -31,19 +31,20 @@ export const theme = createTheme({
   },
 })
 
-// Cards and inputs sit on a pale sage surface rather than pure white, so the page reads as one palette.
+// The page, cards and inputs are white; the sidebar sits on the palette's palest gray, so it reads as its own pane.
 export const cssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {
     '--mra-font-reading': "'Source Serif 4 Variable', Georgia, 'Times New Roman', serif",
   },
   light: {
-    '--mantine-color-body': '#F7F8F5',
-    '--mra-page': '#E7ECE4',
-    '--mra-glass': 'rgba(247, 248, 245, 0.55)',
+    '--mantine-color-body': '#FFFFFF',
+    '--mra-page': '#FFFFFF',
+    '--mra-glass': 'rgba(255, 255, 255, 0.72)',
     '--mra-glass-edge': 'rgba(255, 255, 255, 0.6)',
     '--mra-shadow': 'rgba(30, 42, 38, 0.10)',
-    // The sidebar is a lighter pane of the same glass, and its selected row a solid card on it.
-    '--mra-sidebar': 'rgba(247, 248, 245, 0.8)',
+    // The selected row in the sidebar is a white card on the sidebar's gray.
+    '--mra-sidebar': '#F7F8F5',
+    '--mra-sidebar-edge': '#E2E7DF',
     '--mra-sidebar-hover': 'rgba(30, 42, 38, 0.05)',
     '--mra-sidebar-active': '#FFFFFF',
   },

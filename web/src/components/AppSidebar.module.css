@@ -1,6 +1,6 @@
 /*
- * A light sidebar in the app's glass style: a pale translucent pane over the page's color field, rows that tint on
- * hover, and the current page raised as a solid card. Collapsed, it narrows to a rail of icons.
+ * A light sidebar: a pale gray pane beside the white page, rows that tint on hover, and the current page raised as a
+ * white card. Collapsed, it narrows to a rail of icons.
  */
 .sidebar {
   display: flex;
@@ -9,10 +9,7 @@
   overflow: hidden;
   padding: var(--mantine-spacing-sm);
   background-color: var(--mra-sidebar);
-  backdrop-filter: blur(22px) saturate(160%);
-  -webkit-backdrop-filter: blur(22px) saturate(160%);
-  border-right: 1px solid var(--mra-glass-edge);
-  box-shadow: 1px 0 0 rgba(30, 42, 38, 0.06);
+  border-right: 1px solid var(--mra-sidebar-edge);
   /* AppShell animates the page's padding as the sidebar's width changes; the sidebar follows at the same pace. */
   transition-property: transform, top, height, width;
 }
@@ -232,7 +229,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  box-shadow: 0 0 0 1.5px var(--mantine-color-body);
+  box-shadow: 0 0 0 1.5px var(--mra-sidebar);
 
   &[data-tone='brick'] {
     background-color: var(--mantine-color-brick-6);

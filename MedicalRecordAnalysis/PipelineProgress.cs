@@ -5,6 +5,7 @@ public enum PipelineStage
     SummarizingDocuments,
     FindingContradictions,
     SummarizingCase,
+    BuildingChronology,
     Drafting,
 }
 

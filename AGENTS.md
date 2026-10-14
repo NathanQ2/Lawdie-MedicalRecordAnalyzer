@@ -28,7 +28,8 @@ Medical Record Analysis automates the demand-letter work for personal injury (PI
 2. Summarize each document. The text is sent as citable chunks (`TextChunker` splits it into lines, then sentences). Each citation maps back to an exact span of the source, and the API's quoted text must match the chunks we sent, or the citation is dropped.
 3. Find contradictions between and within documents. Quotes are referenced by ID (`[Q12]`), never by restating their text.
 4. Write a case summary that cites the extracted quotes and presents disputed facts as disputed. `GroundingCheck` lists sentences no citation covers.
-5. Assign page numbers to every citation (`PageLocator`), and flag citations that quote OCR'd text (`RecognitionLocator`).
+5. Build the chronology: each visit, test or procedure with its date, provider and main finding, citing quotes by ID, plus the date of loss the records state. `ChronologyCheck` confirms each date and provider name against the cited document and flags what it can't find, and keeps the date of loss only when its own quote states it. The API compares that date with the intake date of loss and lists a mismatch as a review item.
+6. Assign page numbers to every citation (`PageLocator`), and flag citations that quote OCR'd text (`RecognitionLocator`).
 
 **Draft** (`MedicalRecordAnalyzer.Draft`):
 1. `PassageRetriever` picks the passages most relevant to each part of the letter, within a character budget.
@@ -43,6 +44,7 @@ Medical Record Analysis automates the demand-letter work for personal injury (PI
 - Uncited sentences are reported, not hidden.
 - When a value is unknown, use a placeholder; never guess.
 - Quotes read by OCR are flagged and listed for review, because OCR can misread characters.
+- Chronology dates and provider names that can't be found in the cited document are flagged, never trusted silently.
 
 ## Building, running and testing
 **Requirements:** .NET 10 SDK, and Node.js 22.12 or newer (the developer uses Node 24 via nvm). An Anthropic API key in `ANTHROPIC_API_KEY`, or in `.env` at the repository root; the API and live tests read `.env` in development. OCR is optional: set `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT` and `AZURE_DOCUMENT_INTELLIGENCE_KEY` to enable it; without them, scans are skipped.

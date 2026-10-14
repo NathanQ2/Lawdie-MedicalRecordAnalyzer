@@ -69,4 +69,36 @@ public class ReviewItemsTests
 
         Assert.All(items, item => Assert.Empty(item.DraftRanges));
     }
+
+    [Fact]
+    public void FlagsAnIntakeDateOfLossTheDocumentsContradict()
+    {
+        Citation quote = new Citation() { FilePath = "/r/pcp.txt", CitedText = "rear-ended by a box truck on 01/09/2026", StartPosition = 40 };
+        PICase analysis = Analysis();
+        analysis.RecordedDateOfLoss = new CitedDate() { Date = new DateOnly(2026, 1, 9), Citations = [quote] };
+        DemandDraft letter = new DemandDraft() { Segments = [new DraftSegment() { Text = "Injuries sustained on October 9, 2026 in a collision." }] };
+
+        IReadOnlyList<ReviewItem> items = ReviewItems.Build(analysis, letter, new Dictionary<string, ReviewState>(),
+            new MatterDetails(new DateOnly(2026, 10, 9), null, null));
+
+        ReviewItem mismatch = items.Single(item => item.Kind == ReviewItemKind.IntakeMismatch);
+        Assert.Equal("The matter details give the date of loss as October 9, 2026, but the documents give January 9, 2026.", mismatch.Text);
+        Assert.Equal([quote], mismatch.Citations);
+        Assert.Equal("October 9, 2026", letter.Narrative.Substring(mismatch.DraftRanges[0].Start, mismatch.DraftRanges[0].Length));
+    }
+
+    [Fact]
+    public void NoIntakeItemWhenTheDatesAgreeOrEitherIsMissing()
+    {
+        PICase analysis = Analysis();
+        analysis.RecordedDateOfLoss = new CitedDate() { Date = new DateOnly(2026, 1, 9), Citations = [EmsQuote] };
+        Dictionary<string, ReviewState> states = [];
+
+        Assert.DoesNotContain(ReviewItems.Build(analysis, null, states, new MatterDetails(new DateOnly(2026, 1, 9), null, null)),
+            item => item.Kind == ReviewItemKind.IntakeMismatch);
+        Assert.DoesNotContain(ReviewItems.Build(analysis, null, states, new MatterDetails(null, null, null)),
+            item => item.Kind == ReviewItemKind.IntakeMismatch);
+        Assert.DoesNotContain(ReviewItems.Build(Analysis(), null, states, new MatterDetails(new DateOnly(2026, 10, 9), null, null)),
+            item => item.Kind == ReviewItemKind.IntakeMismatch);
+    }
 }

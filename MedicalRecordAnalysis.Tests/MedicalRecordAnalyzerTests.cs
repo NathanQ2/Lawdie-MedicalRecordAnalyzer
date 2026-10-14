@@ -87,7 +87,7 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
 
         await new MedicalRecordAnalyzer(provider).Ingest(m_files.Directory, output);
 
-        Assert.Equal(["SummarizeDocument", "Verify", "SummarizeCase"], provider.Calls);
+        Assert.Equal(["SummarizeDocument", "Verify", "SummarizeCase", "BuildChronology"], provider.Calls);
         Assert.Equal(1, provider.ContradictionsSeenBySummarizeCase);
     }
 
@@ -122,6 +122,12 @@ public sealed class MedicalRecordAnalyzerTests : IDisposable
         {
             Calls.Add(nameof(Verify));
             return Task.FromResult(new VerificationResult() { Contradictions = [new Contradiction() { Summary = "dates differ", Citations = [] }] });
+        }
+
+        public Task<ChronologyResult> BuildChronology(PICase piCase, CancellationToken cancellationToken = default)
+        {
+            Calls.Add(nameof(BuildChronology));
+            return Task.FromResult(new ChronologyResult());
         }
     }
 }

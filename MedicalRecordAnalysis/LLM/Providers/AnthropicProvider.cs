@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Anthropic;
@@ -82,6 +83,23 @@ public class AnthropicProvider : ILLMProvider
         "only, using this exact shape: " +
         "{\"contradictions\":[{\"summary\":\"<description>\",\"quoteIds\":[\"Q1\",\"Q2\"]}]}. " +
         "If there are no contradictions, return {\"contradictions\":[]}.";
+
+    private const string ChronologySystemPrompt =
+        "You are a legal intake assistant for a personal injury law firm. From the provided document summaries " +
+        "and supporting quotes, list every visit, test, procedure, therapy session or other encounter with a " +
+        "medical or other provider, one entry per encounter, and the date of the incident that caused the " +
+        "injuries (the date of loss). Use only facts stated in the quotes, and never infer a date. Each document " +
+        "is labeled with its record's file name, and each supporting quote with an ID such as [Q3]; cite the " +
+        "quotes behind each entry by ID only, never by restating their text, and cite the quote that states its " +
+        "date. Skip an encounter whose date no quote states. Write each date as YYYY-MM-DD. Name the provider by " +
+        "the facility or practice as the record names it, such as \"Valley Rehab & Physical Therapy\", without the " +
+        "clinician's name, and write it the same way in every entry for that facility; use the clinician's name only " +
+        "when the record names no facility. Describe the visit type in a few words, such as \"ED visit\" " +
+        "or \"MRI cervical spine\", and the main finding in one plain phrase of at most 12 words. Quotes marked " +
+        "(OCR) were read by text recognition and may contain misread characters. Respond with JSON only, using " +
+        "this exact shape: {\"dateOfLoss\":{\"date\":\"YYYY-MM-DD\",\"quoteIds\":[\"Q1\"]},\"entries\":[{\"date\":" +
+        "\"YYYY-MM-DD\",\"provider\":\"<provider>\",\"visitType\":\"<visit type>\",\"finding\":\"<finding>\"," +
+        "\"quoteIds\":[\"Q2\"]}]}. Use null for dateOfLoss if no quote states it.";
 
     private readonly AnthropicClient m_client;
     private readonly string m_model;
@@ -392,6 +410,55 @@ public class AnthropicProvider : ILLMProvider
         };
     }
 
+    public async Task<ChronologyResult> BuildChronology(PICase piCase, CancellationToken cancellationToken = default)
+    {
+        string response = await Complete(ChronologySystemPrompt, BuildCaseContext(piCase), cancellationToken);
+        return ParseChronology(response, NumberQuotes(piCase));
+    }
+
+    /**
+     * Turns the model's JSON into chronology entries, resolving quote IDs to citations. Entries with a date that is
+     * not YYYY-MM-DD, a missing field or no resolvable quote are dropped, since they can't be traced to a record.
+     */
+    internal static ChronologyResult ParseChronology(string response, IReadOnlyList<Citation> quotes)
+    {
+        ChronologyDto? dto = Deserialize<ChronologyDto>(response);
+
+        List<ChronologyEntry> entries = [];
+        foreach (ChronologyEntryDto entry in dto?.Entries ?? [])
+        {
+            Citation[] citations = ResolveQuoteIds(quotes, entry.QuoteIds ?? []);
+            if (!TryParseDate(entry.Date, out DateOnly date) || citations.Length == 0 ||
+                string.IsNullOrWhiteSpace(entry.Provider) || string.IsNullOrWhiteSpace(entry.VisitType))
+            {
+                continue;
+            }
+
+            entries.Add(new ChronologyEntry()
+            {
+                Date = date,
+                Provider = entry.Provider.Trim(),
+                VisitType = entry.VisitType.Trim(),
+                Finding = entry.Finding?.Trim() ?? "",
+                Citations = citations,
+            });
+        }
+
+        CitedDate? dateOfLoss = null;
+        if (dto?.DateOfLoss is CitedDateDto stated && TryParseDate(stated.Date, out DateOnly lossDate) &&
+            ResolveQuoteIds(quotes, stated.QuoteIds ?? []) is { Length: > 0 } lossCitations)
+        {
+            dateOfLoss = new CitedDate() { Date = lossDate, Citations = lossCitations };
+        }
+
+        return new ChronologyResult() { Entries = entries.ToArray(), DateOfLoss = dateOfLoss };
+    }
+
+    private static bool TryParseDate(string? text, out DateOnly date)
+    {
+        return DateOnly.TryParseExact(text?.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+    }
+
     /**
      * Sends the request as a stream (long responses would otherwise hit HTTP timeouts), collects it into the complete
      * message, and rejects responses that stopped early (cut off by the token limit, or declined partway by a safety
@@ -536,6 +603,27 @@ public class AnthropicProvider : ILLMProvider
     private sealed class ContradictionDto
     {
         public string? Summary { get; set; }
+        public List<string>? QuoteIds { get; set; }
+    }
+
+    private sealed class ChronologyDto
+    {
+        public CitedDateDto? DateOfLoss { get; set; }
+        public List<ChronologyEntryDto>? Entries { get; set; }
+    }
+
+    private sealed class CitedDateDto
+    {
+        public string? Date { get; set; }
+        public List<string>? QuoteIds { get; set; }
+    }
+
+    private sealed class ChronologyEntryDto
+    {
+        public string? Date { get; set; }
+        public string? Provider { get; set; }
+        public string? VisitType { get; set; }
+        public string? Finding { get; set; }
         public List<string>? QuoteIds { get; set; }
     }
 

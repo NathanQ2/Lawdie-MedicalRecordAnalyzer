@@ -486,6 +486,7 @@ public sealed class ApiTests : IDisposable
 
         public Task<CaseSummary> SummarizeCase(PICase piCase, CancellationToken cancellationToken = default) => m_inner.SummarizeCase(piCase, cancellationToken);
         public Task<VerificationResult> Verify(PICase piCase, CancellationToken cancellationToken = default) => m_inner.Verify(piCase, cancellationToken);
+        public Task<ChronologyResult> BuildChronology(PICase piCase, CancellationToken cancellationToken = default) => m_inner.BuildChronology(piCase, cancellationToken);
         public Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages, CancellationToken cancellationToken = default) =>
             m_inner.DraftDemand(piCase, passages, cancellationToken);
     }
@@ -499,6 +500,7 @@ public sealed class ApiTests : IDisposable
         public Task<CaseSummary> SummarizeCase(PICase piCase, CancellationToken cancellationToken = default) => m_inner.SummarizeCase(piCase, cancellationToken);
         public Task<VerificationResult> Verify(PICase piCase, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Verification failed.");
+        public Task<ChronologyResult> BuildChronology(PICase piCase, CancellationToken cancellationToken = default) => m_inner.BuildChronology(piCase, cancellationToken);
         public Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages, CancellationToken cancellationToken = default) =>
             m_inner.DraftDemand(piCase, passages, cancellationToken);
     }

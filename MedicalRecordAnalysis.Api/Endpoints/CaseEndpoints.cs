@@ -397,7 +397,7 @@ public static class CaseEndpoints
     {
         PICase? analysis = await store.LoadAnalysis(meta.Id, cancellationToken);
         DemandDraft? draft = await LoadDraft(meta, store, cancellationToken);
-        return ReviewItems.Build(analysis, draft, meta.Review);
+        return ReviewItems.Build(analysis, draft, meta.Review, meta.Matter());
     }
 
     /**

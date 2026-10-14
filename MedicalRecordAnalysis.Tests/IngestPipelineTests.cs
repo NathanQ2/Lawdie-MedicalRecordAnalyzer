@@ -52,6 +52,7 @@ public sealed class IngestPipelineTests : IDisposable
         Assert.Equal(["blank.txt", "scan.png"], piCase.SkippedFiles.Select(skipped => Path.GetFileName(skipped.FilePath)));
         Assert.Equal(0, provider.Verifications);
         Assert.Equal(0, provider.CaseSummaries);
+        Assert.Equal(0, provider.Chronologies);
     }
 
     [Fact]
@@ -73,6 +74,7 @@ public sealed class IngestPipelineTests : IDisposable
             new PipelineProgress(PipelineStage.SummarizingDocuments, 2, 2),
             new PipelineProgress(PipelineStage.FindingContradictions, 0, 1),
             new PipelineProgress(PipelineStage.SummarizingCase, 0, 1),
+            new PipelineProgress(PipelineStage.BuildingChronology, 0, 1),
             new PipelineProgress(PipelineStage.Drafting, 0, 1),
         ], progress.Reports);
     }
@@ -217,6 +219,7 @@ public sealed class IngestPipelineTests : IDisposable
         public int DocumentSummaries { get; private set; }
         public int Verifications { get; private set; }
         public int CaseSummaries { get; private set; }
+        public int Chronologies { get; private set; }
 
         public Task<DocumentSummary> SummarizeDocument(FileInfo file, string text, CancellationToken cancellationToken = default)
         {
@@ -234,6 +237,12 @@ public sealed class IngestPipelineTests : IDisposable
         {
             Verifications++;
             return m_inner.Verify(piCase, cancellationToken);
+        }
+
+        public Task<ChronologyResult> BuildChronology(PICase piCase, CancellationToken cancellationToken = default)
+        {
+            Chronologies++;
+            return m_inner.BuildChronology(piCase, cancellationToken);
         }
 
         public Task<DemandDraft> DraftDemand(PICase piCase, IReadOnlyList<RetrievedPassage> passages, CancellationToken cancellationToken = default)

@@ -11,7 +11,7 @@ A browser UI for the full workflow: upload a case's records, run `ingest` and `d
 | Source viewer | pdf.js for PDFs; a text view for `.txt` and `.md` files |
 | Hosting | Local only for now: the API listens on this computer only, has no login, and keeps the API key on the server |
 | Case storage | `cases/` at the repository root (git-ignored), behind an `ICaseStore` interface so cloud storage can replace it later |
-| Draft | Read-only in the UI, with clickable source notes; placeholders filled from the firm profile and the case's letter details; exported as Word (`.docx`, with footnotes), Markdown, or plain text |
+| Draft | Editable a paragraph at a time, with clickable source notes; placeholders filled from the firm profile and the case's letter details; exported as Word (`.docx`, with footnotes), Markdown, or plain text |
 | Adding records later | Summarize only new or changed files, then rerun verification and the case summary over the whole case |
 
 Real patient records must not go into a shared deployment until login and HIPAA controls exist.
@@ -27,7 +27,7 @@ web/ (React + TS, Vite, Mantine)  ──HTTP──▶  MedicalRecordAnalysis.Api
 Each case folder contains:
 - `records/`: the uploaded documents.
 - `case.json`: the `PICase` (the ingest result).
-- `draft.json`: the draft as structured segments with their citations. Placeholders stay in brackets here and are filled in when the letter is served. Exports are rendered from it on request, not stored.
+- `draft.json`: the draft as structured segments with their citations, including the attorney's edits. Placeholders stay in brackets here and are filled in when the letter is served. Exports are rendered from it on request, not stored.
 - `meta.json`: the case name, intake details, timestamps, job status, review checklist state, and the values entered for the letter's placeholders.
 
 The firm's profile is `firm.json` beside the case folders.
@@ -65,8 +65,9 @@ The UI checks the status of a running job every couple of seconds. Live updates 
    - Chronology lists every visit by date or by provider, with flags for contradictions, unconfirmed dates or providers, scanned quotes and visits before the incident.
    - Issues gathers contradictions and intake details the documents disagree with, such as the date of loss.
    - A source panel docks beside every page except the letter, which keeps its own.
+   - The letter can be edited a paragraph at a time. Source numbers stay attached to the sentences they follow, only the letter's own sources can be used, and sentences left without one are listed for review. Drafting again warns that it replaces the edits.
    - A firm profile fills the letterhead and signature of every letter, and a case's letter details fill its other placeholders. Placeholder review items have a "Fill in" button.
-   - Next: an editable letter with inline review, and a Damages page.
+   - Next: review items shown inline beside the letter's text, and a Damages page.
 
 Later: login and cloud storage.
 
@@ -83,6 +84,8 @@ Later: login and cloud storage.
 | `GET /api/cases/{id}/draft/export?format=docx\|md\|txt` | Download the draft |
 | `GET /api/cases/{id}/review` | List the attorney review checklist |
 | `PUT /api/cases/{id}/review/{itemId}` | Resolve or dismiss a review item, with a note |
+| `GET /api/cases/{id}/draft?fill=false` | The letter as drafted, before its placeholders are filled, which edits apply to |
+| `PUT /api/cases/{id}/draft/text` | Edit a stretch of the letter's text |
 | `GET/PUT /api/cases/{id}/letter/placeholders` | List the letter's placeholders with what fills each, and set the case's values |
 | `GET/PUT /api/firm` | Read or save the firm profile |
 

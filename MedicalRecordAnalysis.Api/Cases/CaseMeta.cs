@@ -73,6 +73,8 @@ public class CaseMeta
     /** When the attorney last finished reviewing the analysis; earlier than AnalysisUpdatedAt after a new analysis. */
     public DateTimeOffset? AnalysisReviewedAt { get; set; }
     public DateTimeOffset? DraftUpdatedAt { get; set; }
+    /** When the attorney last edited the letter's text; cleared when the letter is drafted again. */
+    public DateTimeOffset? LetterEditedAt { get; set; }
     public JobStatus? CurrentJob { get; set; }
     public Dictionary<string, ReviewState> Review { get; set; } = [];
     /**

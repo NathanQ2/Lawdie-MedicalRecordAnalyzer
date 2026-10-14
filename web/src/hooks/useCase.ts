@@ -2,7 +2,7 @@ import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { api } from '../api/client'
-import type { CaseDetail, FirmProfile, JobStatus, MatterInput, ReviewItem, ReviewStatus } from '../api/types'
+import type { CaseDetail, FirmProfile, JobStatus, LetterEdit, MatterInput, ReviewItem, ReviewStatus } from '../api/types'
 import { isJobActive, jobKindLabels } from '../lib/format'
 
 const POLL_INTERVAL_MS = 1500
@@ -15,6 +15,7 @@ export const caseKeys = {
   detail: (caseId: string) => ['cases', caseId] as const,
   analysis: (caseId: string, updatedAt: string | null) => ['cases', caseId, 'analysis', updatedAt] as const,
   draft: (caseId: string, updatedAt: string | null) => ['cases', caseId, 'draft', updatedAt] as const,
+  unfilledDraft: (caseId: string) => ['cases', caseId, 'draft', 'unfilled'] as const,
   review: (caseId: string) => ['cases', caseId, 'review'] as const,
   placeholders: (caseId: string) => ['cases', caseId, 'placeholders'] as const,
   firm: ['firm'] as const,
@@ -136,6 +137,20 @@ export function usePlaceholderUpdate(caseId: string) {
       queryClient.setQueryData(caseKeys.placeholders(caseId), placeholders)
       await refreshLetter(queryClient, caseId)
     },
+  })
+}
+
+/** The letter as drafted, before its placeholders are filled in, which the editor works on. */
+export function useUnfilledDraft(caseId: string, enabled: boolean) {
+  return useQuery({ queryKey: caseKeys.unfilledDraft(caseId), queryFn: () => api.getUnfilledDraft(caseId), enabled })
+}
+
+/** Saves an edit to the letter's text, then reloads the letter and its review items. */
+export function useLetterEdit(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (edit: LetterEdit) => api.editLetter(caseId, edit),
+    onSuccess: () => refreshLetter(queryClient, caseId),
   })
 }
 

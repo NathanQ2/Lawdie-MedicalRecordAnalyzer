@@ -20,6 +20,7 @@ function caseDetail(overrides: Partial<CaseDetail> = {}): CaseDetail {
     draftUpdatedAt: '2026-10-01T12:00:00Z',
     draftOutOfDate: false,
     job: null,
+    letterEditedAt: null,
     ...overrides,
   }
 }

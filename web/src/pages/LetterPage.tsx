@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router'
 import { api } from '../api/client'
 import type { Citation, ReviewItem } from '../api/types'
-import { AnnotatedText } from '../components/AnnotatedText'
+import { EditableLetter } from '../components/EditableLetter'
 import { JobStatusCard } from '../components/JobStatusCard'
 import { LetterDetailsModal } from '../components/LetterDetailsModal'
 import { ReviewItemCard } from '../components/ReviewItemCard'
@@ -55,7 +55,10 @@ export function LetterPage() {
       children: (
         <Text size="sm">
           Drafting may take a couple of minutes.
-          {draft.data && ' This replaces the current letter. Your review decisions and letter details stay.'}
+          {draft.data &&
+            (caseQuery.data?.letterEditedAt
+              ? ' This replaces the current letter, including your edits to its text. Your review decisions and letter details stay.'
+              : ' This replaces the current letter. Your review decisions and letter details stay.')}
         </Text>
       ),
       labels: { confirm: 'Draft', cancel: 'Not now' },
@@ -89,7 +92,6 @@ export function LetterPage() {
   }
 
   const segments = draft.data.segments
-  const narrative = segments.map((segment) => segment.text).join('')
   const citations = segments.flatMap((segment) => segment.citations)
   // Counted the same way as the sidebar: issues are checked before drafting, letter items are fixed in the letter.
   const openIssues = openIssueCount(review.data)
@@ -152,7 +154,8 @@ export function LetterPage() {
         <Stack gap={4} flex="1 1 320px">
           <Title order={3}>Demand letter</Title>
           <Text size="xs" c="dimmed">
-            Click a number to see its source. Underlined sentences have no citation. Fill in each [BRACKETED] placeholder before sending.
+            Click a number to see its source. Underlined sentences have no citation. Fill in each [BRACKETED] placeholder before sending, and use the
+            pencil beside a paragraph to edit it.
           </Text>
         </Stack>
         <Group gap="sm">
@@ -168,15 +171,14 @@ export function LetterPage() {
       <Grid gap="md">
         <Grid.Col span={wide ? 7 : 12}>
           <Paper withBorder p="lg" radius="md">
-            <AnnotatedText
-              text={narrative}
-              citations={citations}
-              unsupportedStatements={draft.data.unsupportedStatements}
+            <EditableLetter
+              caseId={caseId}
+              draft={draft.data}
               numberOf={citationNumbering(citations)}
               selectedKey={selected ? citationKey(selected) : null}
               onSelect={select}
-              letter
               highlights={highlights}
+              editable={!isJobActive(job)}
             />
           </Paper>
           {!wide && (

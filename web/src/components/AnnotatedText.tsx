@@ -16,6 +16,8 @@ interface AnnotatedTextProps {
   letter?: boolean
   /** [start, end) ranges to highlight, such as the sentences a review item affects. The first is scrolled into view. */
   highlights?: [number, number][]
+  /** Whether to scroll the first highlight into view; off for all but one piece when a text is shown in pieces. */
+  scrollToHighlight?: boolean
 }
 
 // Matches the API's placeholder pattern (DemandLetterRenderer.FindPlaceholders).
@@ -35,6 +37,7 @@ export function AnnotatedText({
   onSelect,
   letter = false,
   highlights = [],
+  scrollToHighlight = true,
 }: AnnotatedTextProps) {
   const segments = annotate(text, citations, unsupportedStatements, highlights)
   const show = (content: string) => (letter ? asLetter(content) : content)
@@ -42,10 +45,10 @@ export function AnnotatedText({
   const highlightKey = highlights.map(([start, end]) => `${start}-${end}`).join(',')
 
   useEffect(() => {
-    if (highlightKey) {
+    if (highlightKey && scrollToHighlight) {
       container.current?.querySelector('[data-highlighted]')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }
-  }, [highlightKey])
+  }, [highlightKey, scrollToHighlight])
 
   return (
     <Text component="div" className={classes.text} ref={container}>

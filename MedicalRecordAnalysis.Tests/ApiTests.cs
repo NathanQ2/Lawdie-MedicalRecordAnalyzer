@@ -270,6 +270,51 @@ public sealed class ApiTests : IDisposable
         Assert.Contains(new LetterPlaceholderDto("[CLAIM NUMBER]", null, null, false), (await cleared.Content.ReadFromJsonAsync<LetterPlaceholderDto[]>(Json))!);
     }
 
+    [Fact]
+    public async Task EditsTheLettersTextAndListsNewSentencesForReview()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+        await client.PostAsync($"/api/cases/{created.Id}/records", Files(("note.txt", Text("Neck pain after collision."))));
+        await client.PostAsync($"/api/cases/{created.Id}/ingest", null);
+        await WaitForJobToFinish(client, created.Id);
+        await client.PostAsync($"/api/cases/{created.Id}/draft", null);
+        await WaitForJobToFinish(client, created.Id);
+
+        DemandDraft drafted = (await client.GetFromJsonAsync<DemandDraft>($"/api/cases/{created.Id}/draft?fill=false", Json))!;
+        Citation source = drafted.Segments.First(segment => segment.Citations.Length > 0).Citations[0];
+        const string original = "TestDraftNarrative. Claim [CLAIM NUMBER].";
+        const string revised = "An added sentence. TestDraftNarrative, revised. Claim [CLAIM NUMBER].";
+        int start = drafted.Narrative.IndexOf(original, StringComparison.Ordinal);
+        string path = $"/api/cases/{created.Id}/draft/text";
+        Dictionary<int, Citation> sources = new Dictionary<int, Citation>() { [1] = source };
+
+        HttpResponseMessage edited = await client.PutAsJsonAsync(path,
+            new EditLetterRequest(start, original, "An added sentence. TestDraftNarrative, revised.[1] Claim [CLAIM NUMBER].", sources));
+        DemandDraft letter = (await edited.Content.ReadFromJsonAsync<DemandDraft>(Json))!;
+        ReviewItem[] review = (await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!;
+        CaseDto afterEdit = (await client.GetFromJsonAsync<CaseDto>($"/api/cases/{created.Id}", Json))!;
+        HttpResponseMessage stale = await client.PutAsJsonAsync(path, new EditLetterRequest(start, original, "Anything.", sources));
+        Citation invented = new Citation() { FilePath = source.FilePath, CitedText = "Words the document never says.", StartPosition = 0 };
+        HttpResponseMessage foreign = await client.PutAsJsonAsync(path,
+            new EditLetterRequest(start, revised, "TestDraftNarrative.[1]", new Dictionary<int, Citation>() { [1] = invented }));
+
+        Assert.True(start > 0);
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
+        Assert.Contains(revised, letter.Narrative);
+        Assert.Contains(review, item => item.Kind == ReviewItemKind.UnsupportedStatement && item.Text == "An added sentence.");
+        Assert.DoesNotContain(review, item => item.Text.Contains("revised", StringComparison.Ordinal));
+        Assert.NotNull(afterEdit.LetterEditedAt);
+        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, foreign.StatusCode);
+
+        // Drafting again replaces the edits.
+        await client.PostAsync($"/api/cases/{created.Id}/draft", null);
+        await WaitForJobToFinish(client, created.Id);
+        CaseDto redrafted = (await client.GetFromJsonAsync<CaseDto>($"/api/cases/{created.Id}", Json))!;
+        Assert.Null(redrafted.LetterEditedAt);
+    }
+
     [Theory]
     [InlineData("CLAIM NUMBER", "CL-1")]
     [InlineData("[Claim number]", "CL-1")]

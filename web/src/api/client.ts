@@ -5,6 +5,7 @@ import type {
   DemandDraft,
   FirmProfile,
   JobStatus,
+  LetterEdit,
   LetterPlaceholder,
   MatterInput,
   RecordInfo,
@@ -85,6 +86,11 @@ export const api = {
   getReview: (caseId: string) => request<ReviewItem[]>(`${casePath(caseId)}/review`),
   updateReview: (caseId: string, itemId: string, status: ReviewStatus, note: string | null) =>
     request<ReviewItem>(`${casePath(caseId)}/review/${encodeURIComponent(itemId)}`, json('PUT', { status, note })),
+
+  /** The letter as drafted, before its placeholders are filled in: the text an edit replaces. */
+  getUnfilledDraft: (caseId: string) => request<DemandDraft>(`${casePath(caseId)}/draft?fill=false`),
+  /** Applies an edit to the letter's text and returns the letter with its placeholders filled in. */
+  editLetter: (caseId: string, edit: LetterEdit) => request<DemandDraft>(`${casePath(caseId)}/draft/text`, json('PUT', edit)),
 
   getPlaceholders: (caseId: string) => request<LetterPlaceholder[]>(`${casePath(caseId)}/letter/placeholders`),
   /** Sets this case's values by placeholder; an empty value clears one, and placeholders not listed keep theirs. */

@@ -10,6 +10,7 @@ public static class CaseEndpoints
     private const int MaxDetailLength = 100;
     private const int MaxLetterValueLength = 500;
     private const int MaxPlaceholdersPerRequest = 100;
+    private const int MaxEditLength = 20_000;
 
     public static void MapCaseEndpoints(this IEndpointRouteBuilder app)
     {
@@ -39,6 +40,7 @@ public static class CaseEndpoints
         cases.MapPost("/{caseId}/analysis/reviewed", MarkAnalysisReviewed);
         cases.MapGet("/{caseId}/draft", GetDraft);
         cases.MapGet("/{caseId}/draft/export", ExportDraft);
+        cases.MapPut("/{caseId}/draft/text", EditLetter);
         cases.MapGet("/{caseId}/letter/placeholders", GetPlaceholders);
         cases.MapPut("/{caseId}/letter/placeholders", UpdatePlaceholders);
 
@@ -318,7 +320,10 @@ public static class CaseEndpoints
         return Results.Ok(await ToCaseDto(meta!, store, jobs, cancellationToken));
     }
 
-    private static async Task<IResult> GetDraft(string caseId, ICaseStore store, CancellationToken cancellationToken)
+    /**
+     * The letter with its placeholders filled in, or as drafted (fill=false), which is the text an edit replaces.
+     */
+    private static async Task<IResult> GetDraft(string caseId, bool? fill, ICaseStore store, CancellationToken cancellationToken)
     {
         CaseMeta? meta = await store.Get(caseId, cancellationToken);
         if (meta is null)
@@ -326,8 +331,53 @@ public static class CaseEndpoints
             return CaseNotFound();
         }
 
-        DemandDraft? draft = await LoadDraft(meta, store, cancellationToken);
+        DemandDraft? draft = fill == false ? await store.LoadDraft(caseId, cancellationToken) : await LoadDraft(meta, store, cancellationToken);
         return draft is null ? Error(StatusCodes.Status404NotFound, "This case has not been drafted yet.") : Results.Ok(draft);
+    }
+
+    /**
+     * Applies an edit to the letter's text, keeping each source attached to the sentence it follows and listing
+     * new or uncited sentences for review (see LetterEdits). Returns the letter with its placeholders filled in.
+     */
+    private static async Task<IResult> EditLetter(string caseId, EditLetterRequest request, ICaseStore store, IJobQueue jobs,
+        CancellationToken cancellationToken)
+    {
+        CaseMeta? meta = await store.Get(caseId, cancellationToken);
+        if (meta is null)
+        {
+            return CaseNotFound();
+        }
+
+        // A draft being written would replace the edit when it finishes.
+        if (jobs.CurrentJob(meta)?.IsActive == true)
+        {
+            return JobActive();
+        }
+
+        if (request.Original is null || request.Text is null || request.Text.Length > MaxEditLength || request.Original.Length > MaxEditLength)
+        {
+            return Error(StatusCodes.Status400BadRequest, $"An edit can be at most {MaxEditLength} characters.");
+        }
+
+        DemandDraft? draft = await store.LoadDraft(caseId, cancellationToken);
+        if (draft is null)
+        {
+            return Error(StatusCodes.Status404NotFound, "This case has not been drafted yet.");
+        }
+
+        DemandDraft edited;
+        try
+        {
+            edited = LetterEdits.Replace(draft, request.Start, request.Original, request.Text, request.Sources ?? []);
+        }
+        catch (LetterEditException exception)
+        {
+            return Error(exception.Conflict ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, exception.Message);
+        }
+
+        await store.SaveDraft(caseId, edited, cancellationToken);
+        meta = await store.Update(caseId, current => current.LetterEditedAt = DateTimeOffset.UtcNow, cancellationToken);
+        return Results.Ok(await LoadDraft(meta!, store, cancellationToken));
     }
 
     private static async Task<IResult> ExportDraft(string caseId, string? format, ICaseStore store, CancellationToken cancellationToken)
@@ -543,7 +593,7 @@ public static class CaseEndpoints
         bool analysisReviewed = meta.AnalysisUpdatedAt is not null && meta.AnalysisReviewedAt >= meta.AnalysisUpdatedAt;
         return new CaseDto(meta.Id, meta.Name, meta.DateOfLoss, meta.Jurisdiction, meta.County, meta.CreatedAt, meta.UpdatedAt,
             await ToRecordDtos(meta, store, cancellationToken),
-            meta.AnalysisUpdatedAt, analysisOutOfDate, analysisReviewed, meta.DraftUpdatedAt, draftOutOfDate, jobs.CurrentJob(meta));
+            meta.AnalysisUpdatedAt, analysisOutOfDate, analysisReviewed, meta.DraftUpdatedAt, draftOutOfDate, jobs.CurrentJob(meta), meta.LetterEditedAt);
     }
 
     private static async Task<IReadOnlyList<RecordDto>> ToRecordDtos(CaseMeta meta, ICaseStore store, CancellationToken cancellationToken)

@@ -1,0 +1,43 @@
+/* Paragraphs are spaced one blank line apart, as the letter's text separates them. */
+.letter {
+  display: flex;
+  flex-direction: column;
+  gap: calc(1.05em * 1.7);
+}
+
+/* Each paragraph's edit button sits in the margin to its right, and shows on hover or keyboard focus. */
+.paragraph {
+  position: relative;
+  padding-right: 28px;
+}
+
+.edit {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  opacity: 0;
+  transition: opacity 120ms ease;
+
+  .paragraph:hover &,
+  .paragraph:focus-within & {
+    opacity: 1;
+  }
+
+  /* Touch screens can't hover, so the button always shows there. */
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
+
+.editor {
+  margin-inline: -8px;
+  padding: 8px;
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mantine-color-gray-0);
+}
+
+.input {
+  font-family: var(--mra-font-reading);
+  font-size: 1.05em;
+  line-height: 1.7;
+}

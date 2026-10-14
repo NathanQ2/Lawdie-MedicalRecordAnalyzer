@@ -18,6 +18,8 @@ interface EditableLetterProps {
   highlights: [number, number][]
   /** Off while a job runs, since a new draft would replace the edit. */
   editable: boolean
+  onPlaceholderClick?: (placeholder: string) => void
+  onUnsupportedClick?: (text: string) => void
 }
 
 interface Editing {
@@ -33,7 +35,7 @@ interface Editing {
  * its placeholders still in brackets (they are filled in when the letter is shown) and each source's number after
  * the statement it supports. The server keeps those sources attached and lists any sentence left without one.
  */
-export function EditableLetter({ caseId, draft, numberOf, selectedKey, onSelect, highlights, editable }: EditableLetterProps) {
+export function EditableLetter({ caseId, draft, numberOf, selectedKey, onSelect, highlights, editable, onPlaceholderClick, onUnsupportedClick }: EditableLetterProps) {
   const unfilled = useUnfilledDraft(caseId, editable)
   const edit = useLetterEdit(caseId)
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -94,6 +96,8 @@ export function EditableLetter({ caseId, draft, numberOf, selectedKey, onSelect,
               letter
               highlights={rangesIn(highlights, block)}
               scrollToHighlight={index === firstHighlight}
+              onPlaceholderClick={onPlaceholderClick}
+              onUnsupportedClick={onUnsupportedClick}
             />
             {canEdit && editing === null && (
               <Tooltip label="Edit this paragraph">

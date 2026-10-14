@@ -23,12 +23,16 @@ interface ReviewItemCardProps {
   saving?: boolean
   /** An extra action for an open item, such as taking the documents' date of loss, shown before Dismiss and Resolve. */
   actions?: ReactNode
+  /** Extra content for an open item below its text, such as a field to fill in a placeholder. */
+  body?: ReactNode
+  /** Marks the card the attorney just found from the letter, such as by clicking a placeholder. */
+  focused?: boolean
 }
 
 /**
  * One attorney review item: what to check, its sources, and resolve / dismiss with an optional note.
  */
-export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft, shownInDraft = false, saving = false, actions }: ReviewItemCardProps) {
+export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft, shownInDraft = false, saving = false, actions, body, focused = false }: ReviewItemCardProps) {
   const [note, setNote] = useState(item.note ?? '')
   const open = item.status === 'Open'
   const noteChanged = note.trim() !== (item.note ?? '')
@@ -37,7 +41,14 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
   const places = item.draftRanges.length
 
   return (
-    <Card withBorder radius="md" padding="sm" opacity={open ? 1 : 0.7}>
+    <Card
+      withBorder
+      radius="md"
+      padding="sm"
+      opacity={open ? 1 : 0.7}
+      data-review-item={item.id}
+      style={focused ? { borderColor: 'var(--mantine-color-slate-5)', boxShadow: '0 0 0 3px var(--mantine-color-slate-1)' } : undefined}
+    >
       <Stack gap="xs">
         <Group justify="space-between">
           <Group gap={4}>
@@ -62,6 +73,7 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
         </Group>
 
         <Text size="sm">{item.text}</Text>
+        {open && body}
 
         {item.citations.map((citation) => (
           <UnstyledButton key={citationKey(citation)} onClick={() => onSelectCitation(citation)}>

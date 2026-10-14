@@ -15,6 +15,9 @@ export function placeholderLabel(placeholder: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
+/** Placeholders the firm profile fills for every letter. */
+export const firmPlaceholders = ['[LAW FIRM NAME]', '[FIRM ADDRESS]', '[FIRM PHONE]', '[FIRM EMAIL]', '[ATTORNEY NAME]']
+
 /** Whether a placeholder usually takes several lines, such as an address or a list of enclosures. */
 export function isMultiline(placeholder: string): boolean {
   return /ADDRESS|LIST/.test(placeholder)

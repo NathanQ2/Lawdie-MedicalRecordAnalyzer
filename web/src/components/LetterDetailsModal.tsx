@@ -85,42 +85,16 @@ function LetterDetailsForm({ caseId, placeholders, focus, onClose }: LetterDetai
         <Text size="sm" c="dimmed">
           These fill the bracketed placeholders in this letter. Anything left empty stays in brackets and is listed for review.
         </Text>
-        {placeholders.map((item) => {
-          const label = placeholderLabel(item.placeholder)
-          if (item.fromMatter) {
-            return (
-              <TextInput
-                key={item.placeholder}
-                label={label}
-                value={item.value ?? ''}
-                placeholder="Not entered"
-                description="Set in the matter details on the case overview."
-                disabled
-              />
-            )
-          }
-
-          const field = {
-            id: fieldId(item.placeholder),
-            label,
-            value: valueOf(item.placeholder),
-            onChange: (event: { currentTarget: { value: string } }) => {
-              const value = event.currentTarget.value
-              setEdits((current) => ({ ...current, [item.placeholder]: value }))
-            },
-            placeholder: item.firmValue ?? undefined,
-            description: item.firmValue ? (
-              <>
-                From the <Anchor component={Link} to="/firm" size="xs" onClick={onClose}>firm profile</Anchor> unless you fill it in here.
-              </>
-            ) : undefined,
-          }
-          return isMultiline(item.placeholder) ? (
-            <Textarea key={item.placeholder} {...field} autosize minRows={2} maxRows={6} maxLength={500} />
-          ) : (
-            <TextInput key={item.placeholder} {...field} maxLength={500} />
-          )
-        })}
+        {placeholders.map((item) => (
+          <PlaceholderField
+            key={item.placeholder}
+            item={item}
+            id={fieldId(item.placeholder)}
+            value={valueOf(item.placeholder)}
+            onChange={(value) => setEdits((current) => ({ ...current, [item.placeholder]: value }))}
+            onLeave={onClose}
+          />
+        ))}
         {update.isError && <Alert color="brick">{update.error.message}</Alert>}
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>
@@ -133,4 +107,45 @@ function LetterDetailsForm({ caseId, placeholders, focus, onClose }: LetterDetai
       </Stack>
     </form>
   )
+}
+
+interface PlaceholderFieldProps {
+  item: LetterPlaceholder
+  id: string
+  value: string
+  onChange: (value: string) => void
+  onBlur?: () => void
+  /** Called when the attorney follows the link to the firm profile, which leaves this view. */
+  onLeave?: () => void
+}
+
+/**
+ * One placeholder's field. The date of loss is shown but set in the matter details; a firm detail shows the firm
+ * profile's value until the case gives its own.
+ */
+export function PlaceholderField({ item, id, value, onChange, onBlur, onLeave }: PlaceholderFieldProps) {
+  const label = placeholderLabel(item.placeholder)
+  if (item.fromMatter) {
+    return <TextInput label={label} value={item.value ?? ''} placeholder="Not entered" description="Set in the matter details on the case overview." disabled />
+  }
+
+  const field = {
+    id,
+    label,
+    value,
+    onChange: (event: { currentTarget: { value: string } }) => onChange(event.currentTarget.value),
+    onBlur,
+    placeholder: item.firmValue ?? undefined,
+    description: item.firmValue ? (
+      <>
+        From the{' '}
+        <Anchor component={Link} to="/firm" size="xs" onClick={onLeave}>
+          firm profile
+        </Anchor>{' '}
+        unless you fill it in here.
+      </>
+    ) : undefined,
+    maxLength: 500,
+  }
+  return isMultiline(item.placeholder) ? <Textarea {...field} autosize minRows={2} maxRows={6} /> : <TextInput {...field} />
 }

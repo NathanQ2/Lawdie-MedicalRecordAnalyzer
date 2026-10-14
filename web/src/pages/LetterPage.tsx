@@ -14,6 +14,7 @@ import { useCase, useDraft, useReview, useReviewUpdate } from '../hooks/useCase'
 import { useJobActions, useNow } from '../hooks/useJob'
 import { citationKey, citationNumbering } from '../lib/citations'
 import { isJobActive } from '../lib/format'
+import { openIssueCount, openLetterItemCount } from '../lib/workspace'
 import classes from './LetterPage.module.css'
 
 type Panel = 'review' | 'source'
@@ -86,7 +87,9 @@ export function LetterPage() {
   const segments = draft.data.segments
   const narrative = segments.map((segment) => segment.text).join('')
   const citations = segments.flatMap((segment) => segment.citations)
-  const openItems = review.data?.filter((item) => item.status === 'Open').length ?? 0
+  // Counted the same way as the sidebar: issues are checked before drafting, letter items are fixed in the letter.
+  const openIssues = openIssueCount(review.data)
+  const openLetterItems = openLetterItemCount(review.data)
 
   // The highlighted item is looked up again so its ranges follow the latest review data.
   const shown = review.data?.find((item) => item.id === shownItem?.id) ?? null
@@ -104,7 +107,7 @@ export function LetterPage() {
         value={panel}
         onChange={(value) => setPanel(value as Panel)}
         data={[
-          { value: 'review', label: `Review (${openItems} open)` },
+          { value: 'review', label: 'Review' },
           { value: 'source', label: 'Source', disabled: !selected },
         ]}
       />
@@ -140,13 +143,14 @@ export function LetterPage() {
       {jobCard}
 
       <Group justify="space-between" align="flex-end">
-        <Stack gap={4}>
+        {/* The description wraps before the counts and Export button move to their own line. */}
+        <Stack gap={4} flex="1 1 320px">
           <Title order={3}>Demand letter</Title>
           <Text size="xs" c="dimmed">
             Click a number to see its source. Underlined sentences have no citation. Fill in each [BRACKETED] placeholder before sending.
           </Text>
         </Stack>
-        <ExportMenu caseId={caseId} openItems={openItems} />
+        <ExportMenu caseId={caseId} issues={openIssues} letterItems={openLetterItems} />
       </Group>
 
       <Grid gap="md">
@@ -192,13 +196,20 @@ export function LetterPage() {
   )
 }
 
-function ExportMenu({ caseId, openItems }: { caseId: string; openItems: number }) {
+function ExportMenu({ caseId, issues, letterItems }: { caseId: string; issues: number; letterItems: number }) {
   return (
     <Group gap="sm">
-      {openItems > 0 && (
-        <Tooltip label="Items to check before you send the letter. They are listed beside it.">
+      {issues > 0 && (
+        <Tooltip label="Contradictions and intake details to check before you send the letter. They are listed beside it and on the Issues page.">
+          <Badge color="brick" variant="light">
+            {issues} open {issues === 1 ? 'issue' : 'issues'}
+          </Badge>
+        </Tooltip>
+      )}
+      {letterItems > 0 && (
+        <Tooltip label="Uncited statements, placeholders and scanned text to fix before you send the letter. They are listed beside it.">
           <Badge color="amber" variant="light">
-            {openItems} review {openItems === 1 ? 'item' : 'items'} open
+            {letterItems} open letter {letterItems === 1 ? 'item' : 'items'}
           </Badge>
         </Tooltip>
       )}

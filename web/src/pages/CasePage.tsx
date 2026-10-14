@@ -1,24 +1,33 @@
-import { Alert, Anchor, Badge, Center, Group, Loader, Stack, Text, Title } from '@mantine/core'
+import { Alert, Anchor, Badge, Box, Center, Drawer, Group, Loader, Stack, Text, Title } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
+import { useMemo, useState } from 'react'
+import { Link, Outlet, useLocation, useParams } from 'react-router'
+import type { CaseDetail, Citation, ReviewItem } from '../api/types'
+import { CaseMenu, type CaseMenuCount } from '../components/CaseMenu'
 import { IconBack } from '../components/icons'
-import { StepProgress } from '../components/StepProgress'
-import { notifications } from '@mantine/notifications'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Link, Navigate, Outlet, useLocation, useParams } from 'react-router'
-import { api } from '../api/client'
-import type { CaseDetail } from '../api/types'
-import { caseKeys, useCase } from '../hooks/useCase'
+import { SourceViewer } from '../components/SourceViewer'
+import { useAnalysis, useCase, useReview } from '../hooks/useCase'
+import { SourcePanelContext, type SourcePanel } from '../hooks/useSourcePanel'
 import { formatDateOnly, isJobActive, jobKindLabels, jobStateColors } from '../lib/format'
-import { caseSteps, firstOpenStep, STEP_IDS, stepFromPath, type StepId } from '../lib/steps'
+import { openIssueCount, openLetterItemCount, sectionFromPath, type SectionId } from '../lib/workspace'
 import classes from './CasePage.module.css'
 
+/**
+ * The case workspace: the case's name and details, a menu of its pages, the current page, and a source panel that
+ * any page can open beside it.
+ */
 export function CasePage() {
   const { caseId = '' } = useParams()
   const caseQuery = useCase(caseId)
+  const analysis = useAnalysis(caseId, caseQuery.data ? caseQuery.data.analysisUpdatedAt : undefined)
+  const review = useReview(caseId)
   const location = useLocation()
-  const current = stepFromPath(location.pathname)
-  const direction = useStepDirection(current)
-  useMarkReviewedOnAdvance(caseId, current, caseQuery.data)
+  const current = sectionFromPath(location.pathname)
+  const sideMenu = useMediaQuery('(min-width: 62em)')
+  const roomy = useMediaQuery('(min-width: 75em)')
+
+  const [selected, setSelected] = useState<Citation | null>(null)
+  const panel = useMemo<SourcePanel>(() => ({ selected, show: setSelected, close: () => setSelected(null) }), [selected])
 
   if (caseQuery.isPending) {
     return (
@@ -40,79 +49,68 @@ export function CasePage() {
   }
 
   const detail = caseQuery.data
-  const jobActive = isJobActive(detail.job)
-  const steps = caseSteps(detail)
+  // The letter page shows sources in its own side panel, beside the review checklist.
+  const open = selected !== null && current !== 'letter'
+  const docked = open && roomy
 
   return (
-    <Stack gap="md">
-      <BackLink />
-      <Stack gap={4}>
-        <Title order={2}>{detail.name}</Title>
-        <Group gap="xs">
-          <Text size="sm" c="dimmed">
-            {matterLine(detail)}
-          </Text>
-          {jobActive && detail.job && (
-            <Badge color={jobStateColors[detail.job.state]} variant="light">
-              {jobKindLabels[detail.job.kind]} {detail.job.state.toLowerCase()}
-            </Badge>
+    <SourcePanelContext.Provider value={panel}>
+      <Stack gap="md">
+        <BackLink />
+        <CaseHeader detail={detail} />
+        <div className={classes.workspace} data-docked={docked || undefined}>
+          <Box className={classes.menu}>
+            <CaseMenu caseId={caseId} current={current} counts={menuCounts(detail, analysis.data?.chronology.length, review.data)} horizontal={!sideMenu} />
+          </Box>
+          {/* Keyed by page so each page plays its entrance. */}
+          <div key={current} className={classes.view}>
+            <Outlet />
+          </div>
+          {docked && selected && (
+            <Box className={classes.panel}>
+              <SourceViewer caseId={caseId} citation={selected} onClose={panel.close} />
+            </Box>
           )}
-        </Group>
+        </div>
+        {!roomy && (
+          <Drawer opened={open} onClose={panel.close} position="right" size="xl" withCloseButton={false} padding={0}>
+            {selected && <SourceViewer caseId={caseId} citation={selected} onClose={panel.close} />}
+          </Drawer>
+        )}
       </Stack>
-
-      {current && <StepProgress caseId={caseId} steps={steps} current={current} job={detail.job} />}
-
-      {/* Keyed by step so each step's page plays its entrance, sliding in from the side it was reached from. */}
-      <div key={current} className={classes.view} style={{ '--from': `${direction * 24}px` } as CSSProperties}>
-        <Outlet />
-      </div>
-    </Stack>
+    </SourcePanelContext.Provider>
   )
 }
 
-/**
- * Which way the last step change went: 1 forward, -1 back, or 0 when the page first opens. It is worked out while
- * rendering, by remembering the previous step in state, so the new page's first frame already slides the right way.
- */
-function useStepDirection(current: StepId | null): number {
-  const [previous, setPrevious] = useState({ step: current, direction: 0 })
-  if (previous.step !== current) {
-    const from = previous.step ? STEP_IDS.indexOf(previous.step) : -1
-    const to = current ? STEP_IDS.indexOf(current) : -1
-    const direction = from < 0 || to < 0 ? 0 : Math.sign(to - from)
-    setPrevious({ step: current, direction })
-    return direction
+function menuCounts(detail: CaseDetail, visits: number | undefined, review: ReviewItem[] | undefined): Partial<Record<SectionId, CaseMenuCount>> {
+  const documents = detail.records.length
+  const issues = openIssueCount(review)
+  const letterItems = openLetterItemCount(review)
+  return {
+    records: documents > 0 ? { value: documents, color: 'gray', hint: `${documents} ${documents === 1 ? 'document' : 'documents'} in this case.` } : undefined,
+    chronology: visits ? { value: visits, color: 'gray', hint: `${visits} ${visits === 1 ? 'visit' : 'visits'} found in the documents.` } : undefined,
+    issues: issues > 0 ? { value: issues, color: 'brick', hint: `${issues} open ${issues === 1 ? 'issue' : 'issues'} to check before you draft.` } : undefined,
+    letter: letterItems > 0 ? { value: letterItems, color: 'amber', hint: `${letterItems} open ${letterItems === 1 ? 'item' : 'items'} to fix in the letter.` } : undefined,
   }
-  return previous.direction
 }
 
-/**
- * Records that the analysis was reviewed when the attorney moves on from the review step to the letter, however
- * they get there. A later analysis needs reviewing again.
- */
-function useMarkReviewedOnAdvance(caseId: string, current: StepId | null, detail: CaseDetail | undefined) {
-  const queryClient = useQueryClient()
-  const previous = useRef(current)
-  const { mutate } = useMutation({
-    mutationFn: () => api.markAnalysisReviewed(caseId),
-    onSuccess: (updated) => queryClient.setQueryData(caseKeys.detail(caseId), updated),
-    onError: (error) => notifications.show({ color: 'brick', title: 'Could not mark the review as done', message: error.message }),
-  })
-  const needsReview = detail !== undefined && detail.analysisUpdatedAt !== null && !detail.analysisReviewed
-
-  useEffect(() => {
-    if (previous.current === 'review' && current === 'letter' && needsReview) {
-      mutate()
-    }
-    previous.current = current
-  }, [current, needsReview, mutate])
-}
-
-/** Opens a case on its first unfinished step. */
-export function FirstStepRedirect() {
-  const { caseId = '' } = useParams()
-  const caseQuery = useCase(caseId)
-  return caseQuery.data ? <Navigate to={`/cases/${caseId}/${firstOpenStep(caseSteps(caseQuery.data))}`} replace /> : null
+function CaseHeader({ detail }: { detail: CaseDetail }) {
+  const jobActive = isJobActive(detail.job)
+  return (
+    <Stack gap={4}>
+      <Title order={2}>{detail.name}</Title>
+      <Group gap="xs">
+        <Text size="sm" c="dimmed">
+          {matterLine(detail)}
+        </Text>
+        {jobActive && detail.job && (
+          <Badge color={jobStateColors[detail.job.state]} variant="light">
+            {jobKindLabels[detail.job.kind]} {detail.job.state.toLowerCase()}
+          </Badge>
+        )}
+      </Group>
+    </Stack>
+  )
 }
 
 function matterLine(detail: CaseDetail): string {

@@ -35,7 +35,8 @@ describe('CaseActionsMenu', () => {
   it('only offers the letter and its download once the case is drafted', () => {
     open()
 
-    expect(screen.getByRole('menuitem', { name: 'Review' })).not.toBeDisabled()
+    expect(screen.getByRole('menuitem', { name: 'Chronology' })).not.toBeDisabled()
+    expect(screen.getByRole('menuitem', { name: 'Issues' })).not.toBeDisabled()
     expect(screen.getByRole('menuitem', { name: 'Letter' })).toBeDisabled()
     expect(screen.queryByRole('menuitem', { name: 'Download letter (Word)' })).not.toBeInTheDocument()
   })

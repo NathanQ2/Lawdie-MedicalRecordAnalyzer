@@ -59,6 +59,7 @@ const stageLabels: Record<PipelineStage, string> = {
   SummarizingDocuments: 'Reading documents',
   FindingContradictions: 'Looking for contradictions',
   SummarizingCase: 'Writing the case summary',
+  BuildingChronology: 'Listing the visits by date',
   Drafting: 'Drafting the demand letter',
 }
 

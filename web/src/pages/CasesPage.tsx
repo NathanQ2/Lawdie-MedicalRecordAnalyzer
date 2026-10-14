@@ -40,8 +40,11 @@ export function CasesPage() {
       case 'documents':
         navigate(`/cases/${item.id}/records`)
         break
-      case 'review':
-        navigate(`/cases/${item.id}/review`)
+      case 'chronology':
+        navigate(`/cases/${item.id}/chronology`)
+        break
+      case 'issues':
+        navigate(`/cases/${item.id}/issues`)
         break
       case 'letter':
         navigate(`/cases/${item.id}/letter`)

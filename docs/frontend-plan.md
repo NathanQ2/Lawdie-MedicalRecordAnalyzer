@@ -57,7 +57,15 @@ The UI checks the status of a running job every couple of seconds. Live updates 
 7. ✅ **OCR**
    - Scanned PDF pages and images are read with Azure Document Intelligence when it is configured. Quotes from them are flagged in the source viewer and listed as "Scanned text" review items.
 
-Later: login and cloud storage, and editing the draft in the browser.
+8. In progress: **Case workspace** (option B of the UX redesign report)
+   - A case opens on a workspace with a page menu: Overview, Documents, Chronology, Issues and Letter, replacing the five-step flow. Old step links redirect.
+   - Overview shows the next step, the key facts with their sources, the matter details and the case summary.
+   - Chronology lists every visit by date or by provider, with flags for contradictions, unconfirmed dates or providers, scanned quotes and visits before the incident.
+   - Issues gathers contradictions and intake details the documents disagree with, such as the date of loss.
+   - A source panel docks beside every page except the letter, which keeps its own.
+   - Next: an editable letter with inline review, firm details filled in, and a Damages page.
+
+Later: login and cloud storage.
 
 ## API endpoints
 | Endpoint | Purpose |

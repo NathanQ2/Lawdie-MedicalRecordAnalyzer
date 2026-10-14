@@ -1,8 +1,8 @@
 import { notifications } from '@mantine/notifications'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { api } from '../api/client'
-import type { CaseDetail, JobStatus } from '../api/types'
+import type { CaseDetail, JobStatus, MatterInput, ReviewItem, ReviewStatus } from '../api/types'
 import { isJobActive, jobKindLabels } from '../lib/format'
 
 const POLL_INTERVAL_MS = 1500
@@ -78,6 +78,33 @@ export function useDraft(caseId: string, draftUpdatedAt: string | null | undefin
 /** Loads the review checklist; finished jobs invalidate every case query, which reloads it. */
 export function useReview(caseId: string) {
   return useQuery({ queryKey: caseKeys.review(caseId), queryFn: () => api.getReview(caseId) })
+}
+
+/** Resolves, dismisses or reopens a review item, and updates the cached checklist with the result. */
+export function useReviewUpdate(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ itemId, status, note }: { itemId: string; status: ReviewStatus; note: string | null }) =>
+      api.updateReview(caseId, itemId, status, note),
+    onSuccess: (updated) =>
+      queryClient.setQueryData<ReviewItem[]>(caseKeys.review(caseId), (current) => current?.map((item) => (item.id === updated.id ? updated : item))),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Could not update the review item', message: error.message }),
+  })
+}
+
+/**
+ * Saves the case's name and intake details. The letter and its review items are served with the date of loss
+ * filled in, so every case query reloads.
+ */
+export function useMatterUpdate(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (matter: MatterInput) => api.updateMatter(caseId, matter),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(caseKeys.detail(caseId), updated)
+      await queryClient.invalidateQueries({ queryKey: caseKeys.all })
+    },
+  })
 }
 
 /**

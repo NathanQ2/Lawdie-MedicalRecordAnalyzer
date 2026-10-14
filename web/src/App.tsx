@@ -1,13 +1,13 @@
 import { Anchor, AppShell, Container, Group, Stack, Text, ThemeIcon, Title } from '@mantine/core'
 import { IconDocuments } from './components/icons'
 import { Link, Navigate, Outlet, Route, Routes } from 'react-router'
-import { AnalysisTab } from './pages/AnalysisTab'
-import { AnalyzeTab } from './pages/AnalyzeTab'
-import { CasePage, FirstStepRedirect } from './pages/CasePage'
+import { CasePage } from './pages/CasePage'
 import { CasesPage } from './pages/CasesPage'
-import { DraftTab } from './pages/DraftTab'
-import { MatterTab } from './pages/MatterTab'
-import { RecordsTab } from './pages/RecordsTab'
+import { ChronologyPage } from './pages/ChronologyPage'
+import { DocumentsPage } from './pages/DocumentsPage'
+import { IssuesPage } from './pages/IssuesPage'
+import { LetterPage } from './pages/LetterPage'
+import { OverviewPage } from './pages/OverviewPage'
 
 export function App() {
   return (
@@ -15,15 +15,18 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<CasesPage />} />
         <Route path="cases/:caseId" element={<CasePage />}>
-          <Route index element={<FirstStepRedirect />} />
-          <Route path="matter" element={<MatterTab />} />
-          <Route path="records" element={<RecordsTab />} />
-          <Route path="analyze" element={<AnalyzeTab />} />
-          <Route path="review" element={<AnalysisTab />} />
-          <Route path="letter" element={<DraftTab />} />
-          {/* Earlier names for the steps, kept so old links still work. */}
-          <Route path="run" element={<Navigate to="../analyze" replace />} />
-          <Route path="analysis" element={<Navigate to="../review" replace />} />
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<OverviewPage />} />
+          <Route path="records" element={<DocumentsPage />} />
+          <Route path="chronology" element={<ChronologyPage />} />
+          <Route path="issues" element={<IssuesPage />} />
+          <Route path="letter" element={<LetterPage />} />
+          {/* Earlier page names, kept so old links still work. */}
+          <Route path="matter" element={<Navigate to="../overview" replace />} />
+          <Route path="analyze" element={<Navigate to="../records" replace />} />
+          <Route path="review" element={<Navigate to="../issues" replace />} />
+          <Route path="run" element={<Navigate to="../records" replace />} />
+          <Route path="analysis" element={<Navigate to="../issues" replace />} />
           <Route path="draft" element={<Navigate to="../letter" replace />} />
         </Route>
         <Route path="*" element={<NotFound />} />
@@ -50,7 +53,7 @@ function Layout() {
         </Container>
       </AppShell.Header>
       <AppShell.Main>
-        <Container size="xl" py="md">
+        <Container size={1480} py="md">
           <Outlet />
         </Container>
       </AppShell.Main>

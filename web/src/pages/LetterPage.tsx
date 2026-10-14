@@ -1,26 +1,24 @@
 import { Alert, Badge, Box, Button, Card, Center, Drawer, Grid, Group, Loader, Menu, Paper, SegmentedControl, Stack, Text, Title, Tooltip } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { useMediaQuery } from '@mantine/hooks'
-import { notifications } from '@mantine/notifications'
 import { IconDownload, IconRun } from '../components/icons'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { api } from '../api/client'
-import type { Citation, ReviewItem, ReviewStatus } from '../api/types'
+import type { Citation, ReviewItem } from '../api/types'
 import { AnnotatedText } from '../components/AnnotatedText'
 import { JobStatusCard } from '../components/JobStatusCard'
 import { ReviewItemCard } from '../components/ReviewItemCard'
 import { SourceViewer } from '../components/SourceViewer'
-import { caseKeys, useCase, useDraft, useReview } from '../hooks/useCase'
+import { useCase, useDraft, useReview, useReviewUpdate } from '../hooks/useCase'
 import { useJobActions, useNow } from '../hooks/useJob'
 import { citationKey, citationNumbering } from '../lib/citations'
 import { isJobActive } from '../lib/format'
-import classes from './AnalysisTab.module.css'
+import classes from './LetterPage.module.css'
 
 type Panel = 'review' | 'source'
 
-export function DraftTab() {
+export function LetterPage() {
   const { caseId = '' } = useParams()
   const caseQuery = useCase(caseId)
   const draft = useDraft(caseId, caseQuery.data ? caseQuery.data.draftUpdatedAt : undefined)
@@ -238,17 +236,8 @@ interface ReviewChecklistProps {
 }
 
 export function ReviewChecklist({ caseId, items, loading, onSelectCitation, shownItemId = null, onShowInDraft }: ReviewChecklistProps) {
-  const queryClient = useQueryClient()
   const [filter, setFilter] = useState<'open' | 'all'>('open')
-  const update = useMutation({
-    mutationFn: ({ itemId, status, note }: { itemId: string; status: ReviewStatus; note: string | null }) =>
-      api.updateReview(caseId, itemId, status, note),
-    onSuccess: (updated) =>
-      queryClient.setQueryData<ReviewItem[]>(caseKeys.review(caseId), (current) =>
-        current?.map((item) => (item.id === updated.id ? updated : item)),
-      ),
-    onError: (error) => notifications.show({ color: 'brick', title: 'Could not update the review item', message: error.message }),
-  })
+  const update = useReviewUpdate(caseId)
 
   if (loading || !items) {
     return (

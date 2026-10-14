@@ -359,7 +359,7 @@ public static class CaseEndpoints
             DraftFormat.PlainText => ("text/plain; charset=utf-8", "txt"),
             _ => ("text/markdown; charset=utf-8", "md"),
         };
-        return Results.File(DemandLetterRenderer.RenderBytes(draft, analysis, draftFormat.Value), contentType,
+        return Results.File(DemandLetterRenderer.RenderBytes(draft, analysis, draftFormat.Value, meta.Matter()), contentType,
             $"{SafeFileName(meta.Name)}-draft.{extension}");
     }
 

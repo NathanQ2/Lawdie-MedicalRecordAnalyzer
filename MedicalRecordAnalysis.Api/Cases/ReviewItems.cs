@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using MedicalRecordAnalysis.LLM;
@@ -37,14 +36,9 @@ public static class ReviewItems
         List<(ReviewItemKind Kind, string Text, Citation[] Citations, DraftRange[] Ranges)> items = [];
         string narrative = draft?.Narrative ?? "";
 
-        // The letter uses the intake date of loss, so a date the documents contradict would reach the adjuster.
-        if (matter?.DateOfLoss is DateOnly intakeDate && analysis?.RecordedDateOfLoss is CitedDate recorded && recorded.Date != intakeDate)
-        {
-            string intakeText = LongDate(intakeDate);
-            items.Add((ReviewItemKind.IntakeMismatch,
-                $"The matter details give the date of loss as {intakeText}, but the documents give {LongDate(recorded.Date)}.",
-                recorded.Citations, Occurrences(narrative, intakeText, firstOnly: false)));
-        }
+        // The letter uses the intake details, so one the documents contradict would reach the adjuster.
+        items.AddRange(IntakeMismatch.Find(analysis, matter).Select(mismatch =>
+            (ReviewItemKind.IntakeMismatch, mismatch.Summary, mismatch.Citations, Occurrences(narrative, mismatch.IntakeText, firstOnly: false))));
 
         foreach (Contradiction contradiction in analysis?.Contradictions ?? [])
         {
@@ -71,9 +65,6 @@ public static class ReviewItems
             })
             .ToList();
     }
-
-    /** A date as the letter writes it, such as "January 9, 2026". */
-    public static string LongDate(DateOnly date) => date.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
 
     public static string ItemId(ReviewItemKind kind, string text)
     {

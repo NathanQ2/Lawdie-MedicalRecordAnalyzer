@@ -36,7 +36,7 @@ Medical Record Analysis automates the demand-letter work for personal injury (PI
 2. The provider writes the letter body from those passages under fixed `## ` section headings.
 3. `VerbatimCitations` attaches citations to sentences copied from the documents but left uncited, where the match is unambiguous.
 4. `DemandLetterTemplate` wraps the body with the letterhead, "Re:" block, salutation, demand and signature. Facts the documents can't supply are bracketed placeholders such as `[CLAIM NUMBER]`.
-5. The renderers produce Markdown, plain text or Word (`.docx`, with real footnotes). Each export ends with an attorney review section listing contradictions, uncited statements and placeholders.
+5. The renderers produce Markdown, plain text or Word (`.docx`, with real footnotes). Each export ends with an attorney review section listing intake details the documents contradict, contradictions, uncited statements and placeholders.
 
 **Grounding rules to preserve:**
 - Every citation must point at an exact substring of the extracted text, with its page.

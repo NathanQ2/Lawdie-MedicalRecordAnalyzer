@@ -204,6 +204,8 @@ public sealed class ApiTests : IDisposable
         Assert.DoesNotContain(DemandLetterTemplate.DateOfLossPlaceholder, after.Narrative);
         Assert.Contains("Date of Loss: January 9, 2026", after.Narrative);
         Assert.Contains("January 9, 2026", markdown);
+        // The export compares the intake details with the documents, as the review checklist does.
+        Assert.Contains("### Intake details the documents contradict", markdown);
         Assert.DoesNotContain(review, item => item.Text == DemandLetterTemplate.DateOfLossPlaceholder);
         Assert.Contains(review, item => item.Text == "[CLAIM NUMBER]");
     }

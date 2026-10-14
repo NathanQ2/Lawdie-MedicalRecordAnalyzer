@@ -9,7 +9,7 @@ import { isJobActive } from '../lib/format'
 import { openIssueCount, openLetterItemCount, sectionFromPath, sectionLabels, type SectionId } from '../lib/workspace'
 import classes from './AppSidebar.module.css'
 import { CaseActionsMenu, CaseContextMenu, type CaseAction, type CaseMenuPoint } from './CaseActionsMenu'
-import { IconChronology, IconConflict, IconDocuments, IconLetter, IconMatter, IconMore, IconOverview, IconPlus } from './icons'
+import { IconChronology, IconConflict, IconDocuments, IconLetter, IconMatter, IconMore, IconOverview, IconPlus, IconSidebar } from './icons'
 import { NewCaseModal } from './NewCaseModal'
 import { RenameCaseModal } from './RenameCaseModal'
 
@@ -34,15 +34,18 @@ const sections: SectionId[] = ['overview', 'records', 'chronology', 'issues', 'l
 const RECENT_CASES = 15
 
 interface AppSidebarProps {
+  /** Narrowed to a rail of icons, whose names show as tooltips. Only wide screens collapse the sidebar. */
+  collapsed: boolean
+  onToggleCollapsed: () => void
   /** Called after any link is followed, so the sidebar closes on narrow screens. */
   onNavigate: () => void
 }
 
 /**
  * The app's sidebar: a new case, the case list, the open case's pages with their counts, and recent cases with their
- * options.
+ * options. Collapsed, it keeps the icons and marks pages with open items by a dot, and leaves out the recent cases.
  */
-export function AppSidebar({ onNavigate }: AppSidebarProps) {
+export function AppSidebar({ collapsed, onToggleCollapsed, onNavigate }: AppSidebarProps) {
   const caseId = useMatch('/cases/:caseId/*')?.params.caseId ?? null
   const location = useLocation()
   const navigate = useNavigate()
@@ -53,27 +56,45 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const [contextMenu, setContextMenu] = useState<CaseMenuPoint | null>(null)
 
   return (
-    <AppShell.Navbar className={classes.sidebar}>
-      <Link to="/" className={classes.brand} onClick={onNavigate}>
-        <ThemeIcon size={30} radius="md">
-          <IconDocuments size={18} />
-        </ThemeIcon>
-        <Text fw={700} size="sm">
-          Medical Record Analysis
-        </Text>
-      </Link>
+    <AppShell.Navbar className={classes.sidebar} data-collapsed={collapsed || undefined}>
+      <div className={classes.top}>
+        {!collapsed && (
+          <Link to="/" className={classes.brand} onClick={onNavigate}>
+            <ThemeIcon size={30} radius="md">
+              <IconDocuments size={18} />
+            </ThemeIcon>
+            <Text fw={700} size="sm" truncate>
+              Medical Record Analysis
+            </Text>
+          </Link>
+        )}
+        <Tooltip label={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'} position="right">
+          <ActionIcon variant="subtle" color="gray" size="md" onClick={onToggleCollapsed} aria-label={collapsed ? 'Expand the sidebar' : 'Collapse the sidebar'}>
+            <IconSidebar size={18} />
+          </ActionIcon>
+        </Tooltip>
+      </div>
 
-      <button type="button" className={classes.item} onClick={open}>
-        <span className={classes.icon}>
-          <IconPlus size={18} />
-        </span>
-        <span className={classes.label}>New case</span>
-      </button>
-      <SidebarLink to="/" icon={<IconMatter size={18} />} label="All cases" active={location.pathname === '/'} onClick={onNavigate} />
+      <Tooltip label="New case" position="right" disabled={!collapsed}>
+        <button type="button" className={classes.item} onClick={open}>
+          <span className={classes.icon}>
+            <IconPlus size={18} />
+          </span>
+          <span className={classes.label}>New case</span>
+        </button>
+      </Tooltip>
+      <SidebarLink
+        to="/"
+        icon={<IconMatter size={18} />}
+        label="All cases"
+        active={location.pathname === '/'}
+        collapsed={collapsed}
+        onClick={onNavigate}
+      />
 
-      {caseId && <CasePages caseId={caseId} current={sectionFromPath(location.pathname)} onNavigate={onNavigate} />}
+      {caseId && <CasePages caseId={caseId} current={sectionFromPath(location.pathname)} collapsed={collapsed} onNavigate={onNavigate} />}
 
-      {cases.data && cases.data.length > 0 && (
+      {!collapsed && cases.data && cases.data.length > 0 && (
         <>
           <div className={classes.heading}>Recent cases</div>
           <ScrollArea className={classes.recent} type="hover" scrollbarSize={6}>
@@ -150,8 +171,15 @@ function RecentCase({ item, current, menuOpened, onNavigate, onAction, onContext
   )
 }
 
+interface CasePagesProps {
+  caseId: string
+  current: SectionId | null
+  collapsed: boolean
+  onNavigate: () => void
+}
+
 /** The open case's pages, under its name, each with its count. */
-function CasePages({ caseId, current, onNavigate }: { caseId: string; current: SectionId | null; onNavigate: () => void }) {
+function CasePages({ caseId, current, collapsed, onNavigate }: CasePagesProps) {
   const caseQuery = useCase(caseId)
   const analysis = useAnalysis(caseId, caseQuery.data ? caseQuery.data.analysisUpdatedAt : undefined)
   const review = useReview(caseId)
@@ -159,9 +187,13 @@ function CasePages({ caseId, current, onNavigate }: { caseId: string; current: S
 
   return (
     <nav aria-label="Case pages">
-      <div className={classes.heading} title={caseQuery.data?.name}>
-        {caseQuery.data?.name ?? 'Case'}
-      </div>
+      {collapsed ? (
+        <div className={classes.divider} />
+      ) : (
+        <div className={classes.heading} title={caseQuery.data?.name}>
+          {caseQuery.data?.name ?? 'Case'}
+        </div>
+      )}
       {sections.map((section) => (
         <SidebarLink
           key={section}
@@ -170,6 +202,7 @@ function CasePages({ caseId, current, onNavigate }: { caseId: string; current: S
           label={sectionLabels[section]}
           active={section === current}
           count={counts[section]}
+          collapsed={collapsed}
           onClick={onNavigate}
         />
       ))}
@@ -195,21 +228,28 @@ interface SidebarLinkProps {
   label: string
   active: boolean
   count?: SidebarCount
+  collapsed: boolean
   onClick: () => void
 }
 
-function SidebarLink({ to, icon, label, active, count, onClick }: SidebarLinkProps) {
+/** A page link. Collapsed, its name and count move into a tooltip, and a dot on the icon marks open items. */
+function SidebarLink({ to, icon, label, active, count, collapsed, onClick }: SidebarLinkProps) {
   return (
-    <Link to={to} className={classes.item} data-active={active || undefined} aria-current={active ? 'page' : undefined} onClick={onClick}>
-      <span className={classes.icon}>{icon}</span>
-      <span className={classes.label}>{label}</span>
-      {count && (
-        <Tooltip label={count.hint}>
-          <span className={classes.count} data-tone={count.tone}>
-            {count.value}
-          </span>
-        </Tooltip>
-      )}
-    </Link>
+    <Tooltip label={count ? `${label}: ${count.hint}` : label} position="right" disabled={!collapsed}>
+      <Link to={to} className={classes.item} data-active={active || undefined} aria-current={active ? 'page' : undefined} onClick={onClick}>
+        <span className={classes.icon}>
+          {icon}
+          {count?.tone && <span className={classes.dotBadge} data-tone={count.tone} />}
+        </span>
+        <span className={classes.label}>{label}</span>
+        {count && (
+          <Tooltip label={count.hint} disabled={collapsed}>
+            <span className={classes.count} data-tone={count.tone}>
+              {count.value}
+            </span>
+          </Tooltip>
+        )}
+      </Link>
+    </Tooltip>
   )
 }

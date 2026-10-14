@@ -267,3 +267,12 @@ export function IconChevronRight(props: IconProps) {
 export function IconMore(props: IconProps) {
   return <Svg {...props}><path d="M12 5.5h.01M12 12h.01M12 18.5h.01" strokeWidth={2.6} /></Svg>
 }
+
+export function IconSidebar(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <path d="M9.5 4.5v15" />
+    </Svg>
+  )
+}

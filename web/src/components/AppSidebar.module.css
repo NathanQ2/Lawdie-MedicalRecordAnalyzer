@@ -1,32 +1,49 @@
 /*
  * A light sidebar in the app's glass style: a pale translucent pane over the page's color field, rows that tint on
- * hover, and the current page raised as a solid card.
+ * hover, and the current page raised as a solid card. Collapsed, it narrows to a rail of icons.
  */
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow: hidden;
   padding: var(--mantine-spacing-sm);
   background-color: var(--mra-sidebar);
   backdrop-filter: blur(22px) saturate(160%);
   -webkit-backdrop-filter: blur(22px) saturate(160%);
   border-right: 1px solid var(--mra-glass-edge);
   box-shadow: 1px 0 0 rgba(30, 42, 38, 0.06);
+  /* AppShell animates the page's padding as the sidebar's width changes; the sidebar follows at the same pace. */
+  transition-property: transform, top, height, width;
+}
+
+/* The app's name and the collapse button. Narrow screens show the name in the header and never collapse the sidebar. */
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding-bottom: 12px;
+
+  .sidebar[data-collapsed] & {
+    justify-content: center;
+  }
+
+  @media (max-width: 61.99em) {
+    display: none;
+  }
 }
 
 .brand {
   display: flex;
+  flex: 1;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px 14px;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 4px;
   color: inherit;
   text-decoration: none;
   font-weight: 700;
-
-  /* Narrow screens show the app's name in the header above the sidebar instead. */
-  @media (max-width: 61.99em) {
-    display: none;
-  }
 }
 
 .item {
@@ -65,6 +82,7 @@
 }
 
 .icon {
+  position: relative;
   display: inline-flex;
   flex: none;
   color: var(--mantine-color-gray-6);
@@ -183,4 +201,54 @@
       opacity: 1;
     }
   }
+}
+
+/*
+ * The collapsed rail. Names and counts stay in the page for screen readers but are hidden from view, since the
+ * tooltips show them; a dot on a page's icon stands in for a tinted count.
+ */
+.sidebar[data-collapsed] {
+  & .item {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  & .label,
+  & .count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.dotBadge {
+  display: none;
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--mantine-color-body);
+
+  &[data-tone='brick'] {
+    background-color: var(--mantine-color-brick-6);
+  }
+
+  &[data-tone='amber'] {
+    background-color: var(--mantine-color-amber-6);
+  }
+
+  .sidebar[data-collapsed] & {
+    display: block;
+  }
+}
+
+.divider {
+  height: 1px;
+  margin: var(--mantine-spacing-sm) 6px;
+  background-color: var(--mantine-color-gray-3);
 }

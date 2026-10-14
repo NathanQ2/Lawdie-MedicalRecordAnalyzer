@@ -1,5 +1,5 @@
 import { Anchor, AppShell, Burger, Container, Group, Stack, Text, ThemeIcon, Title } from '@mantine/core'
-import { useDisclosure, useMediaQuery } from '@mantine/hooks'
+import { useDisclosure, useLocalStorage, useMediaQuery } from '@mantine/hooks'
 import { AppSidebar } from './components/AppSidebar'
 import { IconDocuments } from './components/icons'
 import { Link, Navigate, Outlet, Route, Routes } from 'react-router'
@@ -39,16 +39,20 @@ export function App() {
 
 /**
  * The app frame: the sidebar on the left and the page beside it. On narrow screens the sidebar folds away behind a
- * menu button in a slim header, which is hidden on wide screens where the sidebar shows the app's name.
+ * menu button in a slim header, which is hidden on wide screens where the sidebar shows the app's name. Wide screens
+ * can collapse the sidebar to a rail of icons instead.
  */
 function Layout() {
   const [opened, { toggle, close }] = useDisclosure(false)
   const wide = useMediaQuery('(min-width: 62em)', true, { getInitialValueInEffect: false })
+  // Whether the sidebar is collapsed is remembered in this browser; narrow screens ignore it.
+  const [collapsed, setCollapsed] = useLocalStorage({ key: 'mra-sidebar-collapsed', defaultValue: false, getInitialValueInEffect: false })
+  const railed = wide && collapsed
 
   return (
     <AppShell
       header={{ height: 56, collapsed: wide }}
-      navbar={{ width: 264, breakpoint: 'md', collapsed: { mobile: !opened } }}
+      navbar={{ width: railed ? 64 : 272, breakpoint: 'md', collapsed: { mobile: !opened } }}
       padding="md"
       withBorder={false}
     >
@@ -65,7 +69,7 @@ function Layout() {
           </Anchor>
         </Group>
       </AppShell.Header>
-      <AppSidebar onNavigate={close} />
+      <AppSidebar collapsed={railed} onToggleCollapsed={() => setCollapsed((value) => !value)} onNavigate={close} />
       <AppShell.Main>
         <Container size={1480} py="md">
           <Outlet />

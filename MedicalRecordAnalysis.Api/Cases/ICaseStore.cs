@@ -4,9 +4,9 @@ using MedicalRecordAnalysis.LLM;
 namespace MedicalRecordAnalysis.Api.Cases;
 
 /**
- * Stores cases: their metadata, uploaded records, ingest cache, and results. The local implementation keeps
- * one folder per case; a cloud implementation would keep the same shape in object storage and materialize
- * records as local files for processing.
+ * Stores cases: their metadata, uploaded records, ingest cache, and results, plus the firm's profile that every
+ * case's letter uses. The local implementation keeps one folder per case; a cloud implementation would keep the
+ * same shape in object storage and materialize records as local files for processing.
  */
 public interface ICaseStore
 {
@@ -32,4 +32,8 @@ public interface ICaseStore
     public Task<PICase?> LoadAnalysis(string caseId, CancellationToken cancellationToken = default);
     public Task SaveDraft(string caseId, DemandDraft draft, CancellationToken cancellationToken = default);
     public Task<DemandDraft?> LoadDraft(string caseId, CancellationToken cancellationToken = default);
+
+    /** The firm's profile, or an empty one until the attorney fills it in. */
+    public Task<FirmProfile> LoadFirmProfile(CancellationToken cancellationToken = default);
+    public Task SaveFirmProfile(FirmProfile profile, CancellationToken cancellationToken = default);
 }

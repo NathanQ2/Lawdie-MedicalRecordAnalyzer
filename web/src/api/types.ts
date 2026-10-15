@@ -57,6 +57,8 @@ export interface CaseDetail {
   draftUpdatedAt: string | null
   draftOutOfDate: boolean
   job: JobStatus | null
+  /** When the attorney last edited the letter's text; drafting again would replace those edits. */
+  letterEditedAt: string | null
 }
 
 /** The name and intake details sent when creating a case or editing its matter details. */
@@ -154,6 +156,38 @@ export interface DraftSegment {
 export interface DemandDraft {
   segments: DraftSegment[]
   unsupportedStatements: string[]
+}
+
+/**
+ * Replaces the letter's text at start, which must still read original (the letter as drafted, before its
+ * placeholders are filled), with text. Text marks sources by their number in brackets after the statements they
+ * support; sources says which citation each number stands for.
+ */
+export interface LetterEdit {
+  start: number
+  original: string
+  text: string
+  sources: Record<number, Citation>
+}
+
+/** The firm's details for the letterhead and signature, shared by every case. */
+export interface FirmProfile {
+  firmName: string | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  attorneyName: string | null
+}
+
+/**
+ * A placeholder in the letter, such as "[CLAIM NUMBER]", and what fills it: this case's value, else the firm's
+ * profile. The date of loss comes from the matter details instead.
+ */
+export interface LetterPlaceholder {
+  placeholder: string
+  value: string | null
+  firmValue: string | null
+  fromMatter: boolean
 }
 
 export type ReviewItemKind = 'Contradiction' | 'UnsupportedStatement' | 'Placeholder' | 'RecognizedQuote' | 'IntakeMismatch'

@@ -9,7 +9,7 @@ import { isJobActive } from '../lib/format'
 import { openIssueCount, openLetterItemCount, sectionFromPath, sectionLabels, type SectionId } from '../lib/workspace'
 import classes from './AppSidebar.module.css'
 import { CaseActionsMenu, CaseContextMenu, type CaseAction, type CaseMenuPoint } from './CaseActionsMenu'
-import { IconChronology, IconConflict, IconDocuments, IconLetter, IconMatter, IconMore, IconOverview, IconPlus, IconSidebar } from './icons'
+import { IconChronology, IconConflict, IconDocuments, IconFirm, IconLetter, IconMatter, IconMore, IconOverview, IconPlus, IconSidebar } from './icons'
 import { NewCaseModal } from './NewCaseModal'
 import { RenameCaseModal } from './RenameCaseModal'
 
@@ -42,8 +42,8 @@ interface AppSidebarProps {
 }
 
 /**
- * The app's sidebar: a new case, the case list, the open case's pages with their counts, and recent cases with their
- * options. Collapsed, it keeps the icons and marks pages with open items by a dot, and leaves out the recent cases.
+ * The app's sidebar: a new case, the case list, the open case's pages with their counts, recent cases with their
+ * options, and the firm profile at the bottom. Collapsed, it keeps the icons and marks pages with open items by a dot, and leaves out the recent cases.
  */
 export function AppSidebar({ collapsed, onToggleCollapsed, onNavigate }: AppSidebarProps) {
   const caseId = useMatch('/cases/:caseId/*')?.params.caseId ?? null
@@ -115,6 +115,17 @@ export function AppSidebar({ collapsed, onToggleCollapsed, onNavigate }: AppSide
           </ScrollArea>
         </>
       )}
+
+      <div className={classes.footer}>
+        <SidebarLink
+          to="/firm"
+          icon={<IconFirm size={18} />}
+          label="Firm profile"
+          active={location.pathname === '/firm'}
+          collapsed={collapsed}
+          onClick={onNavigate}
+        />
+      </div>
 
       <NewCaseModal
         opened={creating}

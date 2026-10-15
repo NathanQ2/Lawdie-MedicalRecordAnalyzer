@@ -210,6 +210,127 @@ public sealed class ApiTests : IDisposable
         Assert.Contains(review, item => item.Text == "[CLAIM NUMBER]");
     }
 
+    [Fact]
+    public async Task SavesTheFirmProfile()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+
+        FirmProfile empty = (await client.GetFromJsonAsync<FirmProfile>("/api/firm", Json))!;
+        HttpResponseMessage saved = await client.PutAsJsonAsync("/api/firm", new FirmProfile(" Reyes Law ", "1 Main St\r\nSeattle, WA", "", null, "Dana Reyes"));
+        FirmProfile loaded = (await client.GetFromJsonAsync<FirmProfile>("/api/firm", Json))!;
+        HttpResponseMessage blankLine = await client.PutAsJsonAsync("/api/firm", new FirmProfile("Reyes Law", "1 Main St\n\nSeattle", null, null, null));
+        HttpResponseMessage tooLong = await client.PutAsJsonAsync("/api/firm", new FirmProfile(new string('x', 301), null, null, null, null));
+
+        Assert.Equal(FirmProfile.Empty, empty);
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        Assert.Equal(new FirmProfile("Reyes Law", "1 Main St\nSeattle, WA", null, null, "Dana Reyes"), loaded);
+        Assert.Equal(HttpStatusCode.BadRequest, blankLine.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+    }
+
+    [Fact]
+    public async Task FillsPlaceholdersFromTheFirmProfileAndTheCasesValues()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+        string path = $"/api/cases/{created.Id}/letter/placeholders";
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(path)).StatusCode);
+
+        await client.PostAsync($"/api/cases/{created.Id}/records", Files(("note.txt", Text("Neck pain after collision."))));
+        await client.PostAsync($"/api/cases/{created.Id}/ingest", null);
+        await WaitForJobToFinish(client, created.Id);
+        await client.PostAsync($"/api/cases/{created.Id}/draft", null);
+        await WaitForJobToFinish(client, created.Id);
+
+        await client.PutAsJsonAsync("/api/firm", new FirmProfile("Reyes Law", null, null, null, "Dana Reyes"));
+        HttpResponseMessage updated = await client.PutAsJsonAsync(path, new UpdatePlaceholdersRequest(new Dictionary<string, string?>()
+        {
+            ["[CLAIM NUMBER]"] = " CL-2026-0042 ",
+            ["[ATTORNEY NAME]"] = "Sam Ortiz",
+        }));
+        LetterPlaceholderDto[] placeholders = (await updated.Content.ReadFromJsonAsync<LetterPlaceholderDto[]>(Json))!;
+        DemandDraft draft = (await client.GetFromJsonAsync<DemandDraft>($"/api/cases/{created.Id}/draft", Json))!;
+        ReviewItem[] review = (await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!;
+        string markdown = await client.GetStringAsync($"/api/cases/{created.Id}/draft/export?format=md");
+
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        Assert.Contains(new LetterPlaceholderDto("[CLAIM NUMBER]", "CL-2026-0042", null, false), placeholders);
+        Assert.Contains(new LetterPlaceholderDto("[ATTORNEY NAME]", "Sam Ortiz", "Dana Reyes", false), placeholders);
+        Assert.Contains(new LetterPlaceholderDto("[LAW FIRM NAME]", null, "Reyes Law", false), placeholders);
+        Assert.Contains(new LetterPlaceholderDto(DemandLetterTemplate.DateOfLossPlaceholder, null, null, true), placeholders);
+        // The case's own value overrides the firm's, and filled placeholders leave the review checklist.
+        Assert.StartsWith("Reyes Law\n", draft.Narrative);
+        Assert.Contains("Claim No.: CL-2026-0042", draft.Narrative);
+        Assert.Contains("Sam Ortiz\nReyes Law", draft.Narrative);
+        Assert.Contains("Claim No.: CL-2026-0042", markdown);
+        Assert.DoesNotContain(review, item => item.Text is "[CLAIM NUMBER]" or "[LAW FIRM NAME]" or "[ATTORNEY NAME]");
+        Assert.Contains(review, item => item.Text == "[CLIENT NAME]");
+
+        HttpResponseMessage cleared = await client.PutAsJsonAsync(path, new UpdatePlaceholdersRequest(new Dictionary<string, string?>() { ["[CLAIM NUMBER]"] = "" }));
+        Assert.Contains(new LetterPlaceholderDto("[CLAIM NUMBER]", null, null, false), (await cleared.Content.ReadFromJsonAsync<LetterPlaceholderDto[]>(Json))!);
+    }
+
+    [Fact]
+    public async Task EditsTheLettersTextAndListsNewSentencesForReview()
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+        await client.PostAsync($"/api/cases/{created.Id}/records", Files(("note.txt", Text("Neck pain after collision."))));
+        await client.PostAsync($"/api/cases/{created.Id}/ingest", null);
+        await WaitForJobToFinish(client, created.Id);
+        await client.PostAsync($"/api/cases/{created.Id}/draft", null);
+        await WaitForJobToFinish(client, created.Id);
+
+        DemandDraft drafted = (await client.GetFromJsonAsync<DemandDraft>($"/api/cases/{created.Id}/draft?fill=false", Json))!;
+        Citation source = drafted.Segments.First(segment => segment.Citations.Length > 0).Citations[0];
+        const string original = "TestDraftNarrative. Claim [CLAIM NUMBER].";
+        const string revised = "An added sentence. TestDraftNarrative, revised. Claim [CLAIM NUMBER].";
+        int start = drafted.Narrative.IndexOf(original, StringComparison.Ordinal);
+        string path = $"/api/cases/{created.Id}/draft/text";
+        Dictionary<int, Citation> sources = new Dictionary<int, Citation>() { [1] = source };
+
+        HttpResponseMessage edited = await client.PutAsJsonAsync(path,
+            new EditLetterRequest(start, original, "An added sentence. TestDraftNarrative, revised.[1] Claim [CLAIM NUMBER].", sources));
+        DemandDraft letter = (await edited.Content.ReadFromJsonAsync<DemandDraft>(Json))!;
+        ReviewItem[] review = (await client.GetFromJsonAsync<ReviewItem[]>($"/api/cases/{created.Id}/review", Json))!;
+        CaseDto afterEdit = (await client.GetFromJsonAsync<CaseDto>($"/api/cases/{created.Id}", Json))!;
+        HttpResponseMessage stale = await client.PutAsJsonAsync(path, new EditLetterRequest(start, original, "Anything.", sources));
+        Citation invented = new Citation() { FilePath = source.FilePath, CitedText = "Words the document never says.", StartPosition = 0 };
+        HttpResponseMessage foreign = await client.PutAsJsonAsync(path,
+            new EditLetterRequest(start, revised, "TestDraftNarrative.[1]", new Dictionary<int, Citation>() { [1] = invented }));
+
+        Assert.True(start > 0);
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
+        Assert.Contains(revised, letter.Narrative);
+        Assert.Contains(review, item => item.Kind == ReviewItemKind.UnsupportedStatement && item.Text == "An added sentence.");
+        Assert.DoesNotContain(review, item => item.Text.Contains("revised", StringComparison.Ordinal));
+        Assert.NotNull(afterEdit.LetterEditedAt);
+        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, foreign.StatusCode);
+
+        // Drafting again replaces the edits.
+        await client.PostAsync($"/api/cases/{created.Id}/draft", null);
+        await WaitForJobToFinish(client, created.Id);
+        CaseDto redrafted = (await client.GetFromJsonAsync<CaseDto>($"/api/cases/{created.Id}", Json))!;
+        Assert.Null(redrafted.LetterEditedAt);
+    }
+
+    [Theory]
+    [InlineData("CLAIM NUMBER", "CL-1")]
+    [InlineData("[Claim number]", "CL-1")]
+    [InlineData("[DATE OF LOSS]", "January 9, 2026")]
+    [InlineData("[CLAIM NUMBER]", "Line one\n\nLine two")]
+    public async Task RejectsInvalidPlaceholderValues(string placeholder, string value)
+    {
+        HttpClient client = m_factory.CreateApiClient();
+        CaseDto created = await CreateCase(client);
+
+        HttpResponseMessage response = await client.PutAsJsonAsync($"/api/cases/{created.Id}/letter/placeholders",
+            new UpdatePlaceholdersRequest(new Dictionary<string, string?>() { [placeholder] = value }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

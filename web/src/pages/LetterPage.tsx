@@ -1,19 +1,21 @@
-import { Alert, Badge, Box, Button, Card, Center, Drawer, Grid, Group, Loader, Menu, Paper, SegmentedControl, Stack, Text, Title, Tooltip } from '@mantine/core'
+import { Alert, Anchor, Badge, Box, Button, Card, Center, Drawer, Grid, Group, Loader, Menu, Paper, SegmentedControl, Stack, Text, Textarea, TextInput, Title, Tooltip } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { useMediaQuery } from '@mantine/hooks'
-import { IconDownload, IconRun } from '../components/icons'
-import { useState } from 'react'
-import { useParams } from 'react-router'
+import { IconDownload, IconPencil, IconRun } from '../components/icons'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { Link, useParams } from 'react-router'
 import { api } from '../api/client'
 import type { Citation, ReviewItem } from '../api/types'
-import { AnnotatedText } from '../components/AnnotatedText'
+import { EditableLetter } from '../components/EditableLetter'
 import { JobStatusCard } from '../components/JobStatusCard'
+import { LetterDetailsModal } from '../components/LetterDetailsModal'
 import { ReviewItemCard } from '../components/ReviewItemCard'
 import { SourceViewer } from '../components/SourceViewer'
-import { useCase, useDraft, useReview, useReviewUpdate } from '../hooks/useCase'
+import { useCase, useDraft, usePlaceholderUpdate, useReview, useReviewUpdate } from '../hooks/useCase'
 import { useJobActions, useNow } from '../hooks/useJob'
 import { citationKey, citationNumbering } from '../lib/citations'
 import { isJobActive } from '../lib/format'
+import { firmPlaceholders, isMultiline, placeholderLabel } from '../lib/letter'
 import { openIssueCount, openLetterItemCount } from '../lib/workspace'
 import classes from './LetterPage.module.css'
 
@@ -27,7 +29,11 @@ export function LetterPage() {
   const [selected, setSelected] = useState<Citation | null>(null)
   const [panel, setPanel] = useState<Panel>('review')
   const [shownItem, setShownItem] = useState<ReviewItem | null>(null)
+  // The review item found from the letter; the count makes clicking the same placeholder again scroll to it again.
+  const [found, setFound] = useState<{ id: string; count: number } | null>(null)
   const wide = useMediaQuery('(min-width: 75em)')
+  // The letter details dialog, for changing values already filled in; closed when null.
+  const [details, setDetails] = useState<{ focus: string | null } | null>(null)
   const { start, cancel } = useJobActions(caseId)
   const now = useNow(isJobActive(caseQuery.data?.job))
 
@@ -51,7 +57,10 @@ export function LetterPage() {
       children: (
         <Text size="sm">
           Drafting may take a couple of minutes.
-          {draft.data && ' This replaces the current letter. Your review decisions stay.'}
+          {draft.data &&
+            (caseQuery.data?.letterEditedAt
+              ? ' This replaces the current letter, including your edits to its text. Your review decisions and letter details stay.'
+              : ' This replaces the current letter. Your review decisions and letter details stay.')}
         </Text>
       ),
       labels: { confirm: 'Draft', cancel: 'Not now' },
@@ -85,7 +94,6 @@ export function LetterPage() {
   }
 
   const segments = draft.data.segments
-  const narrative = segments.map((segment) => segment.text).join('')
   const citations = segments.flatMap((segment) => segment.citations)
   // Counted the same way as the sidebar: issues are checked before drafting, letter items are fixed in the letter.
   const openIssues = openIssueCount(review.data)
@@ -95,6 +103,21 @@ export function LetterPage() {
   const shown = review.data?.find((item) => item.id === shownItem?.id) ?? null
   const highlights = (shown?.draftRanges ?? []).map(({ start, length }): [number, number] => [start, start + length])
   const showInDraft = (item: ReviewItem) => setShownItem(shown?.id === item.id ? null : item)
+
+  // Clicking a placeholder or an uncited sentence in the letter finds its review item and shows where it is.
+  const find = (item: ReviewItem | undefined) => {
+    if (!item) {
+      return
+    }
+    setPanel('review')
+    setShownItem(item)
+    setFound((current) => ({ id: item.id, count: (current?.count ?? 0) + 1 }))
+  }
+  const findPlaceholder = (placeholder: string) =>
+    find(review.data?.find((item) => item.kind === 'Placeholder' && item.text === placeholder))
+  // The text clicked may be only part of the sentence, where a highlight or citation splits it.
+  const findUnsupported = (text: string) =>
+    find(review.data?.find((item) => item.kind === 'UnsupportedStatement' && item.text.includes(text.trim())))
 
   const select = (citation: Citation) => {
     setSelected(citation)
@@ -122,6 +145,8 @@ export function LetterPage() {
                 onSelectCitation={select}
                 shownItemId={shown?.id ?? null}
                 onShowInDraft={showInDraft}
+                fillPlaceholders
+                found={found}
               />
         )}
       </Box>
@@ -147,24 +172,37 @@ export function LetterPage() {
         <Stack gap={4} flex="1 1 320px">
           <Title order={3}>Demand letter</Title>
           <Text size="xs" c="dimmed">
-            Click a number to see its source. Underlined sentences have no citation. Fill in each [BRACKETED] placeholder before sending.
+            Click a number to see its source. Underlined sentences have no citation. Fill in each [BRACKETED] placeholder before sending, and use the
+            pencil beside a paragraph to edit it.
           </Text>
         </Stack>
-        <ExportMenu caseId={caseId} issues={openIssues} letterItems={openLetterItems} />
+        <ExportMenu
+          caseId={caseId}
+          issues={openIssues}
+          letterItems={openLetterItems}
+          details={
+            <Tooltip label="Fill in the claim number, adjuster and other details the documents don't give.">
+              <Button variant="default" leftSection={<IconPencil size={16} />} onClick={() => setDetails({ focus: null })}>
+                Edit letter details
+              </Button>
+            </Tooltip>
+          }
+        />
       </Group>
 
       <Grid gap="md">
         <Grid.Col span={wide ? 7 : 12}>
           <Paper withBorder p="lg" radius="md">
-            <AnnotatedText
-              text={narrative}
-              citations={citations}
-              unsupportedStatements={draft.data.unsupportedStatements}
+            <EditableLetter
+              caseId={caseId}
+              draft={draft.data}
               numberOf={citationNumbering(citations)}
               selectedKey={selected ? citationKey(selected) : null}
               onSelect={select}
-              letter
               highlights={highlights}
+              editable={!isJobActive(job)}
+              onPlaceholderClick={findPlaceholder}
+              onUnsupportedClick={findUnsupported}
             />
           </Paper>
           {!wide && (
@@ -176,6 +214,8 @@ export function LetterPage() {
                 onSelectCitation={select}
                 shownItemId={shown?.id ?? null}
                 onShowInDraft={showInDraft}
+                fillPlaceholders
+                found={found}
               />
             </Box>
           )}
@@ -192,20 +232,23 @@ export function LetterPage() {
           {selected && <SourceViewer caseId={caseId} citation={selected} onClose={() => setPanel('review')} />}
         </Drawer>
       )}
+
+      <LetterDetailsModal caseId={caseId} opened={details !== null} focus={details?.focus} onClose={() => setDetails(null)} />
     </Stack>
   )
 }
 
-function ExportMenu({ caseId, issues, letterItems }: { caseId: string; issues: number; letterItems: number }) {
+interface ExportMenuProps {
+  caseId: string
+  issues: number
+  letterItems: number
+  /** The button that opens the letter details, shown between the counts and Export. */
+  details: ReactNode
+}
+
+function ExportMenu({ caseId, issues, letterItems, details }: ExportMenuProps) {
   return (
     <Group gap="sm">
-      {issues > 0 && (
-        <Tooltip label="Contradictions and intake details to check before you send the letter. They are listed beside it and on the Issues page.">
-          <Badge color="brick" variant="light">
-            {issues} open {issues === 1 ? 'issue' : 'issues'}
-          </Badge>
-        </Tooltip>
-      )}
       {letterItems > 0 && (
         <Tooltip label="Uncited statements, placeholders and scanned text to fix before you send the letter. They are listed beside it.">
           <Badge color="amber" variant="light">
@@ -213,6 +256,14 @@ function ExportMenu({ caseId, issues, letterItems }: { caseId: string; issues: n
           </Badge>
         </Tooltip>
       )}
+      {issues > 0 && (
+        <Tooltip label="Contradictions and intake details to check before you send the letter. They are listed beside it and on the Issues page.">
+          <Badge color="brick" variant="light">
+            {issues} open {issues === 1 ? 'issue' : 'issues'}
+          </Badge>
+        </Tooltip>
+      )}
+      {details}
       <Menu position="bottom-end">
         <Menu.Target>
           <Tooltip label="Download the letter. The file ends with the review items, for the attorney.">
@@ -244,11 +295,42 @@ interface ReviewChecklistProps {
   onSelectCitation: (citation: Citation) => void
   shownItemId?: string | null
   onShowInDraft?: (item: ReviewItem) => void
+  /** Lets placeholder items be filled in from their cards. */
+  fillPlaceholders?: boolean
+  /** An item to scroll to and mark, such as the one for a placeholder clicked in the letter. */
+  found?: { id: string; count: number } | null
 }
 
-export function ReviewChecklist({ caseId, items, loading, onSelectCitation, shownItemId = null, onShowInDraft }: ReviewChecklistProps) {
+export function ReviewChecklist({ caseId, items, loading, onSelectCitation, shownItemId = null, onShowInDraft, fillPlaceholders = false, found = null }: ReviewChecklistProps) {
   const [filter, setFilter] = useState<'open' | 'all'>('open')
   const update = useReviewUpdate(caseId)
+  const handled = useRef(0)
+  // The find that the attorney last changed the filter after; a newer find may override it.
+  const [filterSetAt, setFilterSetAt] = useState(0)
+  const foundItem = found ? items?.find((item) => item.id === found.id) : undefined
+  // A resolved or dismissed item is only listed under All, so finding one shows All until the filter is changed.
+  const showAll = filter === 'all' || (found !== null && found.count > filterSetAt && foundItem !== undefined && foundItem.status !== 'Open')
+
+  useEffect(() => {
+    if (!found || handled.current === found.count) {
+      return
+    }
+    handled.current = found.count
+    const card = document.querySelector<HTMLElement>(`[data-review-item="${CSS.escape(found.id)}"]`)
+    if (!card) {
+      return
+    }
+    // The letter scrolls smoothly to the item's sentences at the same time, and a second smooth scroll would cancel
+    // it or be cancelled, so where the list scrolls on its own it jumps straight to the card.
+    const list = card.closest<HTMLElement>('[data-review-list]')
+    if (list && list.scrollHeight > list.clientHeight) {
+      const offset = card.getBoundingClientRect().top - list.getBoundingClientRect().top
+      list.scrollTop += offset - (list.clientHeight - card.offsetHeight) / 2
+    } else {
+      card.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+    card.querySelector<HTMLElement>('[data-fill]')?.focus({ preventScroll: true })
+  }, [found])
 
   if (loading || !items) {
     return (
@@ -259,10 +341,10 @@ export function ReviewChecklist({ caseId, items, loading, onSelectCitation, show
   }
 
   const done = items.filter((item) => item.status !== 'Open').length
-  const shown = filter === 'open' ? items.filter((item) => item.status === 'Open') : items
+  const shown = showAll ? items : items.filter((item) => item.status === 'Open')
 
   return (
-    <Paper withBorder radius="md" p="md" h="100%" style={{ overflowY: 'auto' }}>
+    <Paper withBorder radius="md" p="md" h="100%" style={{ overflowY: 'auto' }} data-review-list>
       <Stack gap="sm">
         <Group justify="space-between">
           <Stack gap={0}>
@@ -273,8 +355,11 @@ export function ReviewChecklist({ caseId, items, loading, onSelectCitation, show
           </Stack>
           <SegmentedControl
             size="xs"
-            value={filter}
-            onChange={(value) => setFilter(value as 'open' | 'all')}
+            value={showAll ? 'all' : 'open'}
+            onChange={(value) => {
+              setFilter(value as 'open' | 'all')
+              setFilterSetAt(found?.count ?? 0)
+            }}
             data={[
               { value: 'open', label: 'Open' },
               { value: 'all', label: 'All' },
@@ -295,10 +380,64 @@ export function ReviewChecklist({ caseId, items, loading, onSelectCitation, show
               onSelectCitation={onSelectCitation}
               onShowInDraft={onShowInDraft}
               shownInDraft={shownItemId === item.id}
+              focused={found?.id === item.id}
+              body={item.kind === 'Placeholder' && fillPlaceholders ? <PlaceholderFill caseId={caseId} placeholder={item.text} /> : undefined}
             />
           ))
         )}
       </Stack>
     </Paper>
+  )
+}
+
+/**
+ * A field in a placeholder's review item to fill it in. The value fills every place the placeholder appears in the
+ * letter, which takes the item off the open list; Edit letter details changes it later.
+ */
+function PlaceholderFill({ caseId, placeholder }: { caseId: string; placeholder: string }) {
+  const update = usePlaceholderUpdate(caseId)
+  const [value, setValue] = useState('')
+
+  if (placeholder === '[DATE OF LOSS]') {
+    return (
+      <Text size="xs" c="dimmed">
+        Set the date of loss in the matter details on the case overview.
+      </Text>
+    )
+  }
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    if (value.trim()) {
+      update.mutate({ [placeholder]: value })
+    }
+  }
+
+  const label = `Value for ${placeholder}`
+  return (
+    <form onSubmit={submit}>
+      <Stack gap={4}>
+        <Group gap="xs" align="flex-start" wrap="nowrap">
+          {isMultiline(placeholder) ? (
+            <Textarea data-fill size="xs" flex={1} autosize minRows={2} maxLength={500} placeholder={placeholderLabel(placeholder)} aria-label={label} value={value} onChange={(event) => setValue(event.currentTarget.value)} />
+          ) : (
+            <TextInput data-fill size="xs" flex={1} maxLength={500} placeholder={placeholderLabel(placeholder)} aria-label={label} value={value} onChange={(event) => setValue(event.currentTarget.value)} />
+          )}
+          <Button type="submit" size="xs" variant="light" loading={update.isPending} disabled={!value.trim()}>
+            Fill in
+          </Button>
+        </Group>
+        {firmPlaceholders.includes(placeholder) && (
+          <Text size="xs" c="dimmed">
+            Fills this letter only. Set it in the{' '}
+            <Anchor component={Link} to="/firm" size="xs">
+              firm profile
+            </Anchor>{' '}
+            to fill every letter.
+          </Text>
+        )}
+        {update.isError && <Alert color="brick">{update.error.message}</Alert>}
+      </Stack>
+    </form>
   )
 }

@@ -55,29 +55,47 @@ public static class DemandLetterTemplate
         "Enclosures: [LIST OF ENCLOSURES]";
 
     public const string DateOfLossPlaceholder = "[DATE OF LOSS]";
+    public const string FirmNamePlaceholder = "[LAW FIRM NAME]";
+    public const string FirmAddressPlaceholder = "[FIRM ADDRESS]";
+    public const string FirmPhonePlaceholder = "[FIRM PHONE]";
+    public const string FirmEmailPlaceholder = "[FIRM EMAIL]";
+    public const string AttorneyNamePlaceholder = "[ATTORNEY NAME]";
 
     /**
-     * Replaces the placeholders the attorney's intake details can answer. This runs each time the letter is shown
-     * or exported rather than when it is drafted, so correcting a detail never requires drafting again. Unanswered
-     * placeholders are left in place for review.
+     * Replaces the placeholders the attorney has answered: the date of loss from the intake details, and any others
+     * from values the attorney filled in, such as the firm's details or the claim number. This runs each time the
+     * letter is shown or exported rather than when it is drafted, so correcting a detail never requires drafting
+     * again. Unanswered placeholders are left in place for review.
      */
-    public static DemandDraft Fill(DemandDraft draft, MatterDetails matter)
+    public static DemandDraft Fill(DemandDraft draft, MatterDetails matter, IReadOnlyDictionary<string, string>? values = null)
     {
-        if (matter.DateOfLoss is not DateOnly dateOfLoss)
+        Dictionary<string, string> replacements = new Dictionary<string, string>(values ?? new Dictionary<string, string>());
+        // The intake details are the one place the date of loss is entered, so they decide it.
+        replacements.Remove(DateOfLossPlaceholder);
+        if (matter.DateOfLoss is DateOnly dateOfLoss)
+        {
+            replacements[DateOfLossPlaceholder] = dateOfLoss.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        }
+
+        if (replacements.Count == 0)
         {
             return draft;
         }
 
-        string date = dateOfLoss.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        string FillText(string text) => replacements.Aggregate(text, (filled, value) => filled.Replace(value.Key, value.Value));
+
         return new DemandDraft()
         {
             Segments = draft.Segments.Select(segment => new DraftSegment()
             {
-                Text = segment.Text.Replace(DateOfLossPlaceholder, date),
-                Citations = segment.Citations,
+                Text = FillText(segment.Text),
+                // The page places each source after the statement it supports by finding that statement's text.
+                Citations = segment.Citations.Select(citation => citation.Claim is string claim && FillText(claim) != claim
+                    ? citation.WithClaim(FillText(claim))
+                    : citation).ToArray(),
             }).ToArray(),
             // Uncited statements are matched against the letter's text, so they must be filled the same way.
-            UnsupportedStatements = draft.UnsupportedStatements.Select(statement => statement.Replace(DateOfLossPlaceholder, date)).ToArray(),
+            UnsupportedStatements = draft.UnsupportedStatements.Select(FillText).ToArray(),
         };
     }
 

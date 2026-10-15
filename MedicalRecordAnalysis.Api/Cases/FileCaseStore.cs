@@ -8,14 +8,16 @@ using MedicalRecordAnalysis.LLM;
 namespace MedicalRecordAnalysis.Api.Cases;
 
 /**
- * Keeps each case in its own folder under the root: meta.json, records/, cache/, case.json, and draft.json.
- * Case ids and record names are validated so a request can never reach a path outside its case folder.
+ * Keeps each case in its own folder under the root: meta.json, records/, cache/, case.json, and draft.json. The
+ * firm's profile is firm.json beside the case folders. Case ids and record names are validated so a request can
+ * never reach a path outside its case folder.
  */
 public sealed partial class FileCaseStore : ICaseStore
 {
     private const string MetaFileName = "meta.json";
     private const string AnalysisFileName = "case.json";
     private const string DraftFileName = "draft.json";
+    private const string FirmProfileFileName = "firm.json";
     private const int MaxRecordNameLength = 200;
 
     private static readonly JsonSerializerOptions MetaJsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
@@ -209,6 +211,23 @@ public sealed partial class FileCaseStore : ICaseStore
         return IsValidCaseId(caseId) && file.Exists ? await MedicalRecordAnalyzer.LoadDraft(file, cancellationToken) : null;
     }
 
+    public async Task<FirmProfile> LoadFirmProfile(CancellationToken cancellationToken = default)
+    {
+        FileInfo file = new FileInfo(Path.Combine(m_root.FullName, FirmProfileFileName));
+        if (!file.Exists)
+        {
+            return FirmProfile.Empty;
+        }
+
+        await using FileStream stream = file.OpenRead();
+        return await JsonSerializer.DeserializeAsync<FirmProfile>(stream, MetaJsonOptions, cancellationToken) ?? FirmProfile.Empty;
+    }
+
+    public Task SaveFirmProfile(FirmProfile profile, CancellationToken cancellationToken = default)
+    {
+        return WriteJson(new FileInfo(Path.Combine(m_root.FullName, FirmProfileFileName)), profile, cancellationToken);
+    }
+
     private DirectoryInfo CaseDirectory(string caseId) => new DirectoryInfo(Path.Combine(m_root.FullName, caseId));
 
     private DirectoryInfo RecordsDirectory(string caseId) => new DirectoryInfo(Path.Combine(CaseDirectory(caseId).FullName, "records"));
@@ -227,13 +246,18 @@ public sealed partial class FileCaseStore : ICaseStore
         return await JsonSerializer.DeserializeAsync<CaseMeta>(stream, MetaJsonOptions, cancellationToken);
     }
 
-    private async Task WriteMeta(CaseMeta meta, CancellationToken cancellationToken)
+    private Task WriteMeta(CaseMeta meta, CancellationToken cancellationToken)
     {
-        FileInfo file = CaseFile(meta.Id, MetaFileName);
+        return WriteJson(CaseFile(meta.Id, MetaFileName), meta, cancellationToken);
+    }
+
+    /** Writes to a temporary file first, so a crash never leaves a half-written file in place. */
+    private static async Task WriteJson<T>(FileInfo file, T value, CancellationToken cancellationToken)
+    {
         string temporary = file.FullName + ".tmp";
         await using (FileStream stream = File.Create(temporary))
         {
-            await JsonSerializer.SerializeAsync(stream, meta, MetaJsonOptions, cancellationToken);
+            await JsonSerializer.SerializeAsync(stream, value, MetaJsonOptions, cancellationToken);
         }
 
         File.Move(temporary, file.FullName, overwrite: true);

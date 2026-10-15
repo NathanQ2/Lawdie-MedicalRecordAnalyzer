@@ -29,6 +29,7 @@ public static class Program
         WebApplication app = builder.Build();
         app.Use(RequireClientHeader);
         app.MapCaseEndpoints();
+        app.MapFirmEndpoints();
         app.Run();
     }
 

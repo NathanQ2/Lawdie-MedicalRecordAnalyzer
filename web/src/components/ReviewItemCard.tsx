@@ -1,6 +1,6 @@
 import { Badge, Button, Card, Group, Stack, Text, Textarea, Tooltip, UnstyledButton } from '@mantine/core'
 import { IconCheck, IconClose, IconLocate, IconUndo } from './icons'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { Citation, ReviewItem, ReviewItemKind, ReviewStatus } from '../api/types'
 import { citationKey, hasTwoQuotes, pageLabel, recordName } from '../lib/citations'
 
@@ -9,6 +9,7 @@ const kindLabels: Record<ReviewItemKind, { label: string; color: string; hint: s
   UnsupportedStatement: { label: 'Uncited statement', color: 'amber', hint: 'No quote supports this sentence. Check it, or take it out of the letter.' },
   Placeholder: { label: 'Placeholder', color: 'slate', hint: "The documents don't give this detail. Fill it in before you send the letter." },
   RecognizedQuote: { label: 'Scanned text', color: 'slate', hint: 'This quote was read from a scan or photo. Check it against the original page.' },
+  IntakeMismatch: { label: 'Matter details', color: 'brick', hint: 'The details you entered for the case disagree with the documents.' },
 }
 
 interface ReviewItemCardProps {
@@ -20,12 +21,18 @@ interface ReviewItemCardProps {
   /** Whether this item's sentences are the ones highlighted in the letter. */
   shownInDraft?: boolean
   saving?: boolean
+  /** An extra action for an open item, such as taking the documents' date of loss, shown before Dismiss and Resolve. */
+  actions?: ReactNode
+  /** Extra content for an open item below its text, such as a field to fill in a placeholder. */
+  body?: ReactNode
+  /** Marks the card the attorney just found from the letter, such as by clicking a placeholder. */
+  focused?: boolean
 }
 
 /**
  * One attorney review item: what to check, its sources, and resolve / dismiss with an optional note.
  */
-export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft, shownInDraft = false, saving = false }: ReviewItemCardProps) {
+export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft, shownInDraft = false, saving = false, actions, body, focused = false }: ReviewItemCardProps) {
   const [note, setNote] = useState(item.note ?? '')
   const open = item.status === 'Open'
   const noteChanged = note.trim() !== (item.note ?? '')
@@ -34,7 +41,14 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
   const places = item.draftRanges.length
 
   return (
-    <Card withBorder radius="md" padding="sm" opacity={open ? 1 : 0.7}>
+    <Card
+      withBorder
+      radius="md"
+      padding="sm"
+      opacity={open ? 1 : 0.7}
+      data-review-item={item.id}
+      style={focused ? { borderColor: 'var(--mantine-color-slate-5)', boxShadow: '0 0 0 3px var(--mantine-color-slate-1)' } : undefined}
+    >
       <Stack gap="xs">
         <Group justify="space-between">
           <Group gap={4}>
@@ -59,6 +73,7 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
         </Group>
 
         <Text size="sm">{item.text}</Text>
+        {open && body}
 
         {item.citations.map((citation) => (
           <UnstyledButton key={citationKey(citation)} onClick={() => onSelectCitation(citation)}>
@@ -102,6 +117,7 @@ export function ReviewItemCard({ item, onUpdate, onSelectCitation, onShowInDraft
         <Group gap="xs" justify="flex-end">
           {open ? (
             <>
+              {actions}
               <Tooltip label="The letter needs no change for this.">
                 <Button size="compact-xs" variant="light" color="gray" leftSection={<IconClose size={12} />} loading={saving} onClick={() => onUpdate('Dismissed', note.trim() || null)}>
                   Dismiss

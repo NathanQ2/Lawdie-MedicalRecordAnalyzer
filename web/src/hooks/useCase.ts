@@ -1,8 +1,8 @@
 import { notifications } from '@mantine/notifications'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { api } from '../api/client'
-import type { CaseDetail, JobStatus } from '../api/types'
+import type { CaseDetail, FirmProfile, JobStatus, LetterEdit, MatterInput, ReviewItem, ReviewStatus } from '../api/types'
 import { isJobActive, jobKindLabels } from '../lib/format'
 
 const POLL_INTERVAL_MS = 1500
@@ -15,7 +15,10 @@ export const caseKeys = {
   detail: (caseId: string) => ['cases', caseId] as const,
   analysis: (caseId: string, updatedAt: string | null) => ['cases', caseId, 'analysis', updatedAt] as const,
   draft: (caseId: string, updatedAt: string | null) => ['cases', caseId, 'draft', updatedAt] as const,
+  unfilledDraft: (caseId: string) => ['cases', caseId, 'draft', 'unfilled'] as const,
   review: (caseId: string) => ['cases', caseId, 'review'] as const,
+  placeholders: (caseId: string) => ['cases', caseId, 'placeholders'] as const,
+  firm: ['firm'] as const,
 }
 
 export function useCases() {
@@ -78,6 +81,93 @@ export function useDraft(caseId: string, draftUpdatedAt: string | null | undefin
 /** Loads the review checklist; finished jobs invalidate every case query, which reloads it. */
 export function useReview(caseId: string) {
   return useQuery({ queryKey: caseKeys.review(caseId), queryFn: () => api.getReview(caseId) })
+}
+
+/** Resolves, dismisses or reopens a review item, and updates the cached checklist with the result. */
+export function useReviewUpdate(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ itemId, status, note }: { itemId: string; status: ReviewStatus; note: string | null }) =>
+      api.updateReview(caseId, itemId, status, note),
+    onSuccess: (updated) =>
+      queryClient.setQueryData<ReviewItem[]>(caseKeys.review(caseId), (current) => current?.map((item) => (item.id === updated.id ? updated : item))),
+    onError: (error) => notifications.show({ color: 'brick', title: 'Could not update the review item', message: error.message }),
+  })
+}
+
+/**
+ * Saves the case's name and intake details. The letter and its review items are served with the date of loss
+ * filled in, so every case query reloads.
+ */
+export function useMatterUpdate(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (matter: MatterInput) => api.updateMatter(caseId, matter),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(caseKeys.detail(caseId), updated)
+      await queryClient.invalidateQueries({ queryKey: caseKeys.all })
+    },
+  })
+}
+
+/** The letter's placeholders and what fills each, once the case has been drafted. */
+export function usePlaceholders(caseId: string, enabled: boolean) {
+  return useQuery({ queryKey: caseKeys.placeholders(caseId), queryFn: () => api.getPlaceholders(caseId), enabled })
+}
+
+/**
+ * Reloads what a change to the letter affects: the letter, its review items and placeholders, and the case. The
+ * analysis is left alone.
+ */
+function refreshLetter(queryClient: ReturnType<typeof useQueryClient>, caseId: string) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['cases', caseId, 'draft'] }),
+    queryClient.invalidateQueries({ queryKey: caseKeys.review(caseId) }),
+    queryClient.invalidateQueries({ queryKey: caseKeys.placeholders(caseId) }),
+    queryClient.invalidateQueries({ queryKey: caseKeys.detail(caseId), exact: true }),
+  ])
+}
+
+/** Saves values for the letter's placeholders, then reloads the letter and its review items, which they change. */
+export function usePlaceholderUpdate(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (values: Record<string, string>) => api.updatePlaceholders(caseId, values),
+    onSuccess: async (placeholders) => {
+      queryClient.setQueryData(caseKeys.placeholders(caseId), placeholders)
+      await refreshLetter(queryClient, caseId)
+    },
+  })
+}
+
+/** The letter as drafted, before its placeholders are filled in, which the editor works on. */
+export function useUnfilledDraft(caseId: string, enabled: boolean) {
+  return useQuery({ queryKey: caseKeys.unfilledDraft(caseId), queryFn: () => api.getUnfilledDraft(caseId), enabled })
+}
+
+/** Saves an edit to the letter's text, then reloads the letter and its review items. */
+export function useLetterEdit(caseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (edit: LetterEdit) => api.editLetter(caseId, edit),
+    onSuccess: () => refreshLetter(queryClient, caseId),
+  })
+}
+
+export function useFirmProfile() {
+  return useQuery({ queryKey: caseKeys.firm, queryFn: api.getFirmProfile })
+}
+
+/** Saves the firm's profile, which fills every case's letter, so every case's letter is reloaded. */
+export function useFirmProfileUpdate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (profile: FirmProfile) => api.updateFirmProfile(profile),
+    onSuccess: async (profile) => {
+      queryClient.setQueryData(caseKeys.firm, profile)
+      await queryClient.invalidateQueries({ queryKey: caseKeys.all })
+    },
+  })
 }
 
 /**

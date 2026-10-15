@@ -71,9 +71,18 @@ public class MedicalRecordAnalyzer
         // 3. Summarize the case, grounded in the extracted quotes
         progress?.Report(new PipelineProgress(PipelineStage.SummarizingCase, 0, 1));
         piCase.Summary = await m_llmProvider.SummarizeCase(piCase, cancellationToken);
+
+        // 4. List the visits by date, and find the date of loss the records give, confirmed against the documents
+        progress?.Report(new PipelineProgress(PipelineStage.BuildingChronology, 0, 1));
+        ChronologyResult chronology = ChronologyCheck.Apply(await m_llmProvider.BuildChronology(piCase, cancellationToken), piCase.Sources);
+        piCase.Chronology = chronology.Entries;
+        piCase.RecordedDateOfLoss = chronology.DateOfLoss;
+
         Citation[] citations = piCase.DocumentSummaries.SelectMany(summary => summary.Citations)
             .Concat(piCase.Contradictions.SelectMany(contradiction => contradiction.Citations))
             .Concat(piCase.Summary.Citations)
+            .Concat(piCase.Chronology.SelectMany(entry => entry.Citations))
+            .Concat(piCase.RecordedDateOfLoss?.Citations ?? [])
             .ToArray();
         PageLocator.AssignPages(citations, piCase.Sources);
         RecognitionLocator.AssignFlags(citations, piCase.Sources);

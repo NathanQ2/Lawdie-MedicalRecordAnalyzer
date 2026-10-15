@@ -14,6 +14,17 @@ public class PICase
     public Contradiction[] Contradictions { get; set; } = [];
 
     /**
+     * The visits, tests and procedures in the records, by date. Cases analyzed before chronologies existed have none.
+     */
+    public ChronologyEntry[] Chronology { get; set; } = [];
+
+    /**
+     * The date of loss as the records state it, kept apart from the date entered at intake so the two can be
+     * compared. Null when no quote states it.
+     */
+    public CitedDate? RecordedDateOfLoss { get; set; }
+
+    /**
      * Each source file's extracted text as passages, so drafting can search the records without re-running OCR.
      */
     public SourceDocument[] Sources { get; set; } = [];

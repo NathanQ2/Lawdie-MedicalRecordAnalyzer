@@ -67,6 +67,24 @@ public class DemandLetterRendererTests
     }
 
     [Fact]
+    public void ReviewSectionListsIntakeDetailsTheDocumentsContradict()
+    {
+        Citation ems = new Citation() { FilePath = "/records/ems.txt", CitedText = "Date: 01/09/2026", StartPosition = 12 };
+        PICase piCase = CreateCase();
+        piCase.RecordedDateOfLoss = new CitedDate() { Date = new DateOnly(2026, 1, 9), Citations = [ems] };
+
+        string contradicted = DemandLetterRenderer.Render(CreateDraft(), piCase, DraftFormat.Markdown, new MatterDetails(new DateOnly(2026, 10, 9), null, null));
+        string agreeing = DemandLetterRenderer.Render(CreateDraft(), piCase, DraftFormat.Markdown, new MatterDetails(new DateOnly(2026, 1, 9), null, null));
+        string withoutDetails = DemandLetterRenderer.Render(CreateDraft(), piCase, DraftFormat.Markdown);
+
+        Assert.Contains("### Intake details the documents contradict\n" +
+            "- The matter details give the date of loss as October 9, 2026, but the documents give January 9, 2026.\n" +
+            "    - ems.txt, character 12: \"Date: 01/09/2026\"", contradicted.ReplaceLineEndings("\n"));
+        Assert.Contains("### Intake details the documents contradict\nNone.", agreeing.ReplaceLineEndings("\n"));
+        Assert.DoesNotContain("Intake details", withoutDetails);
+    }
+
+    [Fact]
     public void EmptyReviewSectionsSayNone()
     {
         DemandDraft draft = new DemandDraft() { Segments = [new DraftSegment() { Text = "Cited fact", Citations = [LostLoc] }] };

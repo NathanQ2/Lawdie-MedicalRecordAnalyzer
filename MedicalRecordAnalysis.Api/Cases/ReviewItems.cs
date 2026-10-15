@@ -10,6 +10,8 @@ public enum ReviewItemKind
     UnsupportedStatement,
     Placeholder,
     RecognizedQuote,
+    /** The intake details disagree with what the documents state, such as a different date of loss. */
+    IntakeMismatch,
 }
 
 /**
@@ -21,17 +23,22 @@ public record ReviewItem(string Id, ReviewItemKind Kind, string Text, Citation[]
     DraftRange[] DraftRanges);
 
 /**
- * The attorney review checklist: contradictions from the analysis, plus uncited statements, placeholders and
- * quotes read by OCR from the draft. An item's id comes from its kind and text, so its review state carries over when
- * the analysis or draft is regenerated with the same item. Each item also lists where it appears in the draft, so
- * the attorney can see which sentences to revise once it is resolved.
+ * The attorney review checklist: contradictions from the analysis and intake details the documents disagree with,
+ * plus uncited statements, placeholders and quotes read by OCR from the draft. An item's id comes from its kind and
+ * text, so its review state carries over when the analysis or draft is regenerated with the same item. Each item
+ * also lists where it appears in the draft, so the attorney can see which sentences to revise once it is resolved.
  */
 public static class ReviewItems
 {
-    public static IReadOnlyList<ReviewItem> Build(PICase? analysis, DemandDraft? draft, IReadOnlyDictionary<string, ReviewState> states)
+    public static IReadOnlyList<ReviewItem> Build(PICase? analysis, DemandDraft? draft, IReadOnlyDictionary<string, ReviewState> states,
+        MatterDetails? matter = null)
     {
         List<(ReviewItemKind Kind, string Text, Citation[] Citations, DraftRange[] Ranges)> items = [];
         string narrative = draft?.Narrative ?? "";
+
+        // The letter uses the intake details, so one the documents contradict would reach the adjuster.
+        items.AddRange(IntakeMismatch.Find(analysis, matter).Select(mismatch =>
+            (ReviewItemKind.IntakeMismatch, mismatch.Summary, mismatch.Citations, Occurrences(narrative, mismatch.IntakeText, firstOnly: false))));
 
         foreach (Contradiction contradiction in analysis?.Contradictions ?? [])
         {

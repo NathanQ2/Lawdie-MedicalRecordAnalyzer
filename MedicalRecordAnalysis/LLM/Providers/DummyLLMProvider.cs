@@ -40,4 +40,18 @@ public class DummyLLMProvider : ILLMProvider
             Contradictions = []
         };
     }
+
+    public Task<ChronologyResult> BuildChronology(PICase piCase, CancellationToken cancellationToken = default)
+    {
+        Citation[] citations = piCase.DocumentSummaries.SelectMany(summary => summary.Citations).Take(1).ToArray();
+        ChronologyEntry entry = new ChronologyEntry()
+        {
+            Date = new DateOnly(2026, 1, 9),
+            Provider = "TestProvider",
+            VisitType = "TestVisit",
+            Finding = "TestFinding",
+            Citations = citations,
+        };
+        return Task.FromResult(new ChronologyResult() { Entries = citations.Length > 0 ? [entry] : [] });
+    }
 }

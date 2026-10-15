@@ -93,6 +93,22 @@ public class DemandLetterDocxRendererTests
     }
 
     [Fact]
+    public void ListsIntakeDetailsTheDocumentsContradict()
+    {
+        Citation ems = new Citation() { FilePath = "/records/ems.pdf", CitedText = "Date: 01/09/2026", StartPosition = 12, PageNumber = 1 };
+        PICase piCase = CreateCase();
+        piCase.RecordedDateOfLoss = new CitedDate() { Date = new DateOnly(2026, 1, 9), Citations = [ems] };
+
+        using WordprocessingDocument document = Open(DemandLetterDocxRenderer.Render(CreateDraft(), piCase, new MatterDetails(new DateOnly(2026, 10, 9), null, null)));
+        string[] paragraphs = document.MainDocumentPart!.Document!.Body!.Elements<Paragraph>().Select(paragraph => paragraph.InnerText).ToArray();
+
+        int heading = Array.IndexOf(paragraphs, "Intake details the documents contradict");
+        Assert.True(heading > Array.IndexOf(paragraphs, "Attorney Review - Remove Before Sending"));
+        Assert.Equal("• The matter details give the date of loss as October 9, 2026, but the documents give January 9, 2026.", paragraphs[heading + 1]);
+        Assert.Equal("– ems.pdf, p. 1: \"Date: 01/09/2026\"", paragraphs[heading + 2]);
+    }
+
+    [Fact]
     public void AddsTheAttorneyReviewSectionOnANewPage()
     {
         using WordprocessingDocument document = Open(DemandLetterDocxRenderer.Render(CreateDraft(), CreateCase()));

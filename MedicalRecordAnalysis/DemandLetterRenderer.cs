@@ -13,13 +13,14 @@ public enum DraftFormat
 
 /**
  * Renders a demand draft with a numbered source note for every cited claim, followed by an attorney review
- * section listing contradictions, uncited statements, placeholders, and quotes read by OCR that must be resolved or
- * checked before sending.
+ * section listing intake details the documents contradict, contradictions, uncited statements, placeholders, and
+ * quotes read by OCR that must be resolved or checked before sending.
  */
 public static partial class DemandLetterRenderer
 {
     internal const string ReviewTitle = "Attorney Review - Remove Before Sending";
     internal const string RecognizedQuotesHeading = "Quotes read by OCR (check against the original page)";
+    internal const string IntakeMismatchesHeading = "Intake details the documents contradict";
 
     [GeneratedRegex(@"\[[A-Z][A-Z0-9 &/'.,-]*\]")]
     private static partial Regex PlaceholderPattern();
@@ -39,18 +40,20 @@ public static partial class DemandLetterRenderer
 
     /**
      * The rendered draft as file contents in any format: UTF-8 text for Markdown and plain text, or a Word document.
+     * Given the attorney's intake details, the review section also lists those the documents contradict.
      */
-    public static byte[] RenderBytes(DemandDraft draft, PICase piCase, DraftFormat format)
+    public static byte[] RenderBytes(DemandDraft draft, PICase piCase, DraftFormat format, MatterDetails? matter = null)
     {
         return format == DraftFormat.Docx
-            ? DemandLetterDocxRenderer.Render(draft, piCase)
-            : Encoding.UTF8.GetBytes(Render(draft, piCase, format));
+            ? DemandLetterDocxRenderer.Render(draft, piCase, matter)
+            : Encoding.UTF8.GetBytes(Render(draft, piCase, format, matter));
     }
 
     /**
-     * The rendered draft as Markdown or plain text. Use RenderBytes for Word documents.
+     * The rendered draft as Markdown or plain text. Use RenderBytes for Word documents. Without intake details (the
+     * CLI has none) there is nothing to compare, so the intake section is left out rather than reporting no conflicts.
      */
-    public static string Render(DemandDraft draft, PICase piCase, DraftFormat format)
+    public static string Render(DemandDraft draft, PICase piCase, DraftFormat format, MatterDetails? matter = null)
     {
         if (format == DraftFormat.Docx)
         {
@@ -78,6 +81,12 @@ public static partial class DemandLetterRenderer
         builder.AppendLine();
         builder.AppendLine(markdown ? "---" : new string('=', 60)).AppendLine();
         builder.AppendLine(markdown ? $"## {ReviewTitle}" : ReviewTitle.ToUpperInvariant()).AppendLine();
+
+        if (matter is not null)
+        {
+            AppendSection(builder, markdown, IntakeMismatchesHeading, IntakeMismatch.Find(piCase, matter).Select(mismatch =>
+                mismatch.Summary + string.Concat(mismatch.Citations.Select(citation => $"\n    - {DescribeSource(citation)}"))));
+        }
 
         AppendSection(builder, markdown, "Contradictions between records", piCase.Contradictions.Select(contradiction =>
             DescribeContradiction(contradiction) + string.Concat(contradiction.Citations.Select(citation => $"\n    - {DescribeSource(citation)}"))));

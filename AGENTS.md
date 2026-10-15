@@ -15,7 +15,7 @@ Medical Record Analysis automates the demand-letter work for personal injury (PI
 | `MedicalRecordAnalysis/LLM/` | `ILLMProvider`, `AnthropicProvider`, `DummyLLMProvider`, plus `TextChunker`, `GroundingCheck`, `VerbatimCitations` and the result models |
 | `MedicalRecordAnalysis/Retrieval/` | `PassageSplitter`, `PassageRetriever` (topic-based passage selection for drafting), `PageLocator` |
 | `MedicalRecordAnalysis/Caching/` | Per-document ingest cache, keyed by a hash of each file's contents |
-| `MedicalRecordAnalysis/*.cs` | `MedicalRecordAnalyzer` (the pipeline), `PICase`, `Citation`, `DemandLetterTemplate`, and the Markdown, text and Word renderers |
+| `MedicalRecordAnalysis/*.cs` | `MedicalRecordAnalyzer` (the pipeline), `PICase`, `Citation`, `DemandLetterTemplate`, `FirmProfile`, `LetterEdits` (attorney edits to the letter), `IntakeMismatch`, and the Markdown, text and Word renderers |
 | `MedicalRecordAnalysisCLI/` | `ingest` and `draft` commands (System.CommandLine) |
 | `MedicalRecordAnalysis.Api/` | Local ASP.NET Core API: cases, documents, background jobs, review checklist, export |
 | `MedicalRecordAnalysis.Tests/` | xUnit tests for the library, CLI behavior and API, including fixtures in `TestData/` |
@@ -28,14 +28,15 @@ Medical Record Analysis automates the demand-letter work for personal injury (PI
 2. Summarize each document. The text is sent as citable chunks (`TextChunker` splits it into lines, then sentences). Each citation maps back to an exact span of the source, and the API's quoted text must match the chunks we sent, or the citation is dropped.
 3. Find contradictions between and within documents. Quotes are referenced by ID (`[Q12]`), never by restating their text.
 4. Write a case summary that cites the extracted quotes and presents disputed facts as disputed. `GroundingCheck` lists sentences no citation covers.
-5. Assign page numbers to every citation (`PageLocator`), and flag citations that quote OCR'd text (`RecognitionLocator`).
+5. Build the chronology: each visit, test or procedure with its date, provider and main finding, citing quotes by ID, plus the date of loss the records state. `ChronologyCheck` confirms each date and provider name against the cited document and flags what it can't find, and keeps the date of loss only when its own quote states it. The API compares that date with the intake date of loss and lists a mismatch as a review item.
+6. Assign page numbers to every citation (`PageLocator`), and flag citations that quote OCR'd text (`RecognitionLocator`).
 
 **Draft** (`MedicalRecordAnalyzer.Draft`):
 1. `PassageRetriever` picks the passages most relevant to each part of the letter, within a character budget.
 2. The provider writes the letter body from those passages under fixed `## ` section headings.
 3. `VerbatimCitations` attaches citations to sentences copied from the documents but left uncited, where the match is unambiguous.
-4. `DemandLetterTemplate` wraps the body with the letterhead, "Re:" block, salutation, demand and signature. Facts the documents can't supply are bracketed placeholders such as `[CLAIM NUMBER]`.
-5. The renderers produce Markdown, plain text or Word (`.docx`, with real footnotes). Each export ends with an attorney review section listing contradictions, uncited statements and placeholders.
+4. `DemandLetterTemplate` wraps the body with the letterhead, "Re:" block, salutation, demand and signature. Facts the documents can't supply are bracketed placeholders such as `[CLAIM NUMBER]`. `DemandLetterTemplate.Fill` fills them when the letter is shown or exported: the date of loss from the intake details, the firm's details from its `FirmProfile`, and others from values the attorney enters for the case.
+5. The renderers produce Markdown, plain text or Word (`.docx`, with real footnotes). Each export ends with an attorney review section listing intake details the documents contradict, contradictions, uncited statements and placeholders.
 
 **Grounding rules to preserve:**
 - Every citation must point at an exact substring of the extracted text, with its page.
@@ -43,6 +44,8 @@ Medical Record Analysis automates the demand-letter work for personal injury (PI
 - Uncited sentences are reported, not hidden.
 - When a value is unknown, use a placeholder; never guess.
 - Quotes read by OCR are flagged and listed for review, because OCR can misread characters.
+- Chronology dates and provider names that can't be found in the cited document are flagged, never trusted silently.
+- Attorney edits to the letter (`LetterEdits`) can only use sources the letter already cites, and a source number supports only the sentence it follows. Sentences an edit adds or leaves without a source are listed as uncited.
 
 ## Building, running and testing
 **Requirements:** .NET 10 SDK, and Node.js 22.12 or newer (the developer uses Node 24 via nvm). An Anthropic API key in `ANTHROPIC_API_KEY`, or in `.env` at the repository root; the API and live tests read `.env` in development. OCR is optional: set `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT` and `AZURE_DOCUMENT_INTELLIGENCE_KEY` to enable it; without them, scans are skipped.

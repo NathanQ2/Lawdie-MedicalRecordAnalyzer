@@ -10,6 +10,18 @@
   border-bottom: 2px dotted var(--mantine-color-amber-7);
   border-radius: 2px;
   padding: 0 1px;
+
+  &[data-clickable] {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--mantine-color-amber-2);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mantine-color-amber-6);
+    }
+  }
 }
 
 .heading {
@@ -24,6 +36,18 @@
   font-weight: 600;
   border-radius: 2px;
   padding: 0 2px;
+
+  &[data-clickable] {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--mantine-color-slate-2);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mantine-color-slate-5);
+    }
+  }
 }
 
 .marker {

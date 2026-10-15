@@ -1,18 +1,10 @@
-/*
- * The page sits on a soft field of the palette's colors, so the glass header and step bar have something to blur.
- * Reading surfaces (cards, the letter, the source viewer) stay solid.
- */
+/* A plain white page. The glass header on narrow screens blurs the page as it scrolls underneath. */
 body {
   margin: 0;
   min-height: 100vh;
-  /* Step pages slide in from the side; clip (unlike hidden) keeps sticky panels working. */
+  /* Clip (unlike hidden) stops sideways scrolling without breaking sticky panels. */
   overflow-x: clip;
   background-color: var(--mra-page);
-  background-image:
-    radial-gradient(40vw 40vw at 0% 0%, rgba(143, 175, 136, 0.45), transparent 70%),
-    radial-gradient(36vw 36vw at 100% 20%, rgba(185, 200, 212, 0.55), transparent 70%),
-    radial-gradient(34vw 34vw at 40% 100%, rgba(217, 223, 208, 0.7), transparent 70%);
-  background-attachment: fixed;
 }
 
 .mra-glass {

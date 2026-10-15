@@ -73,6 +73,37 @@ public class AnthropicProviderLiveTests
     }
 
     [LiveFact(ApiKeyVariable)]
+    public async Task BuildChronologyListsDatedVisitsConfirmedAgainstTheRecords()
+    {
+        string[] fileNames = ["ER_Visit_2026-03-14.txt", "PT_Intake_2026-03-20.txt"];
+        AnthropicProvider provider = new AnthropicProvider();
+
+        Dictionary<string, string> sources = [];
+        List<DocumentSummary> summaries = [];
+        foreach (string fileName in fileNames)
+        {
+            FileInfo file = new FileInfo(Path.Combine(AppContext.BaseDirectory, "TestData", fileName));
+            sources[file.FullName] = await File.ReadAllTextAsync(file.FullName);
+            summaries.Add(await provider.SummarizeDocument(file, sources[file.FullName]));
+        }
+
+        PICase piCase = new PICase(summaries);
+        piCase.Sources = sources.Select(source => new SourceDocument() { FilePath = source.Key, Passages = PassageSplitter.Split(source.Value) }).ToArray();
+
+        ChronologyResult result = ChronologyCheck.Apply(await provider.BuildChronology(piCase), piCase.Sources);
+
+        m_output.WriteLine($"DATE OF LOSS: {result.DateOfLoss?.Date}");
+        foreach (ChronologyEntry entry in result.Entries)
+        {
+            m_output.WriteLine($"{entry.Date} | {entry.Provider} | {entry.VisitType} | {entry.Finding} | date {entry.DateConfirmed}, provider {entry.ProviderConfirmed}");
+        }
+
+        Assert.NotEmpty(result.Entries);
+        Assert.All(result.Entries, entry => Assert.NotEmpty(entry.Citations));
+        Assert.Contains(result.Entries, entry => entry.DateConfirmed);
+    }
+
+    [LiveFact(ApiKeyVariable)]
     public async Task DraftDemandCitesRecordsAndUsesPlaceholders()
     {
         string[] fileNames = ["ER_Visit_2026-03-14.txt", "PT_Intake_2026-03-20.txt"];

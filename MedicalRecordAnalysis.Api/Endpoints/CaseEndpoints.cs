@@ -8,6 +8,9 @@ public static class CaseEndpoints
 {
     private const int MaxCaseNameLength = 200;
     private const int MaxDetailLength = 100;
+    private const int MaxLetterValueLength = 500;
+    private const int MaxPlaceholdersPerRequest = 100;
+    private const int MaxEditLength = 20_000;
 
     public static void MapCaseEndpoints(this IEndpointRouteBuilder app)
     {
@@ -37,6 +40,9 @@ public static class CaseEndpoints
         cases.MapPost("/{caseId}/analysis/reviewed", MarkAnalysisReviewed);
         cases.MapGet("/{caseId}/draft", GetDraft);
         cases.MapGet("/{caseId}/draft/export", ExportDraft);
+        cases.MapPut("/{caseId}/draft/text", EditLetter);
+        cases.MapGet("/{caseId}/letter/placeholders", GetPlaceholders);
+        cases.MapPut("/{caseId}/letter/placeholders", UpdatePlaceholders);
 
         cases.MapGet("/{caseId}/review", GetReview);
         cases.MapPut("/{caseId}/review/{itemId}", UpdateReview);
@@ -314,7 +320,10 @@ public static class CaseEndpoints
         return Results.Ok(await ToCaseDto(meta!, store, jobs, cancellationToken));
     }
 
-    private static async Task<IResult> GetDraft(string caseId, ICaseStore store, CancellationToken cancellationToken)
+    /**
+     * The letter with its placeholders filled in, or as drafted (fill=false), which is the text an edit replaces.
+     */
+    private static async Task<IResult> GetDraft(string caseId, bool? fill, ICaseStore store, CancellationToken cancellationToken)
     {
         CaseMeta? meta = await store.Get(caseId, cancellationToken);
         if (meta is null)
@@ -322,8 +331,53 @@ public static class CaseEndpoints
             return CaseNotFound();
         }
 
-        DemandDraft? draft = await LoadDraft(meta, store, cancellationToken);
+        DemandDraft? draft = fill == false ? await store.LoadDraft(caseId, cancellationToken) : await LoadDraft(meta, store, cancellationToken);
         return draft is null ? Error(StatusCodes.Status404NotFound, "This case has not been drafted yet.") : Results.Ok(draft);
+    }
+
+    /**
+     * Applies an edit to the letter's text, keeping each source attached to the sentence it follows and listing
+     * new or uncited sentences for review (see LetterEdits). Returns the letter with its placeholders filled in.
+     */
+    private static async Task<IResult> EditLetter(string caseId, EditLetterRequest request, ICaseStore store, IJobQueue jobs,
+        CancellationToken cancellationToken)
+    {
+        CaseMeta? meta = await store.Get(caseId, cancellationToken);
+        if (meta is null)
+        {
+            return CaseNotFound();
+        }
+
+        // A draft being written would replace the edit when it finishes.
+        if (jobs.CurrentJob(meta)?.IsActive == true)
+        {
+            return JobActive();
+        }
+
+        if (request.Original is null || request.Text is null || request.Text.Length > MaxEditLength || request.Original.Length > MaxEditLength)
+        {
+            return Error(StatusCodes.Status400BadRequest, $"An edit can be at most {MaxEditLength} characters.");
+        }
+
+        DemandDraft? draft = await store.LoadDraft(caseId, cancellationToken);
+        if (draft is null)
+        {
+            return Error(StatusCodes.Status404NotFound, "This case has not been drafted yet.");
+        }
+
+        DemandDraft edited;
+        try
+        {
+            edited = LetterEdits.Replace(draft, request.Start, request.Original, request.Text, request.Sources ?? []);
+        }
+        catch (LetterEditException exception)
+        {
+            return Error(exception.Conflict ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest, exception.Message);
+        }
+
+        await store.SaveDraft(caseId, edited, cancellationToken);
+        meta = await store.Update(caseId, current => current.LetterEditedAt = DateTimeOffset.UtcNow, cancellationToken);
+        return Results.Ok(await LoadDraft(meta!, store, cancellationToken));
     }
 
     private static async Task<IResult> ExportDraft(string caseId, string? format, ICaseStore store, CancellationToken cancellationToken)
@@ -359,7 +413,7 @@ public static class CaseEndpoints
             DraftFormat.PlainText => ("text/plain; charset=utf-8", "txt"),
             _ => ("text/markdown; charset=utf-8", "md"),
         };
-        return Results.File(DemandLetterRenderer.RenderBytes(draft, analysis, draftFormat.Value), contentType,
+        return Results.File(DemandLetterRenderer.RenderBytes(draft, analysis, draftFormat.Value, meta.Matter()), contentType,
             $"{SafeFileName(meta.Name)}-draft.{extension}");
     }
 
@@ -397,17 +451,139 @@ public static class CaseEndpoints
     {
         PICase? analysis = await store.LoadAnalysis(meta.Id, cancellationToken);
         DemandDraft? draft = await LoadDraft(meta, store, cancellationToken);
-        return ReviewItems.Build(analysis, draft, meta.Review);
+        return ReviewItems.Build(analysis, draft, meta.Review, meta.Matter());
     }
 
     /**
-     * The saved draft with the intake details filled in, so the letter, its export and the review checklist all
-     * reflect the current details without drafting again.
+     * The saved draft with the intake details and the letter's values filled in, so the letter, its export and the
+     * review checklist all reflect the current details without drafting again.
      */
     private static async Task<DemandDraft?> LoadDraft(CaseMeta meta, ICaseStore store, CancellationToken cancellationToken)
     {
         DemandDraft? draft = await store.LoadDraft(meta.Id, cancellationToken);
-        return draft is null ? null : DemandLetterTemplate.Fill(draft, meta.Matter());
+        return draft is null ? null : DemandLetterTemplate.Fill(draft, meta.Matter(), await LetterValues(meta, store, cancellationToken));
+    }
+
+    /** The values that fill the letter's placeholders: the firm's profile, overridden by this case's own values. */
+    private static async Task<Dictionary<string, string>> LetterValues(CaseMeta meta, ICaseStore store, CancellationToken cancellationToken)
+    {
+        FirmProfile firm = await store.LoadFirmProfile(cancellationToken);
+        Dictionary<string, string> values = new Dictionary<string, string>(firm.PlaceholderValues());
+        foreach ((string placeholder, string value) in meta.LetterValues)
+        {
+            values[placeholder] = value;
+        }
+
+        return values;
+    }
+
+    private static async Task<IResult> GetPlaceholders(string caseId, ICaseStore store, CancellationToken cancellationToken)
+    {
+        CaseMeta? meta = await store.Get(caseId, cancellationToken);
+        if (meta is null)
+        {
+            return CaseNotFound();
+        }
+
+        IReadOnlyList<LetterPlaceholderDto>? placeholders = await ListPlaceholders(meta, store, cancellationToken);
+        return placeholders is null ? Error(StatusCodes.Status404NotFound, "This case has not been drafted yet.") : Results.Ok(placeholders);
+    }
+
+    private static async Task<IResult> UpdatePlaceholders(string caseId, UpdatePlaceholdersRequest request, ICaseStore store,
+        CancellationToken cancellationToken)
+    {
+        Dictionary<string, string?> values = request.Values ?? [];
+        if (values.Count > MaxPlaceholdersPerRequest)
+        {
+            return Error(StatusCodes.Status400BadRequest, $"At most {MaxPlaceholdersPerRequest} placeholders can be set at once.");
+        }
+
+        Dictionary<string, string?> normalized = [];
+        foreach ((string placeholder, string? value) in values)
+        {
+            if (DemandLetterRenderer.FindPlaceholders(placeholder) is not [string found] || found != placeholder)
+            {
+                return Error(StatusCodes.Status400BadRequest, $"\"{placeholder}\" is not a placeholder such as [CLAIM NUMBER].");
+            }
+
+            if (placeholder == DemandLetterTemplate.DateOfLossPlaceholder)
+            {
+                return Error(StatusCodes.Status400BadRequest, "Set the date of loss in the matter details.");
+            }
+
+            (string? text, string? error) = NormalizeLetterValue(value, MaxLetterValueLength);
+            if (error is not null)
+            {
+                return Error(StatusCodes.Status400BadRequest, error);
+            }
+
+            normalized[placeholder] = text;
+        }
+
+        CaseMeta? meta = await store.Update(caseId, current =>
+        {
+            foreach ((string placeholder, string? text) in normalized)
+            {
+                if (text is null)
+                {
+                    current.LetterValues.Remove(placeholder);
+                }
+                else
+                {
+                    current.LetterValues[placeholder] = text;
+                }
+            }
+        }, cancellationToken);
+        if (meta is null)
+        {
+            return CaseNotFound();
+        }
+
+        IReadOnlyList<LetterPlaceholderDto>? placeholders = await ListPlaceholders(meta, store, cancellationToken);
+        return placeholders is null ? Error(StatusCodes.Status404NotFound, "This case has not been drafted yet.") : Results.Ok(placeholders);
+    }
+
+    /**
+     * Every placeholder in the letter as drafted, with what fills it now. Null when the case has no draft.
+     */
+    private static async Task<IReadOnlyList<LetterPlaceholderDto>?> ListPlaceholders(CaseMeta meta, ICaseStore store,
+        CancellationToken cancellationToken)
+    {
+        DemandDraft? draft = await store.LoadDraft(meta.Id, cancellationToken);
+        if (draft is null)
+        {
+            return null;
+        }
+
+        IReadOnlyDictionary<string, string> firm = (await store.LoadFirmProfile(cancellationToken)).PlaceholderValues();
+        return DemandLetterRenderer.FindPlaceholders(draft.Narrative).Select(placeholder =>
+        {
+            bool fromMatter = placeholder == DemandLetterTemplate.DateOfLossPlaceholder;
+            string? value = fromMatter
+                ? meta.DateOfLoss is DateOnly date ? IntakeMismatch.LongDate(date) : null
+                : meta.LetterValues.GetValueOrDefault(placeholder);
+            return new LetterPlaceholderDto(placeholder, value, fromMatter ? null : firm.GetValueOrDefault(placeholder), fromMatter);
+        }).ToList();
+    }
+
+    /**
+     * Trims a value entered for the letter, treating blank text as not given. Single line breaks are kept (for an
+     * address); a blank line would split the letter's paragraph, so it is an error, as is a value that is too long.
+     */
+    internal static (string? Value, string? Error) NormalizeLetterValue(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return (null, null);
+        }
+
+        string text = string.Join('\n', value.ReplaceLineEndings("\n").Split('\n').Select(line => line.Trim())).Trim();
+        if (text.Contains("\n\n", StringComparison.Ordinal))
+        {
+            return (null, "A value can't contain a blank line.");
+        }
+
+        return text.Length > maxLength ? (null, $"Each value can be at most {maxLength} characters.") : (text, null);
     }
 
     private static async Task<CaseDto> ToCaseDto(CaseMeta meta, ICaseStore store, IJobQueue jobs, CancellationToken cancellationToken)
@@ -417,7 +593,7 @@ public static class CaseEndpoints
         bool analysisReviewed = meta.AnalysisUpdatedAt is not null && meta.AnalysisReviewedAt >= meta.AnalysisUpdatedAt;
         return new CaseDto(meta.Id, meta.Name, meta.DateOfLoss, meta.Jurisdiction, meta.County, meta.CreatedAt, meta.UpdatedAt,
             await ToRecordDtos(meta, store, cancellationToken),
-            meta.AnalysisUpdatedAt, analysisOutOfDate, analysisReviewed, meta.DraftUpdatedAt, draftOutOfDate, jobs.CurrentJob(meta));
+            meta.AnalysisUpdatedAt, analysisOutOfDate, analysisReviewed, meta.DraftUpdatedAt, draftOutOfDate, jobs.CurrentJob(meta), meta.LetterEditedAt);
     }
 
     private static async Task<IReadOnlyList<RecordDto>> ToRecordDtos(CaseMeta meta, ICaseStore store, CancellationToken cancellationToken)

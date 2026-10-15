@@ -31,6 +31,28 @@ function Svg({ size = 18, stroke = 1.6, children, ...props }: IconProps & { chil
   )
 }
 
+// Pages of the case workspace
+export function IconOverview(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="3.5" width="7" height="7" rx="1.8" />
+      <rect x="13.5" y="3.5" width="7" height="7" rx="1.8" />
+      <rect x="3.5" y="13.5" width="7" height="7" rx="1.8" />
+      <path d="M13.5 15h7M13.5 19h4.5" />
+    </Svg>
+  )
+}
+
+export function IconChronology(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+      <path d="M7.5 13.5h2M11 13.5h2M14.5 13.5h2M7.5 17h2M11 17h2" />
+    </Svg>
+  )
+}
+
 // Steps of the workflow
 export function IconMatter(props: IconProps) {
   return (
@@ -244,4 +266,23 @@ export function IconChevronRight(props: IconProps) {
 
 export function IconMore(props: IconProps) {
   return <Svg {...props}><path d="M12 5.5h.01M12 12h.01M12 18.5h.01" strokeWidth={2.6} /></Svg>
+}
+
+export function IconFirm(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3.5 9.5h17L12 4z" />
+      <path d="M6.5 9.5v9M10.5 9.5v9M13.5 9.5v9M17.5 9.5v9" />
+      <path d="M4 20h16" />
+    </Svg>
+  )
+}
+
+export function IconSidebar(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <path d="M9.5 4.5v15" />
+    </Svg>
+  )
 }

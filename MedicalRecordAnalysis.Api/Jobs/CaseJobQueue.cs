@@ -230,7 +230,11 @@ public sealed class CaseJobQueue : BackgroundService, IJobQueue
 
         DemandDraft draft = await analyzer.Draft(piCase, progress, cancellationToken);
         await m_store.SaveDraft(caseId, draft, CancellationToken.None);
-        await m_store.Update(caseId, meta => meta.DraftUpdatedAt = DateTimeOffset.UtcNow, CancellationToken.None);
+        await m_store.Update(caseId, meta =>
+        {
+            meta.DraftUpdatedAt = DateTimeOffset.UtcNow;
+            meta.LetterEditedAt = null;
+        }, CancellationToken.None);
     }
 
     private static void Finish(CaseMeta meta, JobState state, string? error)

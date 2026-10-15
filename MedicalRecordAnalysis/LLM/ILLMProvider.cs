@@ -20,6 +20,12 @@ public interface ILLMProvider
      */
     public Task<VerificationResult> Verify(PICase piCase, CancellationToken cancellationToken = default);
     /**
+     * Prompts the LLM to list the visits, tests and procedures in the documents, each with its date, provider and
+     * main finding, and to give the date of loss if the documents state it. Each entry cites the extracted quotes
+     * by ID. The result is not yet checked; ChronologyCheck confirms dates and provider names against the documents.
+     */
+    public Task<ChronologyResult> BuildChronology(PICase piCase, CancellationToken cancellationToken = default);
+    /**
      * Prompts the LLM to draft the narrative section of a demand letter from the given source passages, or from
      * the case's extracted quotes when no passages are given. Every factual statement should cite that text,
      * disputed facts are attributed to each record, and facts the records do not contain are left as bracketed

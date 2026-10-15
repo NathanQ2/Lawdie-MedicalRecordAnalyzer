@@ -2,7 +2,7 @@
 
 export type JobKind = 'Ingest' | 'Draft'
 export type JobState = 'Queued' | 'Running' | 'Succeeded' | 'Failed' | 'Cancelled'
-export type PipelineStage = 'SummarizingDocuments' | 'FindingContradictions' | 'SummarizingCase' | 'Drafting'
+export type PipelineStage = 'SummarizingDocuments' | 'FindingContradictions' | 'SummarizingCase' | 'BuildingChronology' | 'Drafting'
 export type RecordStatus = 'NotIngested' | 'Summarized' | 'Skipped' | 'Changed'
 
 export interface JobStatus {
@@ -57,6 +57,8 @@ export interface CaseDetail {
   draftUpdatedAt: string | null
   draftOutOfDate: boolean
   job: JobStatus | null
+  /** When the attorney last edited the letter's text; drafting again would replace those edits. */
+  letterEditedAt: string | null
 }
 
 /** The name and intake details sent when creating a case or editing its matter details. */
@@ -102,6 +104,28 @@ export interface Contradiction {
   isVerified: boolean
 }
 
+/**
+ * One visit, test or procedure in the records. The date and provider are checked against the cited document, and
+ * the confirmed flags say whether they were found there.
+ */
+export interface ChronologyEntry {
+  /** YYYY-MM-DD */
+  date: string
+  provider: string
+  visitType: string
+  finding: string
+  citations: Citation[]
+  dateConfirmed: boolean
+  providerConfirmed: boolean
+}
+
+/** A date the records state, with the quotes that state it. */
+export interface CitedDate {
+  /** YYYY-MM-DD */
+  date: string
+  citations: Citation[]
+}
+
 export interface SkippedFile {
   filePath: string
   reason: string
@@ -116,6 +140,10 @@ export interface CaseAnalysis {
   documentSummaries: DocumentSummary[]
   summary: CaseSummary | null
   contradictions: Contradiction[]
+  /** Empty for cases analyzed before chronologies existed. */
+  chronology: ChronologyEntry[]
+  /** The date of loss the records state, or null when no quote states it. */
+  recordedDateOfLoss: CitedDate | null
   sources: SourceDocument[]
   skippedFiles: SkippedFile[]
 }
@@ -130,7 +158,39 @@ export interface DemandDraft {
   unsupportedStatements: string[]
 }
 
-export type ReviewItemKind = 'Contradiction' | 'UnsupportedStatement' | 'Placeholder' | 'RecognizedQuote'
+/**
+ * Replaces the letter's text at start, which must still read original (the letter as drafted, before its
+ * placeholders are filled), with text. Text marks sources by their number in brackets after the statements they
+ * support; sources says which citation each number stands for.
+ */
+export interface LetterEdit {
+  start: number
+  original: string
+  text: string
+  sources: Record<number, Citation>
+}
+
+/** The firm's details for the letterhead and signature, shared by every case. */
+export interface FirmProfile {
+  firmName: string | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  attorneyName: string | null
+}
+
+/**
+ * A placeholder in the letter, such as "[CLAIM NUMBER]", and what fills it: this case's value, else the firm's
+ * profile. The date of loss comes from the matter details instead.
+ */
+export interface LetterPlaceholder {
+  placeholder: string
+  value: string | null
+  firmValue: string | null
+  fromMatter: boolean
+}
+
+export type ReviewItemKind = 'Contradiction' | 'UnsupportedStatement' | 'Placeholder' | 'RecognizedQuote' | 'IntakeMismatch'
 export type ReviewStatus = 'Open' | 'Resolved' | 'Dismissed'
 
 /** A range of the draft's narrative (its segments' text joined). */

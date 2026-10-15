@@ -2,7 +2,7 @@ import { Alert, Anchor, Badge, Box, Button, Card, Center, Drawer, Grid, Group, L
 import { modals } from '@mantine/modals'
 import { useMediaQuery } from '@mantine/hooks'
 import { IconDownload, IconPencil, IconRun } from '../components/icons'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { api } from '../api/client'
 import type { Citation, ReviewItem } from '../api/types'
@@ -176,14 +176,18 @@ export function LetterPage() {
             pencil beside a paragraph to edit it.
           </Text>
         </Stack>
-        <Group gap="sm">
-          <Tooltip label="Fill in the claim number, adjuster and other details the documents don't give.">
-            <Button variant="default" leftSection={<IconPencil size={16} />} onClick={() => setDetails({ focus: null })}>
-              Letter details
-            </Button>
-          </Tooltip>
-          <ExportMenu caseId={caseId} issues={openIssues} letterItems={openLetterItems} />
-        </Group>
+        <ExportMenu
+          caseId={caseId}
+          issues={openIssues}
+          letterItems={openLetterItems}
+          details={
+            <Tooltip label="Fill in the claim number, adjuster and other details the documents don't give.">
+              <Button variant="default" leftSection={<IconPencil size={16} />} onClick={() => setDetails({ focus: null })}>
+                Edit letter details
+              </Button>
+            </Tooltip>
+          }
+        />
       </Group>
 
       <Grid gap="md">
@@ -234,16 +238,17 @@ export function LetterPage() {
   )
 }
 
-function ExportMenu({ caseId, issues, letterItems }: { caseId: string; issues: number; letterItems: number }) {
+interface ExportMenuProps {
+  caseId: string
+  issues: number
+  letterItems: number
+  /** The button that opens the letter details, shown between the counts and Export. */
+  details: ReactNode
+}
+
+function ExportMenu({ caseId, issues, letterItems, details }: ExportMenuProps) {
   return (
     <Group gap="sm">
-      {issues > 0 && (
-        <Tooltip label="Contradictions and intake details to check before you send the letter. They are listed beside it and on the Issues page.">
-          <Badge color="brick" variant="light">
-            {issues} open {issues === 1 ? 'issue' : 'issues'}
-          </Badge>
-        </Tooltip>
-      )}
       {letterItems > 0 && (
         <Tooltip label="Uncited statements, placeholders and scanned text to fix before you send the letter. They are listed beside it.">
           <Badge color="amber" variant="light">
@@ -251,6 +256,14 @@ function ExportMenu({ caseId, issues, letterItems }: { caseId: string; issues: n
           </Badge>
         </Tooltip>
       )}
+      {issues > 0 && (
+        <Tooltip label="Contradictions and intake details to check before you send the letter. They are listed beside it and on the Issues page.">
+          <Badge color="brick" variant="light">
+            {issues} open {issues === 1 ? 'issue' : 'issues'}
+          </Badge>
+        </Tooltip>
+      )}
+      {details}
       <Menu position="bottom-end">
         <Menu.Target>
           <Tooltip label="Download the letter. The file ends with the review items, for the attorney.">
@@ -379,7 +392,7 @@ export function ReviewChecklist({ caseId, items, loading, onSelectCitation, show
 
 /**
  * A field in a placeholder's review item to fill it in. The value fills every place the placeholder appears in the
- * letter, which takes the item off the open list; Letter details changes it later.
+ * letter, which takes the item off the open list; Edit letter details changes it later.
  */
 function PlaceholderFill({ caseId, placeholder }: { caseId: string; placeholder: string }) {
   const update = usePlaceholderUpdate(caseId)

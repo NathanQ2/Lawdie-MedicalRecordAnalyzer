@@ -146,7 +146,7 @@ function ParagraphEditor({ initial, saving, error, onCancel, onSave }: Paragraph
       />
       <Text size="xs" c="dimmed">
         Numbers in brackets, such as [3], are sources. Keep each one right after the sentence it supports, or delete it if the sentence no longer says
-        what the source does. A sentence without a source is listed for review. Placeholders are filled in from Letter details.
+        what the source does. A sentence without a source is listed for review. Fill in placeholders from the review list, or with Edit letter details.
       </Text>
       {error && <Alert color="brick">{error}</Alert>}
       <Group gap="xs" justify="flex-end">
